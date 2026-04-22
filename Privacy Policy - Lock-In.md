@@ -12,6 +12,7 @@ For Lock-In to function, we require access to your application usage statistics.
 * Blocking access to applications you have selected in your focus modes
 * Calculating your total focus time
 **All this data remains on your device and is not sold to third parties.**
+ ***All this data will be deleted after 90 days of inactivity.***
 
 ### 1.2 NFC Technology
 The application uses the NFC reader to interact with the physical Lock-In device. The device's unique identifier is stored locally to enable unlocking of your focus sessions.
@@ -80,6 +81,7 @@ Pour fonctionner, Lock-In nécessite l'accès à vos statistiques d'utilisation.
 * Bloquer l'accès aux applications que vous avez sélectionnées dans vos modes de focus
 * Calculer votre temps de concentration total
 **Ces données restent sur votre appareil et ne sont pas vendues à des tiers.**
+***Ces données seront supprimées au bout de 90 jours d'inactivité.***
 
 ### 1.2 Technologie NFC
 L'application utilise le lecteur NFC pour interagir avec le boîtier physique Lock-In. L'identifiant unique du boîtier est mémorisé localement pour permettre le déverrouillage de vos sessions de focus.
