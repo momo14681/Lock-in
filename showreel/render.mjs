@@ -73,7 +73,7 @@ if (args[0] === '--stills') {
   await writeFile(join(seg, 'list.txt'), list);
   await new Promise((res, rej) => spawn(FFMPEG, ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(seg, 'list.txt'),
     '-i', join(ROOT, 'soundtrack.wav'),
-    '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-tune', 'grain',
+    '-c:v', 'libx264', '-preset', 'slow', '-b:v', '16M', '-maxrate', '24M', '-bufsize', '32M', '-pix_fmt', 'yuv420p', '-profile:v', 'high',
     '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', '-shortest', join(ROOT, 'showreel.mp4')], { stdio: 'inherit' })
     .on('close', c => c ? rej(new Error('ffmpeg ' + c)) : res()));
   console.log(`done in ${((Date.now() - started) / 1000).toFixed(0)}s → showreel.mp4`);
