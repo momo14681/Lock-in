@@ -41,7 +41,7 @@ function audit(tasks) {
 
   for (const t of tasks) {
     if (t.cancelled) continue;
-    if (t.infoMissing) add(t, t.bpdSigned ? "Incomplet" : "Infos manquantes", t.missingInfoKeys, `${t.bpdSigned ? "BPD signé" : "GER/1N renseigné"}. À compléter ou vérifier : ${missingLabel(t)}.`, "À compléter");
+    if (t.infoMissing) add(t, t.bpdSigned ? "Incomplet" : "Infos manquantes", t.missingInfoKeys, `${t.bpdSigned ? "BPD signé" : t.totReady ? "TOT prête" : "GER/1N renseigné"}. À compléter : ${missingLabel(t)}.`, "À compléter");
     if (t.responsable === UNASSIGNED) add(t, "Non-affectation", ["responsable"], "Désigner un chargé d’essais ou une entreprise.", "À compléter");
     if (!t.affaire) add(t, "Identifiants", ["affaire"], "Renseigner la référence eDIM.", "À compléter");
     if (!t.ree) add(t, "Identifiants", ["ree"], "Renseigner le REE.", "À compléter");
@@ -50,7 +50,6 @@ function audit(tasks) {
       const d = isoDay(t.j0);
       if ((min && d < min) || (max && d > max)) add(t, "J0 hors période", ["j0"], `Date hors de la période ${min || "sans début"} au ${max || "sans fin"}. Confirmer si l’activité est historique.`);
     }
-    if (t.totReady && t.missingPrerequisites.length) add(t, "Préparation incohérente", [...t.missingPrerequisites, "totPrete"], "TOT marquée prête, mais informations préalables manquantes.", "À compléter");
     if (t.overdue) add(t, "Préparation en retard", [...t.missingPrerequisites, ...(!t.totReady ? ["totPrete"] : []), "j0"], `Préparation attendue le ${t.prepDueLabel}. Compléter les informations ou confirmer le planning.`, "Prioritaire");
     if (t.duplicate) add(t, "Doublon possible", ["affaire", "ree", "ot", "tot"], "Même combinaison feuille, affaire, REE, OT et TOT sur plusieurs lignes. Vérifier avant toute suppression.");
 

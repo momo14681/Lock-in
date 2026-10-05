@@ -149,7 +149,7 @@ function viewTeam() {
   const kpis = [
     kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
     kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
-    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT, sur ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
+    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT · ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
     kpi({ label: "À boucler sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer", tone: m.dueSoon ? "warn" : "" }),
   ].join("");
   const more = m.late.length > 10
@@ -159,11 +159,11 @@ function viewTeam() {
     <div class="kpis kpis-4 hero">${kpis}</div>
     <div class="split even">
       ${panel(`Avancement par mois de J0`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
-        { sub: "Chaque colonne = les TOT dont le J0 tombe ce mois-là · le chiffre au-dessus = nombre de TOT", cls: "timelinePanel" })}
+        { cls: "timelinePanel" })}
       ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${lateTable(shown)}${more}`,
-        { sub: "J0 − 30 dépassé sans préparation complète · les plus proches du J0 en premier", cls: "latePanel" })}
+        { cls: "latePanel" })}
     </div>
-    ${panel("Documents des REE", milestoneCards(m.ts), { sub: "Partie claire : produits · partie foncée : signés" })}`;
+    ${panel("Documents des REE", milestoneCards(m.ts))}`;
   currentExport = () => downloadMatrix(["Affaire", "REE", "Phase", "Feuille", "Chargés", "Échéance prépa", "J0", "Retard (jours)", "TOT", "Informations manquantes"],
     m.late.map((g) => [g.affaire, g.ree, g.phase, g.sheet, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), g.late, g.ts.length, g.missing.join(", ")]),
     "Retards_preparation.csv");
@@ -311,12 +311,15 @@ function drawPNG(canvas, m) {
   m.milestones.forEach((ms, i) => {
     const x = 56 + i * (mw + 25);
     roundRect(x, y3, mw, h3, 18, PNG.card);
+    const waiting = Math.max(0, ms.produced - ms.done), none = Math.max(0, m.n - ms.produced);
     text(ms.label, x + 32, y3 + 18, { size: 28, weight: 700, width: 200 });
-    const pw = text(pct(ms.produced, m.n), x + 32, y3 + 56, { size: 46, weight: 700, width: 200 });
-    text("produits", x + 32 + pw + 12, y3 + 76, { size: 21, color: PNG.muted });
-    const sw = text("signés", x + mw - 32, y3 + 76, { size: 21, color: PNG.muted, align: "right" });
-    text(pct(ms.done, m.n), x + mw - 32 - sw - 12, y3 + 56, { size: 46, weight: 700, color: "#0d7a59", align: "right", width: 200 });
-    bar(x + 32, y3 + 124, mw - 64, 14, [[ratio(ms.done, m.n), STATE_COLORS[STATE.realized]], [ratio(Math.max(0, ms.produced - ms.done), m.n), "rgba(20,147,108,.35)"]]);
+    text(`${pct(ms.done, m.n)} signés`, x + mw - 32, y3 + 18, { size: 28, weight: 700, color: "#0d7a59", align: "right", width: 320 });
+    bar(x + 32, y3 + 66, mw - 64, 22, [[ratio(ms.done, m.n), DOC_COLORS.signed], [ratio(waiting, m.n), DOC_COLORS.waiting]]);
+    let lx2 = x + 32;
+    for (const [v, color, label] of [[ms.done, DOC_COLORS.signed, "signés"], [waiting, DOC_COLORS.waiting, "à signer"], [none, "#c9d4df", "non produits"]]) {
+      roundRect(lx2, y3 + 110, 16, 16, 4, color);
+      lx2 += 24 + text(`${pct(v, m.n)} ${label}`, lx2 + 24, y3 + 107, { size: 19, color: PNG.ink2 }) + 20;
+    }
   });
 
   text(`Source : ${m.source}  ·  Réalisé = GER/1N signé (PSR, TSR)  ·  Préparation terminée = MC, OT, TOT, RDU renseignés et TOT prête  ·  Échéance de préparation = J0 − 30 jours`, 56, 1036, { size: 18, color: PNG.muted, width: 1808, min: 13 });

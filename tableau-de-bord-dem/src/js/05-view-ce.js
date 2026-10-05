@@ -163,7 +163,7 @@ function viewMine() {
     : emptyState("Aucune TOT pour ce chargé", "Vérifiez la recherche et les filtres.");
   $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
     <div class="split mineSplit">
-      ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`, { sub: "Les plus urgentes en haut · cliquez sur une affaire pour voir le détail" })}
+      ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`)}
       ${todoPanel(ts, issues)}
     </div>`;
   currentExport = () => downloadMatrix(

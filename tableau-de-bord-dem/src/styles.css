@@ -94,15 +94,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 
 main { max-width: 1640px; margin: auto; padding: 18px 32px 40px; }
 
-/* --- Source / fichier : une ligne discrète -------------------------------- */
-.sourceBar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 4px 2px 10px; font-size: 14px; }
-.sourceBar strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-.sourceBar .muted { font-size: 13px; }
-.sourceDot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--neutral); }
-.sourceDot.ok { background: var(--good); box-shadow: 0 0 0 4px var(--good-bg); }
-.sourceDot.busy { background: var(--info); box-shadow: 0 0 0 4px var(--info-bg); }
+/* --- Fichier source : petite ligne en bas de page --------------------------- */
+.sourceFooter { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.sourceFooter #sourceFile { font-weight: 600; color: var(--ink-2); overflow-wrap: anywhere; }
+.sourceDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--neutral); }
+.sourceDot.ok { background: var(--good); }
+.sourceDot.busy { background: var(--info); }
 .sourceDot.idle { background: var(--warn); }
-button.small { padding: 5px 11px; font-size: 13px; }
+.sourceFooter .menu > summary { padding: 3px 9px; font-size: 12.5px; }
+.sourceFooter .menuBody { top: auto; bottom: calc(100% + 6px); left: 0; right: auto; }
+.headerRefresh { background: rgba(255, 255, 255, .1); color: #fff; border-color: rgba(255, 255, 255, .35); font-weight: 600; }
+.headerRefresh:hover { background: rgba(255, 255, 255, .2); }
+.headerRefresh:disabled { opacity: .5; }
 .sourceAuto { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
 .sourceAuto input { accent-color: var(--primary); width: auto; }
 
@@ -114,7 +117,6 @@ button.small { padding: 5px 11px; font-size: 13px; }
 .menu[open] > summary { background: #eaf1f8; }
 .sourceMenu > summary { padding: 5px 10px; font-size: 13px; }
 .menuBody { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 280px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; box-shadow: 0 10px 30px rgba(16, 40, 66, .16); }
-.sourceMenu .menuBody { left: 0; right: auto; }
 .menuBody p { font-size: 13.5px; }
 .menuBody button { text-align: left; }
 .filterMenu .menuBody { min-width: 420px; }
@@ -398,7 +400,7 @@ dialog::backdrop { background: #091d37aa; }
 }
 @media print {
   .appHeader { background: #fff; color: #000; }
-  .sourceBar, .toolbar, .modeSwitch, .headerActions, .help, .ignoreAction, .pagination button { display: none !important; }
+  .sourceFooter, .toolbar, .modeSwitch, .headerActions, .help, .ignoreAction, .pagination button { display: none !important; }
   .tableWrap { max-height: none; overflow: visible; }
   .panel { break-inside: avoid; box-shadow: none; }
 }
@@ -425,3 +427,16 @@ dialog::backdrop { background: #091d37aa; }
   .toolbar input[type=search] { width: 100%; }
   .filterMenu .menuBody { min-width: 0; width: min(420px, 90vw); }
 }
+
+/* --- Repères visuels ---------------------------------------------------------- */
+.todoStrip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.todoStripLabel { font-weight: 700; color: var(--ink-2); margin-right: 4px; }
+.todoStrip .todoItem { width: auto; min-width: 300px; }
+.ownerHide .x { opacity: .35; }
+.milestone h3 { margin: 0 0 12px; font-size: 17px; color: var(--ink); }
+.docBar { display: flex; gap: 2px; height: 16px; border-radius: 8px; overflow: hidden; background: #dfe6ee; }
+.docBar span { display: block; height: 100%; }
+.docParts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 13.5px; color: var(--ink-2); }
+.docPart { display: inline-flex; align-items: center; gap: 6px; }
+.docPart i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.docPart b { color: var(--ink); }

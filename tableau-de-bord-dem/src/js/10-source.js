@@ -257,7 +257,7 @@ function updateSourceControls() {
     : sourcePaused ? "Lecture automatique en pause"
     : sourceHandle && sourcePermission !== "granted" ? "Lecture automatique suspendue : autorisation requise"
     : sourceHandle ? "Lecture automatique désactivée" : "Lecture automatique : sélectionnez un fichier";
-  $("sourceLastCheck").textContent = lastChecked ? `Dernière vérification : ${sourceTime(lastChecked)}` : "";
+  $("sourceLastCheck").textContent = lastChecked ? `· vérifié le ${sourceTime(lastChecked)}` : "";
   $("sourceDot").className = "sourceDot " + (working ? "busy" : active ? "ok" : data ? "idle" : "off");
   for (const id of ["import", "choose", "clear"]) $(id).disabled = working;
 }

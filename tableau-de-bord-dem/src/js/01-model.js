@@ -153,8 +153,9 @@ function buildTask(sheet, rowNumber, row, today) {
   const bpdState = classifyMilestone(values.bpd);
   const cancelled = [values.mc, values.ot, values.tot, values.rdu, values.totPrete, values.regime, values.bpa, values.ger, values.bpd]
     .some((value) => /^ANNULEE?S?$/.test(status(value)));
-  const overdue = !cancelled && !prepComplete && Boolean(prepDue && prepDue < today);
-  const dueSoon = !cancelled && !prepComplete && Boolean(prepDue && prepDue >= today && prepDue <= addDays(today, 30));
+  // Une TOT marquée prête n'est jamais « en retard » : il reste seulement des informations à compléter.
+  const overdue = !cancelled && !prepComplete && !totReady && Boolean(prepDue && prepDue < today);
+  const dueSoon = !cancelled && !prepComplete && !totReady && Boolean(prepDue && prepDue >= today && prepDue <= addDays(today, 30));
 
   let prepState = "ongoing";
   if (cancelled) prepState = "cancelled";
@@ -254,7 +255,7 @@ function applyMissingInfo(t) {
     for (const [k, c] of Object.entries(t.cells || {})) if (c?.t === "e" && !["regime", "observations"].includes(k)) t.missingInfoKeys.push(k);
     t.missingInfoKeys = [...new Set(t.missingInfoKeys)];
   }
-  t.infoMissing = !t.cancelled && (t.bpdSigned ? t.missingInfoKeys.length > 0 : !t.prepComplete && String(t.ger || "").trim() !== "");
+  t.infoMissing = !t.cancelled && (t.bpdSigned ? t.missingInfoKeys.length > 0 : !t.prepComplete && (t.totReady || String(t.ger || "").trim() !== ""));
   if (t.bpdSigned || t.infoMissing) {
     t.overdue = false;
     t.dueSoon = false;

@@ -57,7 +57,7 @@ function chargeChart() {
     ${legendEntries.length ? legend(legendEntries) : ""}
     ${hidden ? `<div class="hiddenOwners"><span class="muted">Masqués :</span>${hidden}<button type="button" class="linkbutton" data-show-all>Tout réafficher</button></div>` : ""}
     <div class="chargeChart">${rows || emptyState("Aucun chargé affiché")}</div>
-    <p class="muted chartNote">Cliquez sur un nom pour le retirer du graphique.</p>`;
+`;
 }
 
 function barList(entries, { go, color = "var(--ink-3)", empty = "Aucun signalement." } = {}) {
@@ -75,26 +75,39 @@ function signalPanel() {
     return { label: n, n: list.length, color: list.some((i) => i.level === "Prioritaire") ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.missing] };
   }).sort((a, b) => b.n - a.n);
   const urgent = issues.filter((i) => i.level === "Prioritaire").length;
-  return panel("Qui doit corriger la DEM ?",
-    `<p class="signalLead"><strong>${fmt(issues.length)}</strong> corrections, dont <strong class="lateDays">${fmt(urgent)}</strong> prioritaires (préparations en retard)</p>
+  return panel(`Qui doit corriger la DEM ? · ${fmt(issues.length)}`,
+    `${legend([[`avec au moins une correction prioritaire (${fmt(urgent)})`, STATE_COLORS[STATE.late]], ["sans correction prioritaire", STATE_COLORS[STATE.missing]]])}
      ${barList(byOwner.slice(0, 10), { go: (e) => "issues-owner:" + e.label })}
      ${byOwner.length > 10 ? `<p class="muted">+ ${plural(byOwner.length - 10, "autre chargé", "autres chargés")}</p>` : ""}`,
-    { sub: "Barre rouge : au moins une correction prioritaire · cliquez sur un nom pour voir ses corrections", cls: "signalPanel", actions: `<button type="button" data-go="tab:issues">Tout voir ›</button>` });
+    { cls: "signalPanel", actions: `<button type="button" data-go="tab:issues">Tout voir ›</button>` });
 }
+
+// Couleurs des documents : signés / produits en attente de signature / non produits.
+const DOC_COLORS = { signed: STATE_COLORS[STATE.realized], waiting: STATE_COLORS[STATE.missing], none: "#dfe6ee" };
 
 function milestoneCards(ts) {
   const n = ts.length;
   return `<div class="milestones">${[["BPA", "bpaState"], ["GER / 1N", "gerState"], ["BPD", "bpdState"]].map(([label, key]) => {
     const { done, produced: prod } = milestoneStats(ts, key);
-    const rule = key === "gerState"
-      ? "Produits : P, PS, TS, R, PSR, TSR. Signés : PSR ou TSR."
-      : "Produits : P, R ou date de validation. Signés : date de validation.";
+    const waiting = Math.max(0, prod - done), none = Math.max(0, n - prod);
+    const part = (v, color, text) => `<span class="docPart"><i style="background:${color}"></i><b>${pct(v, n)}</b> ${text}</span>`;
     return `<section class="milestone">
-      <div class="milestoneHead" title="${esc(rule)}"><h3>${label}</h3></div>
-      <div class="milestoneFigures"><div><strong>${pct(prod, n)}</strong><span>produits · ${fmt(prod)}</span></div><div><strong class="signed">${pct(done, n)}</strong><span>signés · ${fmt(done)}</span></div></div>
-      <span class="twoTone" data-tip="${fmt(done)} signés · ${fmt(prod)} produits\nsur ${fmt(n)} TOT" tabindex="0"><span style="width:${(ratio(done, n) * 100).toFixed(1)}%"></span><span class="light" style="width:${(ratio(Math.max(0, prod - done), n) * 100).toFixed(1)}%"></span></span>
+      <h3>${label}</h3>
+      <span class="docBar" data-tip="${fmt(done)} signés · ${fmt(waiting)} à signer · ${fmt(none)} non produits\nsur ${fmt(n)} TOT" tabindex="0">
+        <span style="flex:${done} 1 0;background:${DOC_COLORS.signed}"></span><span style="flex:${waiting} 1 0;background:${DOC_COLORS.waiting}"></span><span style="flex:${none} 1 0;background:${DOC_COLORS.none}"></span></span>
+      <div class="docParts">${part(done, DOC_COLORS.signed, "signés")}${part(waiting, DOC_COLORS.waiting, "à signer")}${part(none, DOC_COLORS.none, "non produits")}</div>
     </section>`;
   }).join("")}</div>`;
+}
+
+// Actions propres aux coordos (valider les « P », affecter les TOT).
+function coordoTodo(ts) {
+  const items = [
+    { n: documentRows(ts, "P").length, tone: "info", title: "documents à valider (P)", go: "documents:P" },
+    { n: ts.filter((t) => t.responsable === UNASSIGNED).length, tone: "warn", title: "TOT sans chargé d’essais", go: "tasks:unassigned" },
+  ].filter((i) => i.n);
+  if (!items.length) return "";
+  return `<div class="todoStrip"><span class="todoStripLabel">À faire</span>${items.map((i) => `<button type="button" data-go="${i.go}" class="todoItem tone-${i.tone}"><span class="todoCount">${fmt(i.n)}</span><span class="todoText">${esc(i.title)}</span><span class="todoGo" aria-hidden="true">›</span></button>`).join("")}</div>`;
 }
 
 function viewOverview() {
@@ -110,7 +123,8 @@ function viewOverview() {
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse</h2>
       <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
     <div class="kpis kpis-4">${kpis}</div>
-    <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { sub: "Survolez une barre pour le détail", cls: "chargePanel" })}${signalPanel()}</div>`;
+    ${coordoTodo(ts)}
+    <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { cls: "chargePanel" })}${signalPanel()}</div>`;
   currentExport = () => downloadMatrix(["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"],
     chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]), "Charge_par_charge.csv");
 }

@@ -109,7 +109,7 @@ function viewIssues() {
   $("view").innerHTML = panel(`${title} · ${fmt(rows.length)}`,
     `${mode === "coordo" ? ownerChips() : ""}${controls}
      ${table(["Priorité", "Affaire", "Cellule Excel", "Problème et action", ""], body, { empty: showIgnored ? "Aucun signalement ignoré." : "Rien à corriger : la DEM est cohérente." })}${pager(p)}`,
-    { sub: "Ouvrez la cellule indiquée dans la DEM et corrigez-la · cliquez sur l’affaire pour voir toute la ligne" });
+    {});
   currentExport = () => downloadMatrix(
     ["Priorité", "Contrôle", "Affaire", "REE", "Chargé", "Feuille", "Ligne", "Cellules", "Valeur", "Action", "Observations"],
     rows.map((i) => [i.level, i.kind, i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.rowNumber, i.cells, i.value, i.reason, observations(i.t)]),
@@ -120,6 +120,8 @@ function viewIssues() {
 
 function viewDocuments() {
   if (needsMe()) return;
+  // Les documents « P » sont validés par les coordos : un chargé ne voit que ses « R ».
+  if (mode === "ce") docCode = "R";
   const rows = documentRows(visible, docCode, documentType), p = paginate(rows), owner = showOwnerColumn();
   const typeOptions = [["", "Tous"], ["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER/1N"], ["bpd", "BPD"]];
   const body = p.slice.map((i) => `<tr>
@@ -130,11 +132,11 @@ function viewDocuments() {
     <td>${badge(`${i.level} · ${i.value}`, docCode === "R" ? "warn" : "info")}</td>
     <td><span class="loc">${esc(i.t.sheet)}!${esc(i.cells)}</span></td>
     ${observationCell(i.t)}</tr>`);
-  $("view").innerHTML = panel(`${docCode === "R" ? "Documents à reprendre (R)" : "Documents prêts à valider (P)"} · ${fmt(rows.length)}`,
-    `<div class="controlRow">${segment("docCode", [["P", "Prêts à valider (P)"], ["R", "À reprendre (R)"]], docCode, { label: "État", counts: (code) => documentRows(visible, code, documentType).length })}
+  $("view").innerHTML = panel(`${docCode === "R" ? (mode === "ce" ? "Mes documents à reprendre (R)" : "Documents à reprendre par les CE (R)") : "Documents à valider par les coordos (P)"} · ${fmt(rows.length)}`,
+    `<div class="controlRow">${mode === "coordo" ? segment("docCode", [["P", "À valider (P)"], ["R", "À reprendre par les CE (R)"]], docCode, { label: "État", counts: (code) => documentRows(visible, code, documentType).length }) : ""}
       ${segment("documentType", typeOptions, documentType, { label: "Document", counts: (type) => documentRows(visible, docCode, type).length })}</div>
      ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "OT / TOT", "Document", "État", "Cellule", "Observations"], body)}${pager(p)}`,
-    { sub: "P : en attente de validation ou de signature · R : retourné pour reprise", actions: backToMine() });
+    { actions: backToMine() });
   currentExport = () => downloadMatrix(
     ["Affaire", "REE", "Chargé", "Feuille", "OT", "TOT", "Document", "Valeur", "Cellule", "Observations"],
     rows.map((i) => [i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.ot, i.t.tot, i.kind, i.value, i.cells, observations(i.t)]),
