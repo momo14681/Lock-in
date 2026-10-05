@@ -47,11 +47,13 @@ function render() {
   allIssues = data.audit.filter((i) => inScope.has(i.t));
   issues = allIssues.filter((i) => !ignoredIssues.has(issueId(i)));
   currentExport = null;
+  currentRows = null;
   renderChrome();
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
   $("pngExport").disabled = false;
   $("csvExport").disabled = !currentExport;
+  restoreTableFocus();
 }
 
 function detail(t) {
@@ -75,8 +77,8 @@ function go(spec) {
   const kind = cut < 0 ? spec : spec.slice(0, cut), arg = cut < 0 ? "" : spec.slice(cut + 1);
   if (kind === "tab") return setTab(arg);
   if (kind === "tasks") return openTasks(arg.split("|")[0]);
-  if (kind === "issues") return openIssues(arg);
-  if (kind === "issues-level") { issueKind = ""; issueLevel = arg; showIgnored = false; return setTab("issues"); }
+  if (kind === "issues") { tableState.issues = { search: "", open: false, filters: arg ? { [mode === "coordo" ? 4 : 3]: arg } : {} }; return openIssues(""); }
+  if (kind === "issues-level") { tableState.issues = { search: "", open: false, filters: { 0: arg } }; showIgnored = false; return openIssues(""); }
   if (kind === "issues-owner") { if (mode === "coordo") $("owner").value = arg; issueKind = ""; issueLevel = ""; showIgnored = false; return setTab("issues"); }
   if (kind === "documents") { docCode = arg || "P"; documentType = ""; return setTab("documents"); }
   if (kind === "groups") { tab = tabByMode[mode] = arg; page = 1; return render(); }
@@ -128,6 +130,15 @@ function onClick(e) {
   if (d.me !== undefined) return setMe(d.me);
   if (d.owner !== undefined) { $("owner").value = d.owner; page = 1; return render(); }
   if (d.ownerTasks !== undefined) { $("owner").value = d.ownerTasks; return openTasks(""); }
+  if (d.tableToggle !== undefined) {
+    const st = tableStateFor(d.tableToggle);
+    st.open = !(st.open || st.search);
+    if (!st.open) st.search = "";
+    tableFocus = st.open ? d.tableToggle : null;
+    page = 1;
+    return render();
+  }
+  if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
   if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
   if (d.toggleIgnored !== undefined) { showIgnored = !showIgnored; page = 1; return render(); }
   if (d.group !== undefined) return openGroup(+d.group);
@@ -136,7 +147,23 @@ function onClick(e) {
   if (d.mode !== undefined) return setMode(d.mode);
 }
 
+function onTableInput(e) {
+  const key = e.target.dataset?.tableSearch;
+  if (key === undefined) return;
+  tableStateFor(key).search = e.target.value;
+  tableFocus = key;
+  page = 1;
+  render();
+}
+
 function onChange(e) {
+  const tf = e.target.dataset?.tableFilter;
+  if (tf !== undefined) {
+    const cut = tf.lastIndexOf(":");
+    tableStateFor(tf.slice(0, cut)).filters[tf.slice(cut + 1)] = e.target.value;
+    page = 1;
+    return render();
+  }
   const key = e.target.dataset?.change;
   if (key === "me") return setMe(e.target.value);
   if (key === "issueKind") { issueKind = e.target.value; page = 1; render(); }
@@ -156,6 +183,7 @@ function init() {
 
   document.addEventListener("click", onClick);
   document.addEventListener("change", onChange);
+  document.addEventListener("input", onTableInput);
   $("search").addEventListener("input", () => { page = 1; render(); });
   $("owner").addEventListener("change", () => { page = 1; render(); });
   document.querySelectorAll("[data-j0-year]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); toggleJ0Year(+b.dataset.j0Year); }));

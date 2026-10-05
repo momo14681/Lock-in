@@ -153,23 +153,34 @@ function ownerStats() {
 function viewOwners() {
   const stats = ownerStats();
   const signed = (s, n) => `${fmt(s.done)} <span class="muted">/ ${fmt(s.produced)}</span>`;
-  const body = stats.map((s) => `<tr>
-    <td><button type="button" class="linkbutton" data-owner-tasks="${esc(s.name)}">${esc(s.name)}</button><small>${esc(s.type)}</small></td>
-    <td class="num">${fmt(s.affaires)}</td>
-    <td class="num">${fmt(s.ree)}<small>TEM ${fmt(s.reeTEM)} · AT ${fmt(s.reeAT)}</small></td>
-    <td class="num">${fmt(s.n)}</td>
-    <td>${meter(s.prep, s.n, { color: STATE_COLORS[STATE.ready] })}</td>
-    <td>${meter(s.realized, s.n, { color: STATE_COLORS[STATE.realized] })}</td>
-    <td class="num">${s.overdue ? badge(fmt(s.overdue), "bad") : '<span class="muted">0</span>'}</td>
-    <td class="num">${s.missing ? badge(fmt(s.missing), "warn") : '<span class="muted">0</span>'}</td>
-    <td class="num">${s.issues ? `<button type="button" class="linkbutton" data-go="issues-owner:${esc(s.name)}">${fmt(s.issues)}</button>` : '<span class="muted">0</span>'}</td>
-    <td class="num">${signed(s.bpa)}</td><td class="num">${signed(s.ger)}</td><td class="num">${signed(s.bpd)}</td></tr>`);
-  $("view").innerHTML = panel("Répartition des affaires et des TOT par chargé",
-    table(["Chargé / entreprise", { label: "Affaires", cls: "num" }, { label: "REE", cls: "num" }, { label: "TOT", cls: "num" }, "Prépa terminée", "Réalisés", { label: "Retards", cls: "num" }, { label: "Infos manq.", cls: "num" }, { label: "Corrections", cls: "num" }, { label: "BPA signés / produits", cls: "num" }, { label: "GER/1N signés / produits", cls: "num" }, { label: "BPD signés / produits", cls: "num" }], body),
-    { sub: `${esc(scopeLabel())} · une affaire ou un REE partagé compte chez chacun de ses chargés : les colonnes ne s’additionnent pas.`, actions: exportButton() });
+  const dt = dataTable({
+    key: "owners", items: stats, paged: false,
+    columns: [
+      { label: "Chargé / entreprise", value: (s) => s.name },
+      { label: "Type", value: (s) => s.type, filter: true },
+      { label: "Affaires", cls: "num", value: (s) => s.affaires },
+      { label: "REE", cls: "num", value: (s) => s.ree },
+      { label: "TOT", cls: "num", value: (s) => s.n },
+      { label: "Prépa terminée", value: () => "" },
+      { label: "Réalisés", value: () => "" },
+      { label: "Retards", cls: "num", value: (s) => s.overdue },
+      { label: "Corrections", cls: "num", value: (s) => s.issues },
+    ],
+    row: (s) => `<tr>
+      <td><button type="button" class="linkbutton" data-owner-tasks="${esc(s.name)}">${esc(s.name)}</button></td>
+      <td>${esc(s.type)}</td>
+      <td class="num">${fmt(s.affaires)}</td>
+      <td class="num">${fmt(s.ree)}<small>TEM ${fmt(s.reeTEM)} · AT ${fmt(s.reeAT)}</small></td>
+      <td class="num">${fmt(s.n)}</td>
+      <td>${meter(s.prep, s.n, { color: STATE_COLORS[STATE.ready] })}</td>
+      <td>${meter(s.realized, s.n, { color: STATE_COLORS[STATE.realized] })}</td>
+      <td class="num">${s.overdue ? badge(fmt(s.overdue), "bad") : '<span class="muted">0</span>'}</td>
+      <td class="num">${s.issues ? `<button type="button" class="linkbutton" data-go="issues-owner:${esc(s.name)}">${fmt(s.issues)}</button>` : '<span class="muted">0</span>'}</td></tr>`,
+  });
+  $("view").innerHTML = panel("Répartition par chargé d’essais", dt.html, {});
   currentExport = () => downloadMatrix(
     ["Chargé", "Type", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
-    stats.map((s) => [s.name, s.type, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
+    dt.rows.map((s) => [s.name, s.type, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
     "Repartition_par_charge.csv");
 }
 
@@ -228,16 +239,22 @@ function assignmentModel() {
 
 function viewAssignments() {
   if (data.ipe?.error) { $("view").innerHTML = panel("Affectations SharePoint", `<p>${esc(data.ipe.error)}</p>`); currentExport = null; return; }
-  const m = assignmentModel(), all = assignmentGroups(), p = paginate(m.rows);
-  const offset = (page - 1) * PAGE_SIZE;
-  const body = p.slice.map((r, i) => {
-    const g = m.groups[offset + i];
-    return `<tr><td><strong>${esc(r[0])}</strong></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${badge(r[3], assignmentTones[g.status])}</td><td>${esc(r[4])}</td><td class="loc">${esc(r[5])}</td></tr>`;
+  const m = assignmentModel(), all = assignmentGroups();
+  const items = m.groups.map((g, i) => ({ g, r: m.rows[i] }));
+  const dt = dataTable({
+    key: "assignments", items,
+    columns: [
+      { label: "Affaire eDIM", value: (x) => x.r[0] },
+      { label: "TEM / AT", value: (x) => x.r[1], filter: true },
+      { label: "Année PT", value: (x) => x.r[2], filter: true },
+      { label: "Statut IPE", value: (x) => x.r[3] },
+      { label: "Chargé / valeur saisie", value: (x) => x.r[4], filter: true },
+      { label: "Cellules IPE", value: (x) => x.r[5] },
+    ],
+    row: (x) => `<tr><td><strong>${esc(x.r[0])}</strong></td><td>${esc(x.r[1])}</td><td>${esc(x.r[2])}</td><td>${badge(x.r[3], assignmentTones[x.g.status])}</td><td>${esc(x.r[4])}</td><td class="loc">${esc(x.r[5])}</td></tr>`,
   });
   const options = [["missing", "Sans chargé"], ["partial", "Partielles"], ["exempt", "À confirmer"], ["assigned", "Affectées"], ["", "Toutes"]];
-  $("view").innerHTML = panel(`Affectations SharePoint · ${fmt(m.groups.length)} affaires / phases`,
-    `<div class="controlRow">${segment("assignmentFilter", options, assignmentFilter, { label: "Statut IPE", counts: (k) => all.filter((g) => !k || g.status === k).length })}</div>
-     ${table(m.headers, body)}${pager(p)}`,
-    { sub: `Feuille « ${IPE_SHEET} » · toutes feuilles et tous CE (la recherche reste active) · vide, tiret ou « En attente d’affectation » = sans chargé`, actions: exportButton() });
-  currentExport = () => downloadMatrix(m.headers, m.rows, "Affectation_SharePoint.csv");
+  $("view").innerHTML = panel(`Affectations SharePoint · ${fmt(dt.rows.length)} affaires / phases`,
+    `<div class="controlRow">${segment("assignmentFilter", options, assignmentFilter, { label: "Statut IPE", counts: (k) => all.filter((g) => !k || g.status === k).length })}</div>${dt.html}`, {});
+  currentExport = () => downloadMatrix(m.headers, dt.rows.map((x) => x.r), "Affectation_SharePoint.csv");
 }

@@ -86,8 +86,8 @@ function milestoneLine(t) {
   return [["BPA", t.bpa], ["GER", t.ger], ["BPD", t.bpd]].map(([k, v]) => `<span class="ms"><b>${k}</b> ${esc(v || "—")}</span>`).join("");
 }
 
-function affaireRows(groups) {
-  return groups.map((g) => {
+function affaireRow(g) {
+  {
     const open = expandedAffaires.has(g.affaire);
     const st = AFFAIRE_STATUS[g.status];
     const row = `<tr class="affaireRow${open ? " open" : ""}">
@@ -104,7 +104,11 @@ function affaireRows(groups) {
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td></tr>`);
     return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut"], sub, { cls: "compact", free: true })}</td></tr>`;
-  });
+  }
+}
+
+function attentionLabel(g) {
+  return g.overdue ? "Prépa en retard" : g.dueSoon ? "À boucler sous 30 j" : g.issues ? "Corrections DEM" : "Rien";
 }
 
 function chooseMePanel() {
@@ -159,8 +163,17 @@ function viewMine() {
   ].join("");
   const head = `<div class="viewHead"><div><h2 class="viewTitle">Mes affaires</h2><p class="muted">${plural(groups.length, "affaire")} · ${plural(n, "TOT", "TOT")}</p></div>${meSelector()}</div>`;
   const tableHtml = n
-    ? table(["Affaire", "J0", "Avancement", "À surveiller", "Statut"], affaireRows(groups), { cls: "affaires", free: true })
-    : emptyState("Aucune TOT pour ce chargé", "Vérifiez la recherche et les filtres.");
+    ? dataTable({
+      key: "mine", items: groups, row: affaireRow, paged: false, cls: "affaires", free: true,
+      columns: [
+        { label: "Affaire", value: (g) => `${g.affaire} ${g.libelle} ${g.ts.map((t) => t.ree).join(" ")}` },
+        { label: "J0", value: (g) => (g.nextJ0 ? `${MONTHS_LONG[g.nextJ0.getMonth()]} ${g.nextJ0.getFullYear()}` : "J0 absent"), filter: true },
+        { label: "Avancement", value: (g) => `${g.realized}/${g.n}` },
+        { label: "À surveiller", value: attentionLabel, filter: true },
+        { label: "Statut", value: (g) => AFFAIRE_STATUS[g.status].label, filter: true },
+      ],
+    }).html
+    : emptyState("Aucune TOT pour ce chargé", "Vérifiez les filtres.");
   $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
     <div class="split mineSplit">
       ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`)}

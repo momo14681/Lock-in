@@ -60,6 +60,7 @@ const expandedAffaires = new Set();
 // Résultats du dernier rendu et export CSV de la vue affichée.
 let visible = [], allIssues = [], issues = [];
 let currentExport = null;
+let currentRows = null; // lignes affichées (après recherche et filtres), pour le PDF
 
 // --- Préférences locales (ce PC, ce navigateur) ------------------------------------
 

@@ -11,7 +11,9 @@ automatiquement toutes les 30 minutes de 7 h à 20 h (comme en V1.3).
 
 Chaque profil a **3 onglets**, chacun répond à une question. Les listes détaillées
 sont dans le menu déroulant à droite des onglets. Les filtres (feuilles, période)
-sont repliés sous **Filtres**, les exports sous **Exporter**, le fichier sous **Fichier**.
+sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel et sa dernière vérification sont en petit en bas de page (menu **Fichier**), le bouton **Actualiser** dans le bandeau.
+
+**Tableaux :** l'icône loupe ouvre une recherche propre au tableau ; les colonnes marquées d'une liste déroulante (statut, chargé, priorité, feuille, type…) se filtrent comme dans Excel. Recherche et filtres portent sur toutes les lignes et sont repris dans les exports CSV et PDF.
 
 **Chargé d'essais** (le nom choisi est mémorisé sur le PC)
 

@@ -124,3 +124,50 @@ function initTooltip() {
   document.addEventListener("focusout", () => { tipEl.hidden = true; });
   document.addEventListener("scroll", () => { tipEl.hidden = true; }, true);
 }
+
+// --- Tableau filtrable : loupe (recherche) + filtre par colonne ----------------------
+// columns : [{ label, value: (item) => texte (recherche/filtre), filter: true|false, cls }]
+// row : (item) => "<tr>…</tr>". La recherche et les filtres s'appliquent à toutes les
+// lignes, avant la pagination. L'état est conservé par tableau (clé `key`).
+const tableState = {};
+let tableFocus = null;
+
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+
+function tableStateFor(key) {
+  return (tableState[key] ||= { search: "", open: false, filters: {} });
+}
+
+function filterRows(key, columns, items) {
+  const st = tableStateFor(key);
+  const q = st.search.trim().toLowerCase();
+  return items.filter((it) => columns.every((c, i) => !c.filter || !st.filters[i] || String(c.value(it) ?? "") === st.filters[i])
+    && (!q || columns.some((c) => c.value && String(c.value(it) ?? "").toLowerCase().includes(q))));
+}
+
+function dataTable({ key, columns, items, row, paged = true, cls = "", empty = "Aucun résultat.", free = false, tools = "", limit = Infinity }) {
+  const st = tableStateFor(key);
+  const rows = filterRows(key, columns, items);
+  const p = paged ? paginate(rows) : { slice: rows.slice(0, limit), pages: 1, total: rows.length };
+  const active = st.search.trim() || Object.values(st.filters).some(Boolean);
+  const head = columns.map((c, i) => {
+    if (!c.filter) return { label: c.label, cls: c.cls };
+    const values = [...new Set(items.map((it) => String(c.value(it) ?? "")))].filter(Boolean).sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+    const current = st.filters[i] || "";
+    const select = `<select class="colFilter${current ? " on" : ""}" data-table-filter="${esc(key)}:${i}" aria-label="Filtrer ${esc(c.label)}"><option value="">Tous</option>${values.map((v) => `<option value="${esc(v)}" ${v === current ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`;
+    return { label: `<span class="thLabel">${c.label}</span>${select}`, cls: (c.cls || "") + " filterable" };
+  });
+  const bar = `<div class="tableTools">
+      <button type="button" class="iconButton${st.open || st.search ? " on" : ""}" data-table-toggle="${esc(key)}" title="Rechercher dans ce tableau" aria-label="Rechercher dans ce tableau">${ICON_SEARCH}</button>
+      ${st.open || st.search ? `<input type="search" class="tableSearch" data-table-search="${esc(key)}" value="${esc(st.search)}" placeholder="Rechercher dans ce tableau…">` : ""}
+      ${active ? `<span class="muted">${plural(rows.length, "résultat")} sur ${fmt(items.length)}</span><button type="button" class="ghost" data-table-reset="${esc(key)}">Effacer</button>` : ""}
+      <span class="toolsRight">${tools}</span></div>`;
+  return { rows, html: bar + table(head, p.slice.map(row), { cls, empty: active ? "Aucun résultat pour cette recherche ou ce filtre." : empty, free }) + (paged ? pager(p) : "") };
+}
+
+// Après un nouveau rendu, rend le focus au champ de recherche en cours de saisie.
+function restoreTableFocus() {
+  if (!tableFocus) return;
+  const input = document.querySelector(`[data-table-search="${CSS.escape(tableFocus)}"]`);
+  if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+}

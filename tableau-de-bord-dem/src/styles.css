@@ -440,3 +440,15 @@ dialog::backdrop { background: #091d37aa; }
 .docPart { display: inline-flex; align-items: center; gap: 6px; }
 .docPart i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .docPart b { color: var(--ink); }
+
+/* --- Tableaux : loupe et filtres de colonne -------------------------------------- */
+.tableTools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; min-height: 36px; }
+.toolsRight { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.iconButton { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; color: var(--ink-2); }
+.iconButton.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.tableSearch { width: 280px; border-color: var(--primary); }
+th.filterable { vertical-align: bottom; }
+.thLabel { display: block; margin-bottom: 5px; }
+.colFilter { display: block; width: 100%; min-width: 92px; max-width: 190px; font-size: 12.5px; font-weight: 500; padding: 4px 6px; border-radius: 7px; color: var(--muted); background: #fff; }
+.colFilter.on { border-color: var(--primary); color: var(--ink); font-weight: 700; background: #e9f6f3; }
+@media (max-width: 640px) { .tableSearch { width: 100%; } }

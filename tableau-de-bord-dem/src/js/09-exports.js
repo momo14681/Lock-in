@@ -64,15 +64,15 @@ function reportModel() {
   } else if (tab === "issues") {
     title = (showIgnored ? "Signalements ignorés" : "Corrections à faire dans la DEM") + (issueKind ? " — " + issueKind : "") + (issueLevel ? " — " + issueLevel : "");
     sections.push({ title, headers: ["Priorité / contrôle", "Affaire / REE", "Chargé", "Cellules", "Valeur", "Action"], widths: [.14, .16, .1, .14, .2, .26],
-      rows: issueRows().map((i) => [`${i.level} · ${i.kind}`, `${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.sheet}!${i.cells}`, i.value, i.reason + (observations(i.t) ? " — Obs. : " + observations(i.t) : "")]) });
+      rows: (currentRows || issueRows()).map((i) => [`${i.level} · ${i.kind}`, `${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.sheet}!${i.cells}`, i.value, i.reason + (observations(i.t) ? " — Obs. : " + observations(i.t) : "")]) });
   } else if (tab === "documents") {
     title = (docCode === "P" ? "Documents prêts à valider (P)" : "Documents à reprendre (R)") + (documentType ? " — " + names[documentType] : "");
     sections.push({ title, headers: ["Affaire / REE", "Chargé", "OT / TOT", "Document", "Cellule", "Observations"], widths: [.2, .13, .14, .1, .1, .33],
-      rows: documentRows(visible, docCode, documentType).map((i) => [`${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.ot} / ${i.t.tot}`, `${i.kind} : ${i.value}`, `${i.t.sheet}!${i.cells}`, observations(i.t)]) });
+      rows: (currentRows || documentRows(visible, docCode)).map((i) => [`${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.ot} / ${i.t.tot}`, `${i.kind} : ${i.value}`, `${i.t.sheet}!${i.cells}`, observations(i.t)]) });
   } else {
     title = taskTitle() + (taskFocus ? " — " + TASK_FOCUS.find(([k]) => k === taskFocus)?.[1] : "");
     sections.push({ title, headers: ["Affaire / REE", "Chargé", "Feuille / ligne", "OT / TOT", "J0", "Statut", "BPA", "GER/1N", "BPD"], widths: [.19, .13, .1, .14, .09, .12, .08, .07, .08],
-      rows: taskRows().map((t) => [`${t.affaire} / ${t.ree}`, t.responsable, `${t.sheet} / ${t.rowNumber}`, `${t.ot} / ${t.tot}`, t.j0Label, state(t), t.bpa, t.ger, t.bpd]) });
+      rows: (currentRows || taskRows()).map((t) => [`${t.affaire} / ${t.ree}`, t.responsable, `${t.sheet} / ${t.rowNumber}`, `${t.ot} / ${t.tot}`, t.j0Label, state(t), t.bpa, t.ger, t.bpd]) });
   }
   return {
     title, sections,

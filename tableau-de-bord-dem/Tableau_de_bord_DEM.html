@@ -450,6 +450,18 @@ dialog::backdrop { background: #091d37aa; }
 .docPart { display: inline-flex; align-items: center; gap: 6px; }
 .docPart i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .docPart b { color: var(--ink); }
+
+/* --- Tableaux : loupe et filtres de colonne -------------------------------------- */
+.tableTools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; min-height: 36px; }
+.toolsRight { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.iconButton { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; color: var(--ink-2); }
+.iconButton.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.tableSearch { width: 280px; border-color: var(--primary); }
+th.filterable { vertical-align: bottom; }
+.thLabel { display: block; margin-bottom: 5px; }
+.colFilter { display: block; width: 100%; min-width: 92px; max-width: 190px; font-size: 12.5px; font-weight: 500; padding: 4px 6px; border-radius: 7px; color: var(--muted); background: #fff; }
+.colFilter.on { border-color: var(--primary); color: var(--ink); font-weight: 700; background: #e9f6f3; }
+@media (max-width: 640px) { .tableSearch { width: 100%; } }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -582,7 +594,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <div class="tabBar">
       <nav id="tabs" class="tabs" aria-label="Vues"></nav>
       <div class="toolbar">
-        <input id="search" placeholder="Rechercher…" title="Affaire, REE, OT, TOT ou chargé" type="search" aria-label="Rechercher">
+        <input id="search" type="search" hidden aria-hidden="true">
         <label id="ownerField" class="ownerField"><select id="owner" aria-label="Chargé d’essais"><option value="">Tous les CE</option></select></label>
         <details class="menu filterMenu" id="filterMenu">
           <summary>Filtres <span id="filterCount" class="count" hidden></span></summary>
@@ -1179,6 +1191,7 @@ const expandedAffaires = new Set();
 // Résultats du dernier rendu et export CSV de la vue affichée.
 let visible = [], allIssues = [], issues = [];
 let currentExport = null;
+let currentRows = null; // lignes affichées (après recherche et filtres), pour le PDF
 
 // --- Préférences locales (ce PC, ce navigateur) ------------------------------------
 
@@ -1450,6 +1463,53 @@ function initTooltip() {
   document.addEventListener("scroll", () => { tipEl.hidden = true; }, true);
 }
 
+// --- Tableau filtrable : loupe (recherche) + filtre par colonne ----------------------
+// columns : [{ label, value: (item) => texte (recherche/filtre), filter: true|false, cls }]
+// row : (item) => "<tr>…</tr>". La recherche et les filtres s'appliquent à toutes les
+// lignes, avant la pagination. L'état est conservé par tableau (clé `key`).
+const tableState = {};
+let tableFocus = null;
+
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+
+function tableStateFor(key) {
+  return (tableState[key] ||= { search: "", open: false, filters: {} });
+}
+
+function filterRows(key, columns, items) {
+  const st = tableStateFor(key);
+  const q = st.search.trim().toLowerCase();
+  return items.filter((it) => columns.every((c, i) => !c.filter || !st.filters[i] || String(c.value(it) ?? "") === st.filters[i])
+    && (!q || columns.some((c) => c.value && String(c.value(it) ?? "").toLowerCase().includes(q))));
+}
+
+function dataTable({ key, columns, items, row, paged = true, cls = "", empty = "Aucun résultat.", free = false, tools = "", limit = Infinity }) {
+  const st = tableStateFor(key);
+  const rows = filterRows(key, columns, items);
+  const p = paged ? paginate(rows) : { slice: rows.slice(0, limit), pages: 1, total: rows.length };
+  const active = st.search.trim() || Object.values(st.filters).some(Boolean);
+  const head = columns.map((c, i) => {
+    if (!c.filter) return { label: c.label, cls: c.cls };
+    const values = [...new Set(items.map((it) => String(c.value(it) ?? "")))].filter(Boolean).sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+    const current = st.filters[i] || "";
+    const select = `<select class="colFilter${current ? " on" : ""}" data-table-filter="${esc(key)}:${i}" aria-label="Filtrer ${esc(c.label)}"><option value="">Tous</option>${values.map((v) => `<option value="${esc(v)}" ${v === current ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`;
+    return { label: `<span class="thLabel">${c.label}</span>${select}`, cls: (c.cls || "") + " filterable" };
+  });
+  const bar = `<div class="tableTools">
+      <button type="button" class="iconButton${st.open || st.search ? " on" : ""}" data-table-toggle="${esc(key)}" title="Rechercher dans ce tableau" aria-label="Rechercher dans ce tableau">${ICON_SEARCH}</button>
+      ${st.open || st.search ? `<input type="search" class="tableSearch" data-table-search="${esc(key)}" value="${esc(st.search)}" placeholder="Rechercher dans ce tableau…">` : ""}
+      ${active ? `<span class="muted">${plural(rows.length, "résultat")} sur ${fmt(items.length)}</span><button type="button" class="ghost" data-table-reset="${esc(key)}">Effacer</button>` : ""}
+      <span class="toolsRight">${tools}</span></div>`;
+  return { rows, html: bar + table(head, p.slice.map(row), { cls, empty: active ? "Aucun résultat pour cette recherche ou ce filtre." : empty, free }) + (paged ? pager(p) : "") };
+}
+
+// Après un nouveau rendu, rend le focus au champ de recherche en cours de saisie.
+function restoreTableFocus() {
+  if (!tableFocus) return;
+  const input = document.querySelector(`[data-table-search="${CSS.escape(tableFocus)}"]`);
+  if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+}
+
 // ---- 05-view-ce.js ----
 // =============================================================================
 // Vue « Chargé d'essais » : chacun pilote ses affaires.
@@ -1539,8 +1599,8 @@ function milestoneLine(t) {
   return [["BPA", t.bpa], ["GER", t.ger], ["BPD", t.bpd]].map(([k, v]) => `<span class="ms"><b>${k}</b> ${esc(v || "—")}</span>`).join("");
 }
 
-function affaireRows(groups) {
-  return groups.map((g) => {
+function affaireRow(g) {
+  {
     const open = expandedAffaires.has(g.affaire);
     const st = AFFAIRE_STATUS[g.status];
     const row = `<tr class="affaireRow${open ? " open" : ""}">
@@ -1557,7 +1617,11 @@ function affaireRows(groups) {
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td></tr>`);
     return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut"], sub, { cls: "compact", free: true })}</td></tr>`;
-  });
+  }
+}
+
+function attentionLabel(g) {
+  return g.overdue ? "Prépa en retard" : g.dueSoon ? "À boucler sous 30 j" : g.issues ? "Corrections DEM" : "Rien";
 }
 
 function chooseMePanel() {
@@ -1612,8 +1676,17 @@ function viewMine() {
   ].join("");
   const head = `<div class="viewHead"><div><h2 class="viewTitle">Mes affaires</h2><p class="muted">${plural(groups.length, "affaire")} · ${plural(n, "TOT", "TOT")}</p></div>${meSelector()}</div>`;
   const tableHtml = n
-    ? table(["Affaire", "J0", "Avancement", "À surveiller", "Statut"], affaireRows(groups), { cls: "affaires", free: true })
-    : emptyState("Aucune TOT pour ce chargé", "Vérifiez la recherche et les filtres.");
+    ? dataTable({
+      key: "mine", items: groups, row: affaireRow, paged: false, cls: "affaires", free: true,
+      columns: [
+        { label: "Affaire", value: (g) => `${g.affaire} ${g.libelle} ${g.ts.map((t) => t.ree).join(" ")}` },
+        { label: "J0", value: (g) => (g.nextJ0 ? `${MONTHS_LONG[g.nextJ0.getMonth()]} ${g.nextJ0.getFullYear()}` : "J0 absent"), filter: true },
+        { label: "Avancement", value: (g) => `${g.realized}/${g.n}` },
+        { label: "À surveiller", value: attentionLabel, filter: true },
+        { label: "Statut", value: (g) => AFFAIRE_STATUS[g.status].label, filter: true },
+      ],
+    }).html
+    : emptyState("Aucune TOT pour ce chargé", "Vérifiez les filtres.");
   $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
     <div class="split mineSplit">
       ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`)}
@@ -1675,23 +1748,34 @@ function showOwnerColumn() {
 
 function viewTasks() {
   if (needsMe()) return;
-  const rows = taskRows(), p = paginate(rows), owner = showOwnerColumn();
-  const base = visible.filter(scopeTest);
+  const owner = showOwnerColumn(), base = visible.filter(scopeTest);
   const focusOptions = TASK_FOCUS.filter(([key, , test]) => (mode === "coordo" || key !== "unassigned") && (!key || key === taskFocus || base.some(test))).map(([key, label]) => [key, label]);
-  const body = p.slice.map((t) => `<tr>
-    <td>${taskLink(t)}</td>
-    ${owner ? `<td>${esc(t.responsable)}</td>` : ""}
-    <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
-    <td>${stateBadge(t)}${t.missingInfoKeys.length && !t.prepComplete && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
-    <td class="msCell">${milestoneLine(t)}</td></tr>`);
+  const columns = [
+    { label: "Affaire / REE", value: (t) => `${t.affaire} ${t.ree} ${t.ot} ${t.tot} ${t.libelle}` },
+    ...(owner ? [{ label: "Chargé", value: (t) => t.responsable, filter: true }] : []),
+    { label: "Feuille", value: (t) => t.sheet, filter: true },
+    { label: "J0", value: (t) => (t.j0 ? `${MONTHS_LONG[t.j0.getMonth()]} ${t.j0.getFullYear()}` : "J0 absent"), filter: true },
+    { label: "Statut", value: state, filter: true },
+    { label: "Documents", value: (t) => `${t.bpa} ${t.ger} ${t.bpd}` },
+  ];
+  const dt = dataTable({
+    key: "tasks", columns, items: taskRows(),
+    row: (t) => `<tr>
+      <td>${taskLink(t)}</td>
+      ${owner ? `<td>${esc(t.responsable)}</td>` : ""}
+      <td>${esc(t.sheet)}</td>
+      <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
+      <td>${stateBadge(t)}${t.missingInfoKeys.length && !t.prepComplete && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
+      <td class="msCell">${milestoneLine(t)}</td></tr>`,
+  });
   const scopeNote = taskScope ? ` <button type="button" class="linkbutton" data-go="tasks:${esc(taskFocus)}|clear">Retirer le filtre affaire</button>` : "";
-  $("view").innerHTML = panel(`${esc(taskTitle())} · ${fmt(rows.length)}`,
-    `${segment("taskFocus", focusOptions, taskFocus, { label: "Filtrer les TOT", counts: (key) => base.filter(focusTest(key)).length })}
-     ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "J0", "Statut", "Documents"], body)}${pager(p)}`,
-    { sub: esc(scopeLabel()) + scopeNote, actions: backToMine() });
+  currentRows = dt.rows;
+  $("view").innerHTML = panel(`${esc(taskTitle())} · ${fmt(dt.rows.length)}`,
+    `${segment("taskFocus", focusOptions, taskFocus, { label: "Filtrer les TOT", counts: (key) => base.filter(focusTest(key)).length })}${dt.html}`,
+    { sub: scopeNote, actions: backToMine() });
   currentExport = () => downloadMatrix(
     ["Affaire", "Libellé DI", "REE", "Chargé", "Feuille", "Ligne", "OT", "TOT", "J0", "Échéance prépa", "Statut", "À compléter", "BPA", "GER/1N", "BPD", "Observations"],
-    rows.map((t) => [t.affaire, t.libelle, t.ree, t.responsable, t.sheet, t.rowNumber, t.ot, t.tot, t.j0Label, t.prepDueLabel, state(t), t.missingInfoKeys.length && !isRealized(t) ? missingLabel(t) : "", t.bpa, t.ger, t.bpd, observations(t)]),
+    dt.rows.map((t) => [t.affaire, t.libelle, t.ree, t.responsable, t.sheet, t.rowNumber, t.ot, t.tot, t.j0Label, t.prepDueLabel, state(t), t.missingInfoKeys.length && !isRealized(t) ? missingLabel(t) : "", t.bpa, t.ger, t.bpd, observations(t)]),
     "TOT_Essais.csv");
 }
 
@@ -1718,29 +1802,33 @@ function ownerChips() {
 
 function viewIssues() {
   if (needsMe()) return;
-  const rows = issueRows(), p = paginate(rows);
-  const pool = allIssues.filter((i) => ignoredIssues.has(issueId(i)) === showIgnored && (!issueKind || i.kind === issueKind));
-  const kinds = [...new Set([...allIssues.map((i) => i.kind), ...(issueKind ? [issueKind] : [])])].sort((a, b) => a.localeCompare(b, "fr"));
   const ignoredCount = allIssues.filter((i) => ignoredIssues.has(issueId(i))).length;
-  const controls = `<div class="controlRow">
-      ${segment("issueLevel", [["", "Toutes"], ...LEVELS.map((l) => [l, l])], issueLevel, { label: "Priorité", counts: (lvl) => pool.filter((i) => !lvl || i.level === lvl).length })}
-      <select data-change="issueKind" aria-label="Type de contrôle"><option value="">Tous les types</option>${kinds.map((k) => `<option ${k === issueKind ? "selected" : ""} value="${esc(k)}">${esc(k)}</option>`).join("")}</select>
-      <button type="button" class="ghost" data-toggle-ignored>${showIgnored ? "‹ Revenir aux corrections" : `Ignorées (${fmt(ignoredCount)})`}</button>
-    </div>`;
-  const body = p.slice.map((i) => `<tr>
-    <td>${badge(i.level, LEVEL_TONE[i.level])}</td>
-    <td><button type="button" class="linkbutton" data-task="${i.t.index}">${esc(i.t.affaire || "Affaire manquante")}</button><small>REE ${esc(i.t.ree || "absent")}${mode === "coordo" ? " · " + esc(i.t.responsable) : ""}</small></td>
-    <td><span class="loc">${esc(i.t.sheet)} ! ${esc(i.cells)}</span></td>
-    <td><strong class="issueKind">${esc(i.kind)}</strong><span class="issueReason">${esc(i.reason)}</span></td>
-    <td><button type="button" class="ignoreAction" data-ignore="${esc(issueId(i))}" title="Masquer ce signalement pour cet import">${ignoredIssues.has(issueId(i)) ? "Réactiver" : "Ignorer"}</button></td></tr>`);
+  const columns = [
+    { label: "Priorité", value: (i) => i.level, filter: true },
+    { label: "Affaire", value: (i) => `${i.t.affaire} ${i.t.ree}` },
+    ...(mode === "coordo" ? [{ label: "Chargé", value: (i) => i.t.responsable, filter: true }] : []),
+    { label: "Cellule Excel", value: (i) => i.t.sheet, filter: true },
+    { label: "Problème", value: (i) => i.kind, filter: true },
+    { label: "", value: (i) => `${i.reason} ${i.value}` },
+  ];
+  const dt = dataTable({
+    key: "issues" + (showIgnored ? "-ignored" : ""), columns, items: issueRows(),
+    empty: showIgnored ? "Aucun signalement ignoré." : "Rien à corriger : la DEM est cohérente.",
+    tools: `<button type="button" class="ghost" data-toggle-ignored>${showIgnored ? "‹ Revenir aux corrections" : `Ignorées (${fmt(ignoredCount)})`}</button>`,
+    row: (i) => `<tr>
+      <td>${badge(i.level, LEVEL_TONE[i.level])}</td>
+      <td><button type="button" class="linkbutton" data-task="${i.t.index}">${esc(i.t.affaire || "Affaire manquante")}</button><small>REE ${esc(i.t.ree || "absent")}</small></td>
+      ${mode === "coordo" ? `<td>${esc(i.t.responsable)}</td>` : ""}
+      <td><span class="loc">${esc(i.t.sheet)} ! ${esc(i.cells)}</span></td>
+      <td><strong class="issueKind">${esc(i.kind)}</strong><span class="issueReason">${esc(i.reason)}</span></td>
+      <td><button type="button" class="ignoreAction" data-ignore="${esc(issueId(i))}" title="Masquer ce signalement pour cet import">${ignoredIssues.has(issueId(i)) ? "Réactiver" : "Ignorer"}</button></td></tr>`,
+  });
+  currentRows = dt.rows;
   const title = showIgnored ? "Signalements ignorés" : "À corriger dans la DEM";
-  $("view").innerHTML = panel(`${title} · ${fmt(rows.length)}`,
-    `${mode === "coordo" ? ownerChips() : ""}${controls}
-     ${table(["Priorité", "Affaire", "Cellule Excel", "Problème et action", ""], body, { empty: showIgnored ? "Aucun signalement ignoré." : "Rien à corriger : la DEM est cohérente." })}${pager(p)}`,
-    {});
+  $("view").innerHTML = panel(`${title} · ${fmt(dt.rows.length)}`, dt.html, {});
   currentExport = () => downloadMatrix(
     ["Priorité", "Contrôle", "Affaire", "REE", "Chargé", "Feuille", "Ligne", "Cellules", "Valeur", "Action", "Observations"],
-    rows.map((i) => [i.level, i.kind, i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.rowNumber, i.cells, i.value, i.reason, observations(i.t)]),
+    dt.rows.map((i) => [i.level, i.kind, i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.rowNumber, i.cells, i.value, i.reason, observations(i.t)]),
     "Corrections_DEM.csv");
 }
 
@@ -1750,24 +1838,30 @@ function viewDocuments() {
   if (needsMe()) return;
   // Les documents « P » sont validés par les coordos : un chargé ne voit que ses « R ».
   if (mode === "ce") docCode = "R";
-  const rows = documentRows(visible, docCode, documentType), p = paginate(rows), owner = showOwnerColumn();
-  const typeOptions = [["", "Tous"], ["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER/1N"], ["bpd", "BPD"]];
-  const body = p.slice.map((i) => `<tr>
-    <td>${taskLink(i.t)}</td>
-    ${owner ? `<td>${esc(i.t.responsable)}</td>` : ""}
-    <td>OT ${esc(i.t.ot || "—")}<small>TOT ${esc(i.t.tot || "—")}</small></td>
-    <td><strong>${esc(i.kind)}</strong></td>
-    <td>${badge(`${i.level} · ${i.value}`, docCode === "R" ? "warn" : "info")}</td>
-    <td><span class="loc">${esc(i.t.sheet)}!${esc(i.cells)}</span></td>
-    ${observationCell(i.t)}</tr>`);
-  $("view").innerHTML = panel(`${docCode === "R" ? (mode === "ce" ? "Mes documents à reprendre (R)" : "Documents à reprendre par les CE (R)") : "Documents à valider par les coordos (P)"} · ${fmt(rows.length)}`,
-    `<div class="controlRow">${mode === "coordo" ? segment("docCode", [["P", "À valider (P)"], ["R", "À reprendre par les CE (R)"]], docCode, { label: "État", counts: (code) => documentRows(visible, code, documentType).length }) : ""}
-      ${segment("documentType", typeOptions, documentType, { label: "Document", counts: (type) => documentRows(visible, docCode, type).length })}</div>
-     ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "OT / TOT", "Document", "État", "Cellule", "Observations"], body)}${pager(p)}`,
+  const owner = showOwnerColumn();
+  const columns = [
+    { label: "Affaire / REE", value: (i) => `${i.t.affaire} ${i.t.ree} ${i.t.ot} ${i.t.tot}` },
+    ...(owner ? [{ label: "Chargé", value: (i) => i.t.responsable, filter: true }] : []),
+    { label: "Document", value: (i) => i.kind, filter: true },
+    { label: "Cellule", value: (i) => i.t.sheet, filter: true },
+    { label: "Observations", value: (i) => observations(i.t) },
+  ];
+  const dt = dataTable({
+    key: "documents-" + docCode, columns, items: documentRows(visible, docCode),
+    row: (i) => `<tr>
+      <td>${taskLink(i.t)}</td>
+      ${owner ? `<td>${esc(i.t.responsable)}</td>` : ""}
+      <td>${badge(`${i.kind} · ${i.value}`, docCode === "R" ? "warn" : "info")}</td>
+      <td><span class="loc">${esc(i.t.sheet)} ! ${esc(i.cells)}</span></td>
+      ${observationCell(i.t)}</tr>`,
+  });
+  currentRows = dt.rows;
+  $("view").innerHTML = panel(`${docCode === "R" ? (mode === "ce" ? "Mes documents à reprendre (R)" : "Documents à reprendre par les CE (R)") : "Documents à valider par les coordos (P)"} · ${fmt(dt.rows.length)}`,
+    `${mode === "coordo" ? `<div class="controlRow">${segment("docCode", [["P", "À valider (P)"], ["R", "À reprendre par les CE (R)"]], docCode, { label: "État", counts: (code) => documentRows(visible, code).length })}</div>` : ""}${dt.html}`,
     { actions: backToMine() });
   currentExport = () => downloadMatrix(
     ["Affaire", "REE", "Chargé", "Feuille", "OT", "TOT", "Document", "Valeur", "Cellule", "Observations"],
-    rows.map((i) => [i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.ot, i.t.tot, i.kind, i.value, i.cells, observations(i.t)]),
+    dt.rows.map((i) => [i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.ot, i.t.tot, i.kind, i.value, i.cells, observations(i.t)]),
     docCode === "P" ? "Documents_a_valider.csv" : "Documents_a_reprendre.csv");
 }
 
@@ -1796,13 +1890,20 @@ function groupData(kind) {
 
 let groupModelCache = null;
 function viewGroups() {
-  const model = groupModelCache = groupData(tab), p = paginate(model.rows);
-  const offset = (page - 1) * PAGE_SIZE;
-  const body = p.slice.map((r, index) => `<tr><td><button type="button" class="linkbutton" data-group="${offset + index}">${esc(r[0] || "Affaire manquante")}</button></td>${r.slice(1).map((v, i) => `<td class="${i >= 2 ? "num" : ""}">${esc(v)}</td>`).join("")}</tr>`);
-  $("view").innerHTML = panel(`${fmt(model.groups.length)} ${tab === "affaires" ? "affaires" : "REE"}`,
-    table(model.headers.map((h, i) => i >= 3 ? { label: h, cls: "num" } : h), body) + pager(p),
-    { sub: esc(scopeLabel()) + " · cliquez pour voir les TOT", actions: exportButton() });
-  currentExport = () => downloadMatrix(model.headers, model.rows, tab === "affaires" ? "Affaires_Essais.csv" : "REE_Essais.csv");
+  const model = groupModelCache = groupData(tab);
+  const items = model.groups.map((g, index) => ({ g, index, r: model.rows[index] }));
+  const columns = [
+    { label: model.headers[0], value: (x) => x.r[0] },
+    { label: model.headers[1], value: (x) => x.r[1], filter: true },
+    { label: model.headers[2], value: (x) => x.r[2] },
+    ...model.headers.slice(3).map((h, k) => ({ label: h, cls: "num", value: (x) => x.r[3 + k] })),
+  ];
+  const dt = dataTable({
+    key: "groups-" + tab, columns, items,
+    row: (x) => `<tr><td><button type="button" class="linkbutton" data-group="${x.index}">${esc(x.r[0] || "Affaire manquante")}</button></td>${x.r.slice(1).map((v, i) => `<td class="${i >= 2 ? "num" : ""}">${esc(v)}</td>`).join("")}</tr>`,
+  });
+  $("view").innerHTML = panel(`${fmt(dt.rows.length)} ${tab === "affaires" ? "affaires" : "REE"}`, dt.html, {});
+  currentExport = () => downloadMatrix(model.headers, dt.rows.map((x) => x.r), tab === "affaires" ? "Affaires_Essais.csv" : "REE_Essais.csv");
 }
 
 function openGroup(index) {
@@ -1966,23 +2067,34 @@ function ownerStats() {
 function viewOwners() {
   const stats = ownerStats();
   const signed = (s, n) => `${fmt(s.done)} <span class="muted">/ ${fmt(s.produced)}</span>`;
-  const body = stats.map((s) => `<tr>
-    <td><button type="button" class="linkbutton" data-owner-tasks="${esc(s.name)}">${esc(s.name)}</button><small>${esc(s.type)}</small></td>
-    <td class="num">${fmt(s.affaires)}</td>
-    <td class="num">${fmt(s.ree)}<small>TEM ${fmt(s.reeTEM)} · AT ${fmt(s.reeAT)}</small></td>
-    <td class="num">${fmt(s.n)}</td>
-    <td>${meter(s.prep, s.n, { color: STATE_COLORS[STATE.ready] })}</td>
-    <td>${meter(s.realized, s.n, { color: STATE_COLORS[STATE.realized] })}</td>
-    <td class="num">${s.overdue ? badge(fmt(s.overdue), "bad") : '<span class="muted">0</span>'}</td>
-    <td class="num">${s.missing ? badge(fmt(s.missing), "warn") : '<span class="muted">0</span>'}</td>
-    <td class="num">${s.issues ? `<button type="button" class="linkbutton" data-go="issues-owner:${esc(s.name)}">${fmt(s.issues)}</button>` : '<span class="muted">0</span>'}</td>
-    <td class="num">${signed(s.bpa)}</td><td class="num">${signed(s.ger)}</td><td class="num">${signed(s.bpd)}</td></tr>`);
-  $("view").innerHTML = panel("Répartition des affaires et des TOT par chargé",
-    table(["Chargé / entreprise", { label: "Affaires", cls: "num" }, { label: "REE", cls: "num" }, { label: "TOT", cls: "num" }, "Prépa terminée", "Réalisés", { label: "Retards", cls: "num" }, { label: "Infos manq.", cls: "num" }, { label: "Corrections", cls: "num" }, { label: "BPA signés / produits", cls: "num" }, { label: "GER/1N signés / produits", cls: "num" }, { label: "BPD signés / produits", cls: "num" }], body),
-    { sub: `${esc(scopeLabel())} · une affaire ou un REE partagé compte chez chacun de ses chargés : les colonnes ne s’additionnent pas.`, actions: exportButton() });
+  const dt = dataTable({
+    key: "owners", items: stats, paged: false,
+    columns: [
+      { label: "Chargé / entreprise", value: (s) => s.name },
+      { label: "Type", value: (s) => s.type, filter: true },
+      { label: "Affaires", cls: "num", value: (s) => s.affaires },
+      { label: "REE", cls: "num", value: (s) => s.ree },
+      { label: "TOT", cls: "num", value: (s) => s.n },
+      { label: "Prépa terminée", value: () => "" },
+      { label: "Réalisés", value: () => "" },
+      { label: "Retards", cls: "num", value: (s) => s.overdue },
+      { label: "Corrections", cls: "num", value: (s) => s.issues },
+    ],
+    row: (s) => `<tr>
+      <td><button type="button" class="linkbutton" data-owner-tasks="${esc(s.name)}">${esc(s.name)}</button></td>
+      <td>${esc(s.type)}</td>
+      <td class="num">${fmt(s.affaires)}</td>
+      <td class="num">${fmt(s.ree)}<small>TEM ${fmt(s.reeTEM)} · AT ${fmt(s.reeAT)}</small></td>
+      <td class="num">${fmt(s.n)}</td>
+      <td>${meter(s.prep, s.n, { color: STATE_COLORS[STATE.ready] })}</td>
+      <td>${meter(s.realized, s.n, { color: STATE_COLORS[STATE.realized] })}</td>
+      <td class="num">${s.overdue ? badge(fmt(s.overdue), "bad") : '<span class="muted">0</span>'}</td>
+      <td class="num">${s.issues ? `<button type="button" class="linkbutton" data-go="issues-owner:${esc(s.name)}">${fmt(s.issues)}</button>` : '<span class="muted">0</span>'}</td></tr>`,
+  });
+  $("view").innerHTML = panel("Répartition par chargé d’essais", dt.html, {});
   currentExport = () => downloadMatrix(
     ["Chargé", "Type", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
-    stats.map((s) => [s.name, s.type, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
+    dt.rows.map((s) => [s.name, s.type, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
     "Repartition_par_charge.csv");
 }
 
@@ -2041,18 +2153,24 @@ function assignmentModel() {
 
 function viewAssignments() {
   if (data.ipe?.error) { $("view").innerHTML = panel("Affectations SharePoint", `<p>${esc(data.ipe.error)}</p>`); currentExport = null; return; }
-  const m = assignmentModel(), all = assignmentGroups(), p = paginate(m.rows);
-  const offset = (page - 1) * PAGE_SIZE;
-  const body = p.slice.map((r, i) => {
-    const g = m.groups[offset + i];
-    return `<tr><td><strong>${esc(r[0])}</strong></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${badge(r[3], assignmentTones[g.status])}</td><td>${esc(r[4])}</td><td class="loc">${esc(r[5])}</td></tr>`;
+  const m = assignmentModel(), all = assignmentGroups();
+  const items = m.groups.map((g, i) => ({ g, r: m.rows[i] }));
+  const dt = dataTable({
+    key: "assignments", items,
+    columns: [
+      { label: "Affaire eDIM", value: (x) => x.r[0] },
+      { label: "TEM / AT", value: (x) => x.r[1], filter: true },
+      { label: "Année PT", value: (x) => x.r[2], filter: true },
+      { label: "Statut IPE", value: (x) => x.r[3] },
+      { label: "Chargé / valeur saisie", value: (x) => x.r[4], filter: true },
+      { label: "Cellules IPE", value: (x) => x.r[5] },
+    ],
+    row: (x) => `<tr><td><strong>${esc(x.r[0])}</strong></td><td>${esc(x.r[1])}</td><td>${esc(x.r[2])}</td><td>${badge(x.r[3], assignmentTones[x.g.status])}</td><td>${esc(x.r[4])}</td><td class="loc">${esc(x.r[5])}</td></tr>`,
   });
   const options = [["missing", "Sans chargé"], ["partial", "Partielles"], ["exempt", "À confirmer"], ["assigned", "Affectées"], ["", "Toutes"]];
-  $("view").innerHTML = panel(`Affectations SharePoint · ${fmt(m.groups.length)} affaires / phases`,
-    `<div class="controlRow">${segment("assignmentFilter", options, assignmentFilter, { label: "Statut IPE", counts: (k) => all.filter((g) => !k || g.status === k).length })}</div>
-     ${table(m.headers, body)}${pager(p)}`,
-    { sub: `Feuille « ${IPE_SHEET} » · toutes feuilles et tous CE (la recherche reste active) · vide, tiret ou « En attente d’affectation » = sans chargé`, actions: exportButton() });
-  currentExport = () => downloadMatrix(m.headers, m.rows, "Affectation_SharePoint.csv");
+  $("view").innerHTML = panel(`Affectations SharePoint · ${fmt(dt.rows.length)} affaires / phases`,
+    `<div class="controlRow">${segment("assignmentFilter", options, assignmentFilter, { label: "Statut IPE", counts: (k) => all.filter((g) => !k || g.status === k).length })}</div>${dt.html}`, {});
+  currentExport = () => downloadMatrix(m.headers, dt.rows.map((x) => x.r), "Affectation_SharePoint.csv");
 }
 
 // ---- 08-view-team.js ----
@@ -2190,35 +2308,48 @@ function timelineSvg(tl) {
   return `<svg class="timeline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Avancement des TOT par mois de J0">${parts.join("")}</svg>`;
 }
 
-function lateTable(late) {
-  const rows = late.map((g) => `<tr>
-    <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")} · ${esc(g.owners.join(", "))}</small></td>
-    <td>${formatDate(g.j0)}</td>
-    <td class="num"><strong class="lateDays">${fmt(g.late)} j</strong></td>
-    <td><span class="missingKeys">${esc(g.missing.join(", ") || "—")}</span></td></tr>`);
-  return table(["Affaire", "J0", { label: "Retard", cls: "num" }, "Ce qui manque"], rows, { empty: "Aucune préparation en retard.", free: true });
+function lateTable(late, limit) {
+  return dataTable({
+    key: "late", items: late, paged: false, free: true, empty: "Aucune préparation en retard.",
+    columns: [
+      { label: "Affaire", value: (g) => `${g.affaire} ${g.ree}` },
+      { label: "Chargé", value: (g) => g.owners.join(", "), filter: true },
+      { label: "J0", value: (g) => formatDate(g.j0) },
+      { label: "Retard", cls: "num", value: (g) => `${g.late} j` },
+      { label: "Ce qui manque", value: (g) => g.missing.join(", ") },
+    ],
+    row: (g) => `<tr>
+      <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")}</small></td>
+      <td>${esc(g.owners.join(", "))}</td>
+      <td>${formatDate(g.j0)}</td>
+      <td class="num"><strong class="lateDays">${fmt(g.late)} j</strong></td>
+      <td><span class="missingKeys">${esc(g.missing.join(", ") || "—")}</span></td></tr>`,
+    limit,
+  });
 }
 
 let showAllLate = false;
 
 function viewTeam() {
   const m = teamModel();
-  const shown = showAllLate ? m.late : m.late.slice(0, 10);
+  const filteringLate = tableStateFor("late").search || Object.values(tableStateFor("late").filters).some(Boolean);
+  const late = lateTable(m.late, showAllLate || filteringLate ? Infinity : 10);
+  const filtering = tableStateFor("late").search || Object.values(tableStateFor("late").filters).some(Boolean);
   const kpis = [
     kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
     kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
     kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT · ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
     kpi({ label: "À boucler sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer", tone: m.dueSoon ? "warn" : "" }),
   ].join("");
-  const more = m.late.length > 10
-    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(m.late.length)} REE en retard`}</button>` : "";
+  const more = !filtering && late.rows.length > 10
+    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(late.rows.length)} REE en retard`}</button>` : "";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">${esc(m.period)} · ${esc(m.scope)}</p></div>
       <div class="panelActions"><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="kpis kpis-4 hero">${kpis}</div>
     <div class="split even">
       ${panel(`Avancement par mois de J0`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
         { cls: "timelinePanel" })}
-      ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${lateTable(shown)}${more}`,
+      ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${late.html}${more}`,
         { cls: "latePanel" })}
     </div>
     ${panel("Documents des REE", milestoneCards(m.ts))}`;
@@ -2380,7 +2511,6 @@ function drawPNG(canvas, m) {
     }
   });
 
-  text(`Source : ${m.source}  ·  Réalisé = GER/1N signé (PSR, TSR)  ·  Préparation terminée = MC, OT, TOT, RDU renseignés et TOT prête  ·  Échéance de préparation = J0 − 30 jours`, 56, 1036, { size: 18, color: PNG.muted, width: 1808, min: 13 });
   return canvas;
 }
 
@@ -2486,15 +2616,15 @@ function reportModel() {
   } else if (tab === "issues") {
     title = (showIgnored ? "Signalements ignorés" : "Corrections à faire dans la DEM") + (issueKind ? " — " + issueKind : "") + (issueLevel ? " — " + issueLevel : "");
     sections.push({ title, headers: ["Priorité / contrôle", "Affaire / REE", "Chargé", "Cellules", "Valeur", "Action"], widths: [.14, .16, .1, .14, .2, .26],
-      rows: issueRows().map((i) => [`${i.level} · ${i.kind}`, `${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.sheet}!${i.cells}`, i.value, i.reason + (observations(i.t) ? " — Obs. : " + observations(i.t) : "")]) });
+      rows: (currentRows || issueRows()).map((i) => [`${i.level} · ${i.kind}`, `${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.sheet}!${i.cells}`, i.value, i.reason + (observations(i.t) ? " — Obs. : " + observations(i.t) : "")]) });
   } else if (tab === "documents") {
     title = (docCode === "P" ? "Documents prêts à valider (P)" : "Documents à reprendre (R)") + (documentType ? " — " + names[documentType] : "");
     sections.push({ title, headers: ["Affaire / REE", "Chargé", "OT / TOT", "Document", "Cellule", "Observations"], widths: [.2, .13, .14, .1, .1, .33],
-      rows: documentRows(visible, docCode, documentType).map((i) => [`${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.ot} / ${i.t.tot}`, `${i.kind} : ${i.value}`, `${i.t.sheet}!${i.cells}`, observations(i.t)]) });
+      rows: (currentRows || documentRows(visible, docCode)).map((i) => [`${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.ot} / ${i.t.tot}`, `${i.kind} : ${i.value}`, `${i.t.sheet}!${i.cells}`, observations(i.t)]) });
   } else {
     title = taskTitle() + (taskFocus ? " — " + TASK_FOCUS.find(([k]) => k === taskFocus)?.[1] : "");
     sections.push({ title, headers: ["Affaire / REE", "Chargé", "Feuille / ligne", "OT / TOT", "J0", "Statut", "BPA", "GER/1N", "BPD"], widths: [.19, .13, .1, .14, .09, .12, .08, .07, .08],
-      rows: taskRows().map((t) => [`${t.affaire} / ${t.ree}`, t.responsable, `${t.sheet} / ${t.rowNumber}`, `${t.ot} / ${t.tot}`, t.j0Label, state(t), t.bpa, t.ger, t.bpd]) });
+      rows: (currentRows || taskRows()).map((t) => [`${t.affaire} / ${t.ree}`, t.responsable, `${t.sheet} / ${t.rowNumber}`, `${t.ot} / ${t.tot}`, t.j0Label, state(t), t.bpa, t.ger, t.bpd]) });
   }
   return {
     title, sections,
@@ -3070,11 +3200,13 @@ function render() {
   allIssues = data.audit.filter((i) => inScope.has(i.t));
   issues = allIssues.filter((i) => !ignoredIssues.has(issueId(i)));
   currentExport = null;
+  currentRows = null;
   renderChrome();
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
   $("pngExport").disabled = false;
   $("csvExport").disabled = !currentExport;
+  restoreTableFocus();
 }
 
 function detail(t) {
@@ -3098,8 +3230,8 @@ function go(spec) {
   const kind = cut < 0 ? spec : spec.slice(0, cut), arg = cut < 0 ? "" : spec.slice(cut + 1);
   if (kind === "tab") return setTab(arg);
   if (kind === "tasks") return openTasks(arg.split("|")[0]);
-  if (kind === "issues") return openIssues(arg);
-  if (kind === "issues-level") { issueKind = ""; issueLevel = arg; showIgnored = false; return setTab("issues"); }
+  if (kind === "issues") { tableState.issues = { search: "", open: false, filters: arg ? { [mode === "coordo" ? 4 : 3]: arg } : {} }; return openIssues(""); }
+  if (kind === "issues-level") { tableState.issues = { search: "", open: false, filters: { 0: arg } }; showIgnored = false; return openIssues(""); }
   if (kind === "issues-owner") { if (mode === "coordo") $("owner").value = arg; issueKind = ""; issueLevel = ""; showIgnored = false; return setTab("issues"); }
   if (kind === "documents") { docCode = arg || "P"; documentType = ""; return setTab("documents"); }
   if (kind === "groups") { tab = tabByMode[mode] = arg; page = 1; return render(); }
@@ -3151,6 +3283,15 @@ function onClick(e) {
   if (d.me !== undefined) return setMe(d.me);
   if (d.owner !== undefined) { $("owner").value = d.owner; page = 1; return render(); }
   if (d.ownerTasks !== undefined) { $("owner").value = d.ownerTasks; return openTasks(""); }
+  if (d.tableToggle !== undefined) {
+    const st = tableStateFor(d.tableToggle);
+    st.open = !(st.open || st.search);
+    if (!st.open) st.search = "";
+    tableFocus = st.open ? d.tableToggle : null;
+    page = 1;
+    return render();
+  }
+  if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
   if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
   if (d.toggleIgnored !== undefined) { showIgnored = !showIgnored; page = 1; return render(); }
   if (d.group !== undefined) return openGroup(+d.group);
@@ -3159,7 +3300,23 @@ function onClick(e) {
   if (d.mode !== undefined) return setMode(d.mode);
 }
 
+function onTableInput(e) {
+  const key = e.target.dataset?.tableSearch;
+  if (key === undefined) return;
+  tableStateFor(key).search = e.target.value;
+  tableFocus = key;
+  page = 1;
+  render();
+}
+
 function onChange(e) {
+  const tf = e.target.dataset?.tableFilter;
+  if (tf !== undefined) {
+    const cut = tf.lastIndexOf(":");
+    tableStateFor(tf.slice(0, cut)).filters[tf.slice(cut + 1)] = e.target.value;
+    page = 1;
+    return render();
+  }
   const key = e.target.dataset?.change;
   if (key === "me") return setMe(e.target.value);
   if (key === "issueKind") { issueKind = e.target.value; page = 1; render(); }
@@ -3179,6 +3336,7 @@ function init() {
 
   document.addEventListener("click", onClick);
   document.addEventListener("change", onChange);
+  document.addEventListener("input", onTableInput);
   $("search").addEventListener("input", () => { page = 1; render(); });
   $("owner").addEventListener("change", () => { page = 1; render(); });
   document.querySelectorAll("[data-j0-year]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); toggleJ0Year(+b.dataset.j0Year); }));

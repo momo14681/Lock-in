@@ -132,35 +132,48 @@ function timelineSvg(tl) {
   return `<svg class="timeline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Avancement des TOT par mois de J0">${parts.join("")}</svg>`;
 }
 
-function lateTable(late) {
-  const rows = late.map((g) => `<tr>
-    <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")} · ${esc(g.owners.join(", "))}</small></td>
-    <td>${formatDate(g.j0)}</td>
-    <td class="num"><strong class="lateDays">${fmt(g.late)} j</strong></td>
-    <td><span class="missingKeys">${esc(g.missing.join(", ") || "—")}</span></td></tr>`);
-  return table(["Affaire", "J0", { label: "Retard", cls: "num" }, "Ce qui manque"], rows, { empty: "Aucune préparation en retard.", free: true });
+function lateTable(late, limit) {
+  return dataTable({
+    key: "late", items: late, paged: false, free: true, empty: "Aucune préparation en retard.",
+    columns: [
+      { label: "Affaire", value: (g) => `${g.affaire} ${g.ree}` },
+      { label: "Chargé", value: (g) => g.owners.join(", "), filter: true },
+      { label: "J0", value: (g) => formatDate(g.j0) },
+      { label: "Retard", cls: "num", value: (g) => `${g.late} j` },
+      { label: "Ce qui manque", value: (g) => g.missing.join(", ") },
+    ],
+    row: (g) => `<tr>
+      <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")}</small></td>
+      <td>${esc(g.owners.join(", "))}</td>
+      <td>${formatDate(g.j0)}</td>
+      <td class="num"><strong class="lateDays">${fmt(g.late)} j</strong></td>
+      <td><span class="missingKeys">${esc(g.missing.join(", ") || "—")}</span></td></tr>`,
+    limit,
+  });
 }
 
 let showAllLate = false;
 
 function viewTeam() {
   const m = teamModel();
-  const shown = showAllLate ? m.late : m.late.slice(0, 10);
+  const filteringLate = tableStateFor("late").search || Object.values(tableStateFor("late").filters).some(Boolean);
+  const late = lateTable(m.late, showAllLate || filteringLate ? Infinity : 10);
+  const filtering = tableStateFor("late").search || Object.values(tableStateFor("late").filters).some(Boolean);
   const kpis = [
     kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
     kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
     kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT · ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
     kpi({ label: "À boucler sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer", tone: m.dueSoon ? "warn" : "" }),
   ].join("");
-  const more = m.late.length > 10
-    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(m.late.length)} REE en retard`}</button>` : "";
+  const more = !filtering && late.rows.length > 10
+    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(late.rows.length)} REE en retard`}</button>` : "";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">${esc(m.period)} · ${esc(m.scope)}</p></div>
       <div class="panelActions"><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="kpis kpis-4 hero">${kpis}</div>
     <div class="split even">
       ${panel(`Avancement par mois de J0`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
         { cls: "timelinePanel" })}
-      ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${lateTable(shown)}${more}`,
+      ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${late.html}${more}`,
         { cls: "latePanel" })}
     </div>
     ${panel("Documents des REE", milestoneCards(m.ts))}`;
@@ -322,7 +335,6 @@ function drawPNG(canvas, m) {
     }
   });
 
-  text(`Source : ${m.source}  ·  Réalisé = GER/1N signé (PSR, TSR)  ·  Préparation terminée = MC, OT, TOT, RDU renseignés et TOT prête  ·  Échéance de préparation = J0 − 30 jours`, 56, 1036, { size: 18, color: PNG.muted, width: 1808, min: 13 });
   return canvas;
 }
 
