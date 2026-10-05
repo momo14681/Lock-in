@@ -2,8 +2,8 @@
 // Vue « Coordo essais » : charge de l'équipe et corrections à faire dans la DEM.
 // =============================================================================
 
-const CHARGE_MODES = [["tasks", "TOT par statut"], ["dossiers", "REE"], ["phase", "REE TEM / AT"]];
-const CHARGE_SORTS = [["total", "Charge totale"], ["AT", "Charge AT"], ["TEM", "Charge TEM"], ["name", "Nom"]];
+const CHARGE_MODES = [["tasks", "TOT par statut"], ["phase", "REE TEM / AT"], ["dossiers", "REE"]];
+const CHARGE_SORTS = [["total", "Total"], ["AT", "AT"], ["TEM", "TEM"], ["name", "Nom"]];
 const CHARGE_UNIT = { tasks: "TOT", dossiers: "REE", phase: "REE" };
 
 // Charge d'un chargé sur une phase, dans l'unité du mode choisi.
@@ -52,15 +52,12 @@ function chargeChart() {
   }).join("");
   const hidden = [...hiddenOwners].map((name) => `<button type="button" class="restore" data-hide="${esc(name)}">+ ${esc(name)}</button>`).join("");
   const legendEntries = chargeMode === "dossiers" ? [] : chargeSegments(visible).map((s) => [s.label, s.color]);
-  const sortNote = sortKey
-    ? `Tri par charge ${sortKey} (${unit} des feuilles ${sortKey === "AT" ? "CSxA" : "CSxM"}), puis charge totale.`
-    : chargeSort === "name" ? "Tri alphabétique." : "Tri par charge totale.";
   return `<div class="controlRow">${segment("chargeMode", CHARGE_MODES, chargeMode, { label: "Unité" })}
-      <span class="controlLabel">Trier par</span>${segment("chargeSort", CHARGE_SORTS, chargeSort, { label: "Tri de l’histogramme" })}</div>
+      <span class="controlLabel">Trier par charge</span>${segment("chargeSort", CHARGE_SORTS, chargeSort, { label: "Tri" })}</div>
     ${legendEntries.length ? legend(legendEntries) : ""}
     ${hidden ? `<div class="hiddenOwners"><span class="muted">Masqués :</span>${hidden}<button type="button" class="linkbutton" data-show-all>Tout réafficher</button></div>` : ""}
     <div class="chargeChart">${rows || emptyState("Aucun chargé affiché")}</div>
-    <p class="muted chartNote">${sortNote} Cliquez sur un nom pour le masquer et recalculer l’échelle. REE distincts par affaire, REE et phase ; un REE partagé compte chez chacun de ses chargés.</p>`;
+    <p class="muted chartNote">Cliquez sur un nom pour le retirer du graphique.</p>`;
 }
 
 function barList(entries, { go, color = "var(--ink-3)", empty = "Aucun signalement." } = {}) {
@@ -73,20 +70,16 @@ function barList(entries, { go, color = "var(--ink-3)", empty = "Aucun signaleme
 }
 
 function signalPanel() {
-  const byKind = [...new Set(issues.map((i) => i.kind))].map((k) => {
-    const list = issues.filter((i) => i.kind === k);
-    const level = LEVELS.find((l) => list.some((i) => i.level === l));
-    return { label: k, n: list.length, color: level === "Prioritaire" ? STATE_COLORS[STATE.late] : level === "À compléter" ? STATE_COLORS[STATE.missing] : "var(--ink-3)" };
+  const byOwner = [...new Set(issues.map((i) => i.t.responsable))].map((n) => {
+    const list = issues.filter((i) => i.t.responsable === n);
+    return { label: n, n: list.length, color: list.some((i) => i.level === "Prioritaire") ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.missing] };
   }).sort((a, b) => b.n - a.n);
-  const byOwner = [...new Set(issues.map((i) => i.t.responsable))].map((n) => ({ label: n, n: issues.filter((i) => i.t.responsable === n).length })).sort((a, b) => b.n - a.n);
-  const levels = `<div class="levelStats">${LEVELS.map((l) => {
-    const n = issues.filter((i) => i.level === l).length;
-    return `<button type="button" data-go="issues-level:${esc(l)}" class="levelStat tone-${LEVEL_TONE[l]}"><strong>${fmt(n)}</strong><span>${esc(l)}</span></button>`;
-  }).join("")}</div>`;
-  return panel(`Corrections à faire dans la DEM · ${fmt(issues.length)}`,
-    `${levels}<h3>Par type de contrôle</h3>${barList(byKind, { go: (e) => "issues:" + e.label })}
-     <h3>Par chargé d’essais</h3>${barList(byOwner, { go: (e) => "issues-owner:" + e.label, color: "var(--ink-3)" })}`,
-    { sub: `${plural(new Set(issues.map((i) => i.t)).size, "TOT concernée", "TOT concernées")} · cliquez pour ouvrir la liste`, cls: "signalPanel", actions: `<button type="button" data-go="tab:issues">Tout voir ›</button>` });
+  const urgent = issues.filter((i) => i.level === "Prioritaire").length;
+  return panel("Qui doit corriger la DEM ?",
+    `<p class="signalLead"><strong>${fmt(issues.length)}</strong> corrections, dont <strong class="lateDays">${fmt(urgent)}</strong> prioritaires (préparations en retard)</p>
+     ${barList(byOwner.slice(0, 10), { go: (e) => "issues-owner:" + e.label })}
+     ${byOwner.length > 10 ? `<p class="muted">+ ${plural(byOwner.length - 10, "autre chargé", "autres chargés")}</p>` : ""}`,
+    { sub: "Barre rouge : au moins une correction prioritaire · cliquez sur un nom pour voir ses corrections", cls: "signalPanel", actions: `<button type="button" data-go="tab:issues">Tout voir ›</button>` });
 }
 
 function milestoneCards(ts) {
@@ -97,7 +90,7 @@ function milestoneCards(ts) {
       ? "Produits : P, PS, TS, R, PSR, TSR. Signés : PSR ou TSR."
       : "Produits : P, R ou date de validation. Signés : date de validation.";
     return `<section class="milestone">
-      <div class="milestoneHead"><h3>${label}</h3>${tip("Règle de calcul", rule + ` Pourcentages sur les ${n} TOT non annulées du périmètre.`)}</div>
+      <div class="milestoneHead" title="${esc(rule)}"><h3>${label}</h3></div>
       <div class="milestoneFigures"><div><strong>${pct(prod, n)}</strong><span>produits · ${fmt(prod)}</span></div><div><strong class="signed">${pct(done, n)}</strong><span>signés · ${fmt(done)}</span></div></div>
       <span class="twoTone" data-tip="${fmt(done)} signés · ${fmt(prod)} produits\nsur ${fmt(n)} TOT" tabindex="0"><span style="width:${(ratio(done, n) * 100).toFixed(1)}%"></span><span class="light" style="width:${(ratio(Math.max(0, prod - done), n) * 100).toFixed(1)}%"></span></span>
     </section>`;
@@ -107,21 +100,17 @@ function milestoneCards(ts) {
 function viewOverview() {
   const ts = visible, n = ts.length;
   const realized = ts.filter(isRealized).length, prepared = ts.filter((t) => t.prepComplete).length;
-  const overdue = ts.filter((t) => t.overdue).length, unassigned = ts.filter((t) => t.responsable === UNASSIGNED).length;
+  const overdue = ts.filter((t) => t.overdue).length;
   const kpis = [
-    kpi({ label: "TOT", value: fmt(n), sub: "dans le périmètre", go: "tasks:" }),
-    kpi({ label: "Affaires", value: fmt(countUnique(ts, (t) => t.affaire)), sub: "références eDIM", go: "groups:affaires" }),
-    kpi({ label: "REE", value: fmt(dossierCount(ts)), sub: `TEM ${fmt(dossierCount(ts.filter((t) => dossierPhase(t) === "TEM")))} · AT ${fmt(dossierCount(ts.filter((t) => dossierPhase(t) === "AT")))}`, go: "groups:dossiers" }),
-    kpi({ label: "Préparation", value: pct(prepared, n), sub: `${fmt(prepared)} / ${fmt(n)} TOT`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
+    kpi({ label: "Préparation terminée", value: pct(prepared, n), sub: `${fmt(prepared)} / ${fmt(n)} TOT`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
     kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `${fmt(realized)} / ${fmt(n)} TOT`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
-    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: "échéance J0 − 30 dépassée", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
-    kpi({ label: "Non affectées", value: fmt(unassigned), sub: "TOT sans chargé", tone: unassigned ? "warn" : "good", go: "tasks:unassigned" }),
-    kpi({ label: "Corrections DEM", value: fmt(issues.length), sub: `${plural(new Set(issues.map((i) => i.t)).size, "TOT concernée", "TOT concernées")}`, tone: issues.length ? "warn" : "good", go: "tab:issues" }),
+    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: "TOT dont J0 − 30 est dépassé", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
+    kpi({ label: "À corriger dans la DEM", value: fmt(issues.length), sub: `${plural(new Set(issues.map((i) => i.t)).size, "TOT concernée", "TOT concernées")}`, tone: issues.length ? "warn" : "good", go: "tab:issues" }),
   ].join("");
-  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse coordination</h2><p class="muted">${esc(scopeLabel())} · ${esc(periodLabel())}</p></div></div>
-    <div class="kpis kpis-8">${kpis}</div>
-    <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { sub: "Survolez un segment pour le détail", cls: "chargePanel" })}${signalPanel()}</div>
-    ${panel("Avancement des états du REE", milestoneCards(ts), { sub: "Produits (clair) et signés (foncé) sur les TOT du périmètre" })}`;
+  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse</h2>
+      <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
+    <div class="kpis kpis-4">${kpis}</div>
+    <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { sub: "Survolez une barre pour le détail", cls: "chargePanel" })}${signalPanel()}</div>`;
   currentExport = () => downloadMatrix(["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"],
     chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]), "Charge_par_charge.csv");
 }

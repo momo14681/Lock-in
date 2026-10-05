@@ -102,8 +102,8 @@ function teamModel() {
 // --- Graphique SVG (vue HTML) ----------------------------------------------------------
 
 function timelineSvg(tl) {
-  const cols = tl.columns, W = 1400, H = 340, top = 34, bottom = 52, left = 8, right = 8;
-  const plotH = H - top - bottom, slot = (W - left - right) / cols.length, barW = Math.min(56, slot * 0.6);
+  const cols = tl.columns, W = 900, H = 400, top = 34, bottom = 52, left = 4, right = 4;
+  const plotH = H - top - bottom, slot = (W - left - right) / cols.length, barW = Math.min(46, slot * 0.66);
   const parts = [];
   cols.forEach((c, i) => {
     const x = left + i * slot + (slot - barW) / 2, cx = x + barW / 2;
@@ -132,49 +132,40 @@ function timelineSvg(tl) {
   return `<svg class="timeline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Avancement des TOT par mois de J0">${parts.join("")}</svg>`;
 }
 
-function lateTable(late, limit = Infinity) {
-  const rows = late.slice(0, limit).map((g) => `<tr>
-    <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")} · ${esc(g.phase)} · ${esc(g.sheet)}</small></td>
-    <td>${esc(g.owners.join(", "))}</td>
-    <td>${formatDate(g.prepDue)}<small>J0 ${formatDate(g.j0)}</small></td>
-    <td class="num"><strong class="lateDays">+${fmt(g.late)} j</strong></td>
-    <td class="num">${fmt(g.ts.length)}</td>
+function lateTable(late) {
+  const rows = late.map((g) => `<tr>
+    <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")} · ${esc(g.owners.join(", "))}</small></td>
+    <td>${formatDate(g.j0)}</td>
+    <td class="num"><strong class="lateDays">${fmt(g.late)} j</strong></td>
     <td><span class="missingKeys">${esc(g.missing.join(", ") || "—")}</span></td></tr>`);
-  return table(["Affaire / REE", "Chargé", "Échéance prépa", { label: "Retard", cls: "num" }, { label: "TOT", cls: "num" }, "Manque"], rows, { empty: "Aucune préparation en retard sur ce périmètre." });
+  return table(["Affaire", "J0", { label: "Retard", cls: "num" }, "Ce qui manque"], rows, { empty: "Aucune préparation en retard.", free: true });
 }
+
+let showAllLate = false;
 
 function viewTeam() {
   const m = teamModel();
-  const lateRee = m.late.length;
-  const lateOwnersFilter = teamLateOwner && m.late.some((g) => g.owners.includes(teamLateOwner)) ? teamLateOwner : "";
-  const lateShown = lateOwnersFilter ? m.late.filter((g) => g.owners.includes(lateOwnersFilter)) : m.late;
-  const p = paginate(lateShown);
+  const shown = showAllLate ? m.late : m.late.slice(0, 10);
   const kpis = [
-    kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT · GER/1N signé`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
-    kpi({ label: "Préparation documentaire terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
-    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT · ${plural(lateRee, "REE", "REE")} · échéance J0 − 30 dépassée`, tone: m.overdue ? "bad" : "good" }),
-    kpi({ label: "Échéances sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer dans le mois", tone: m.dueSoon ? "warn" : "" }),
+    kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
+    kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
+    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT, sur ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
+    kpi({ label: "À boucler sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer", tone: m.dueSoon ? "warn" : "" }),
   ].join("");
-  const ownerFilter = m.lateByOwner.length ? `<div class="ownerChips"><span class="muted">Par chargé :</span>${[["", "Tous", m.overdue], ...m.lateByOwner.map(([n, c]) => [n, n, c])].map(([value, label, c]) => `<button type="button" data-set="teamLateOwner:${esc(value)}" class="${value === lateOwnersFilter ? "active" : ""}" aria-pressed="${value === lateOwnersFilter}">${esc(label)} <span class="count">${fmt(c)}</span></button>`).join("")}</div>` : "";
-  const ownerRows = m.owners.map((o) => `<tr><td>${esc(o.name)}</td><td class="num">${fmt(o.n)}</td>
-    <td>${meter(o.realized, o.n, { color: STATE_COLORS[STATE.realized] })}</td>
-    <td>${meter(o.prepared, o.n, { color: STATE_COLORS[STATE.ready] })}</td>
-    <td class="num">${o.overdue ? badge(fmt(o.overdue), "bad") : '<span class="muted">0</span>'}</td>
-    <td class="num">${o.dueSoon ? badge(fmt(o.dueSoon), "warn") : '<span class="muted">0</span>'}</td></tr>`);
-
-  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">DEM ${esc(m.dem)} · ${esc(m.period)} · ${esc(m.scope)} · données au ${esc(m.todayLabel)}</p></div>
-      <div class="panelActions"><button type="button" data-png-preview>Aperçu de l’écran</button><button type="button" class="accent" data-png>Exporter l’écran d’équipe (PNG)</button></div></div>
+  const more = m.late.length > 10
+    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(m.late.length)} REE en retard`}</button>` : "";
+  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">${esc(m.period)} · ${esc(m.scope)}</p></div>
+      <div class="panelActions"><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="kpis kpis-4 hero">${kpis}</div>
-    ${panel(`Avancement par mois de J0 · ${esc(m.timeline.title)}`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
-      { sub: "Répartition des TOT selon leur statut pour chaque mois de J0 · nombre de TOT au-dessus de chaque colonne · % de réalisés dans la partie verte", cls: "timelinePanel" })}
     <div class="split even">
-      ${panel(`Retards de préparation documentaire · ${fmt(lateRee)} REE`, `${ownerFilter}${lateTable(p.slice)}${pager(p)}`,
-        { sub: "REE dont l’échéance J0 − 30 est dépassée sans préparation complète · échéances les plus récentes en premier (J0 le plus proche)", cls: "latePanel", actions: exportButton("Exporter en CSV") })}
-      ${panel("Avancement par chargé d’essais", table(["Chargé", { label: "TOT", cls: "num" }, "Réalisés", "Prépa terminée", { label: "Retards", cls: "num" }, { label: "< 30 j", cls: "num" }], ownerRows, { cls: "compact" }), { sub: esc(m.scope) })}
+      ${panel(`Avancement par mois de J0`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
+        { sub: "Chaque colonne = les TOT dont le J0 tombe ce mois-là · le chiffre au-dessus = nombre de TOT", cls: "timelinePanel" })}
+      ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${lateTable(shown)}${more}`,
+        { sub: "J0 − 30 dépassé sans préparation complète · les plus proches du J0 en premier", cls: "latePanel" })}
     </div>
-    ${panel("Avancement des états du REE", milestoneCards(m.ts), { sub: "Produits (clair) et signés (foncé)" })}`;
+    ${panel("Documents des REE", milestoneCards(m.ts), { sub: "Partie claire : produits · partie foncée : signés" })}`;
   currentExport = () => downloadMatrix(["Affaire", "REE", "Phase", "Feuille", "Chargés", "Échéance prépa", "J0", "Retard (jours)", "TOT", "Informations manquantes"],
-    lateShown.map((g) => [g.affaire, g.ree, g.phase, g.sheet, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), g.late, g.ts.length, g.missing.join(", ")]),
+    m.late.map((g) => [g.affaire, g.ree, g.phase, g.sheet, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), g.late, g.ts.length, g.missing.join(", ")]),
     "Retards_preparation.csv");
 }
 
@@ -350,7 +341,7 @@ async function exportPNG() {
     $("message").innerHTML = `<div class="notice error">Export PNG impossible : ${esc(e.message)}</div>`;
   } finally {
     button.disabled = !data;
-    button.textContent = "Écran d’équipe (PNG)";
+    button.textContent = "Image pour l’écran d’équipe (PNG)";
   }
 }
 

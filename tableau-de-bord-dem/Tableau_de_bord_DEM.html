@@ -99,28 +99,36 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .modeSwitch button { border: 0; background: transparent; color: #d6e3f0; font-weight: 600; font-size: 15px; padding: 9px 18px; border-radius: 9px; display: inline-flex; gap: 8px; align-items: center; }
 .modeSwitch button:hover { background: rgba(255, 255, 255, .1); }
 .modeSwitch button.active { background: #fff; color: var(--navy); box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
-.modeIcon { font-size: 13px; opacity: .8; }
 .headerActions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; }
 .headerActions select { font-weight: 600; min-width: 130px; }
 
 main { max-width: 1640px; margin: auto; padding: 18px 32px 40px; }
 
-/* --- Source / fichier ------------------------------------------------------- */
-.sourceBar {
-  display: flex; align-items: center; gap: 18px 28px; flex-wrap: wrap;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 18px; margin-bottom: 14px;
-}
-.sourceInfo { display: flex; align-items: center; gap: 12px; flex: 1 1 320px; min-width: 0; }
-.sourceInfo strong { display: block; font-size: 15px; overflow-wrap: anywhere; }
-.sourceInfo span, .sourceMeta span { display: block; font-size: 13px; color: var(--muted); }
-.sourceMeta { flex: 0 1 auto; }
-.sourceDot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; background: var(--neutral); }
+/* --- Source / fichier : une ligne discrète -------------------------------- */
+.sourceBar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 4px 2px 10px; font-size: 14px; }
+.sourceBar strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.sourceBar .muted { font-size: 13px; }
+.sourceDot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--neutral); }
 .sourceDot.ok { background: var(--good); box-shadow: 0 0 0 4px var(--good-bg); }
 .sourceDot.busy { background: var(--info); box-shadow: 0 0 0 4px var(--info-bg); }
 .sourceDot.idle { background: var(--warn); }
-.sourceButtons { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sourceAuto { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); margin-right: 6px; }
+button.small { padding: 5px 11px; font-size: 13px; }
+.sourceAuto { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
 .sourceAuto input { accent-color: var(--primary); width: auto; }
+
+/* --- Menus repliables (Fichier, Filtres, Exporter) ------------------------- */
+.menu { position: relative; }
+.menu > summary { list-style: none; cursor: pointer; font-size: 14px; font-weight: 500; border: 1px solid #c3d1de; border-radius: 9px; background: var(--surface); padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary::after { content: "▾"; font-size: 11px; color: var(--muted); }
+.menu[open] > summary { background: #eaf1f8; }
+.sourceMenu > summary { padding: 5px 10px; font-size: 13px; }
+.menuBody { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 280px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; box-shadow: 0 10px 30px rgba(16, 40, 66, .16); }
+.sourceMenu .menuBody { left: 0; right: auto; }
+.menuBody p { font-size: 13.5px; }
+.menuBody button { text-align: left; }
+.filterMenu .menuBody { min-width: 420px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 
 .notice { padding: 12px 16px; background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; margin: 0 0 14px; font-size: 14px; }
 .notice.error { background: var(--bad-bg); color: var(--bad-ink); }
@@ -130,30 +138,21 @@ main { max-width: 1640px; margin: auto; padding: 18px 32px 40px; }
 .drop p { margin-bottom: 20px; }
 .drop.over { border-color: var(--primary); background: #e1f5ef; }
 
-/* --- Filtres ------------------------------------------------------------------- */
-.filterBar {
-  display: flex; align-items: flex-end; gap: 14px 24px; flex-wrap: wrap;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 6px;
-}
-.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
-.searchField input { width: 220px; }
 .chips { display: flex; gap: 5px; flex-wrap: wrap; }
 .chips button { padding: 6px 10px; font-size: 13px; border-radius: 8px; font-weight: 500; }
 .chips button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
-.chips button.phase-AT:not(.active) { border-bottom: 3px solid var(--at); }
-.chips button.phase-TEM:not(.active) { border-bottom: 3px solid var(--tem); }
-.phaseKey { font-weight: 600; font-size: 11.5px; margin-left: 8px; padding-bottom: 1px; color: var(--ink-2); }
-.phaseKey.tem { border-bottom: 3px solid var(--tem); }
-.phaseKey.at { border-bottom: 3px solid var(--at); }
 
-/* --- Onglets ---------------------------------------------------------------------- */
-.tabBar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin: 10px 0 18px; }
-.tabs { display: flex; gap: 2px; flex-wrap: wrap; }
-.tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; background: transparent; padding: 11px 14px 9px; font-size: 15px; font-weight: 500; color: var(--ink-2); }
+/* --- Onglets et barre d'outils ------------------------------------------------ */
+.tabBar { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px 16px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin: 0 0 20px; }
+.tabs { display: flex; gap: 2px; flex-wrap: wrap; align-items: flex-end; }
+.tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; background: transparent; padding: 12px 16px 10px; font-size: 16px; font-weight: 500; color: var(--ink-2); }
 .tabs button:hover { background: #e3eaf2; }
 .tabs button.active { color: var(--ink); font-weight: 700; border-bottom-color: var(--primary); background: transparent; }
 .tabs button.active .count { background: var(--warn-bg); color: var(--warn-ink); }
-.exportActions { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 8px; }
+.moreTabs { margin: 0 0 6px 10px; border-color: transparent; background: transparent; color: var(--ink-2); font-size: 14.5px; }
+.moreTabs.active { border-color: var(--primary); color: var(--ink); font-weight: 600; background: var(--surface); }
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-bottom: 8px; }
+.toolbar input[type=search] { width: 240px; }
 
 /* --- Structure des vues ----------------------------------------------------------- */
 .viewHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -354,7 +353,6 @@ td.attention .badge { margin: 2px 0; }
 .timeline .tlToday { font-size: 11px; font-weight: 600; fill: var(--info); text-anchor: middle; }
 .timeline .tlYear { font-size: 11px; fill: var(--muted); text-anchor: middle; }
 .timeline [data-tip]:hover { filter: brightness(1.1); }
-.latePanel .tableWrap { max-height: 520px; }
 .pngPreview { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); display: block; margin-bottom: 12px; }
 
 /* --- Aide, infobulle, dialogue ----------------------------------------------------- */
@@ -400,8 +398,8 @@ dialog::backdrop { background: #091d37aa; }
   .kpis-4, .kpis-6, .kpis-8 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpiValue { font-size: 24px; }
   .hero .kpiValue { font-size: 28px; }
-  .searchField, .searchField input { width: 100%; }
-  .field { width: 100%; }
+  .toolbar { width: 100%; }
+  .toolbar input[type=search] { flex: 1 1 100%; }
   .panel { padding: 16px 14px; }
   .chargeRow { grid-template-columns: 96px minmax(0, 1fr) 64px; gap: 8px; }
   .levelStats { grid-template-columns: 1fr; }
@@ -410,9 +408,32 @@ dialog::backdrop { background: #091d37aa; }
 }
 @media print {
   .appHeader { background: #fff; color: #000; }
-  .sourceBar, .filterBar, .exportActions, .modeSwitch, .headerActions, .help, .ignoreAction, .pagination button { display: none !important; }
+  .sourceBar, .toolbar, .modeSwitch, .headerActions, .help, .ignoreAction, .pagination button { display: none !important; }
   .tableWrap { max-height: none; overflow: visible; }
   .panel { break-inside: avoid; box-shadow: none; }
+}
+
+/* --- Vue simplifiée : avancement par affaire, à faire, corrections ---------- */
+.mineSplit { grid-template-columns: minmax(0, 2.3fr) minmax(260px, 1fr); }
+.stateBar { display: flex; gap: 2px; width: 150px; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line-2); flex-shrink: 0; }
+.stateBar span { display: block; height: 100%; min-width: 3px; }
+.progressCell { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 13.5px; color: var(--ink-2); }
+.softCount { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.msCell { white-space: nowrap; }
+.ms { display: inline-block; font-size: 13px; margin-right: 12px; color: var(--ink-2); }
+.ms b { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-right: 3px; }
+.todoItem { grid-template-columns: 52px 1fr 16px; padding: 9px 12px; }
+.todoCount { font-size: 20px; padding: 4px 0; }
+.todoText { font-size: 15px; font-weight: 500; }
+.issueKind { display: block; font-size: 14.5px; }
+.issueReason { display: block; font-size: 13.5px; color: var(--ink-2); margin-top: 2px; max-width: 560px; }
+.signalLead { font-size: 15px; margin-bottom: 12px; color: var(--ink-2); }
+.signalLead strong { font-size: 18px; color: var(--ink); }
+.latePanel .ghost, .tableWrap + .ghost { margin-top: 10px; }
+@media (max-width: 1100px) {
+  .mineSplit { grid-template-columns: minmax(0, 1fr); }
+  .toolbar input[type=search] { width: 100%; }
+  .filterMenu .menuBody { min-width: 0; width: min(420px, 90vw); }
 }
 </style>
 <!-- Work Sans — licence
@@ -522,12 +543,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     </div>
   </div>
   <div class="modeSwitch" role="group" aria-label="Profil d’affichage">
-    <button type="button" data-mode="ce" aria-pressed="true"><span class="modeIcon" aria-hidden="true">◉</span>Chargé d’essais</button>
-    <button type="button" data-mode="coordo" aria-pressed="false"><span class="modeIcon" aria-hidden="true">▦</span>Coordo essais</button>
+    <button type="button" data-mode="ce" aria-pressed="true">Chargé d’essais</button>
+    <button type="button" data-mode="coordo" aria-pressed="false">Coordo essais</button>
   </div>
   <div class="headerActions">
     <select id="demSelector" aria-label="Classeur DEM"><option value="2026">DEM 2026</option><option value="2027">DEM 2027</option></select>
-    <button id="import" class="primary">Choisir / changer le fichier</button>
   </div>
 </header>
 
@@ -535,56 +555,57 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   <input id="file" type="file" accept=".xlsx,.xlsm" hidden>
   <div id="message" role="status" aria-live="polite"></div>
 
-  <section class="sourceBar" aria-label="Fichier Excel et actualisation">
-    <div class="sourceInfo">
-      <span class="sourceDot" id="sourceDot" aria-hidden="true"></span>
-      <div>
-        <strong id="sourceFile">Aucun fichier sélectionné</strong>
-        <span id="sourceState" role="status" aria-live="polite">Choisissez le fichier Excel à mémoriser sur ce PC.</span>
+  <section class="sourceBar" aria-label="Fichier Excel">
+    <span class="sourceDot" id="sourceDot" aria-hidden="true"></span>
+    <strong id="sourceFile">Aucun fichier sélectionné</strong>
+    <span id="sourceLastCheck" class="muted"></span>
+    <button id="sourceRefresh" class="small" disabled>Actualiser</button>
+    <details class="menu sourceMenu">
+      <summary>Fichier</summary>
+      <div class="menuBody">
+        <p id="sourceState" role="status" aria-live="polite">Choisissez le fichier Excel à mémoriser sur ce PC.</p>
+        <p id="sourceSchedule" class="muted">Sélectionnez un fichier pour activer la lecture automatique</p>
+        <label class="sourceAuto"><input type="checkbox" id="autoRefresh" checked disabled> Relire automatiquement le fichier</label>
+        <button id="sourceChange">Choisir le fichier</button>
+        <button id="import" hidden>Choisir / changer le fichier</button>
+        <button id="clear" class="ghost">Fermer le classeur</button>
       </div>
-    </div>
-    <div class="sourceMeta">
-      <span id="sourceLastCheck"></span>
-      <span id="sourceSchedule">Sélectionnez un fichier pour activer la lecture automatique</span>
-    </div>
-    <div class="sourceButtons">
-      <label class="sourceAuto"><input type="checkbox" id="autoRefresh" checked disabled> Actualisation auto.</label>
-      <button id="sourceRefresh" disabled>Actualiser</button>
-      <button id="sourceChange">Choisir le fichier</button>
-      <button id="clear" class="ghost">Fermer le classeur</button>
-    </div>
+    </details>
   </section>
 
   <section id="drop" class="panel drop">
-    <h2>Déposez votre copie Excel de la DEM</h2>
-    <p class="muted">Le fichier reste sur ce PC : il est lu localement, jamais modifié ni envoyé.</p>
-    <button id="choose" class="primary">Choisir un fichier .xlsm ou .xlsx</button>
+    <h2>Ouvrez la DEM pour commencer</h2>
+    <p class="muted">Le fichier reste sur ce PC : il est lu, jamais modifié ni envoyé.</p>
+    <button id="choose" class="primary">Choisir le fichier Excel de la DEM</button>
   </section>
 
   <section id="workspace" class="hidden">
-    <section class="filterBar" aria-label="Filtres">
-      <label class="field searchField">Rechercher<input id="search" placeholder="Affaire, REE, OT, TOT, chargé…" type="search"></label>
-      <label class="field" id="ownerField">Chargé d’essais<select id="owner"><option value="">Tous les CE</option></select></label>
-      <div class="field">
-        <span>Feuilles <span class="phaseKey tem">TEM</span><span class="phaseKey at">AT</span></span>
-        <div id="sheetButtons" class="chips" role="group" aria-label="Feuilles techniques"></div>
-      </div>
-      <div class="field">
-        <span>Période (année de J0)</span>
-        <div id="j0Years" class="chips" role="group" aria-label="Années de J0 attendues">
-          <button type="button" data-j0-year="2025" aria-pressed="false">2025</button>
-          <button type="button" data-j0-year="2026" aria-pressed="true" class="active">2026</button>
-          <button type="button" data-j0-year="2027" aria-pressed="false">2027</button>
-        </div>
-      </div>
-      <button id="reset" class="ghost">Réinitialiser</button>
-    </section>
-
     <div class="tabBar">
       <nav id="tabs" class="tabs" aria-label="Vues"></nav>
-      <div class="exportActions">
-        <button id="pngExport" class="accent" disabled title="Image 16:9 pour l’écran de l’équipe : avancement des essais et retards de préparation">Écran d’équipe (PNG)</button>
-        <button id="pdfExport" disabled>PDF de la vue</button>
+      <div class="toolbar">
+        <input id="search" placeholder="Rechercher…" title="Affaire, REE, OT, TOT ou chargé" type="search" aria-label="Rechercher">
+        <label id="ownerField" class="ownerField"><select id="owner" aria-label="Chargé d’essais"><option value="">Tous les CE</option></select></label>
+        <details class="menu filterMenu" id="filterMenu">
+          <summary>Filtres <span id="filterCount" class="count" hidden></span></summary>
+          <div class="menuBody">
+            <div class="field"><span>Feuilles</span><div id="sheetButtons" class="chips" role="group" aria-label="Feuilles techniques"></div></div>
+            <div class="field"><span>Période attendue (année de J0)</span>
+              <div id="j0Years" class="chips" role="group" aria-label="Années de J0 attendues">
+                <button type="button" data-j0-year="2025" aria-pressed="false">2025</button>
+                <button type="button" data-j0-year="2026" aria-pressed="true" class="active">2026</button>
+                <button type="button" data-j0-year="2027" aria-pressed="false">2027</button>
+              </div></div>
+            <button id="reset" class="ghost">Tout réinitialiser</button>
+          </div>
+        </details>
+        <details class="menu exportMenu">
+          <summary>Exporter</summary>
+          <div class="menuBody">
+            <button id="pngExport" disabled>Image pour l’écran d’équipe (PNG)</button>
+            <button id="pdfExport" disabled>Cette vue en PDF</button>
+            <button id="csvExport" data-export="csv">Ce tableau en CSV (Excel)</button>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -1102,23 +1123,22 @@ function plural(n, one, many = one + "s") {
 
 // --- Profils et onglets ----------------------------------------------------------
 
+// Onglets principaux (une question par écran) et listes secondaires.
 const TABS = {
   ce: [
     { id: "mine", label: "Mes affaires" },
-    { id: "issues", label: "Mes corrections", count: () => activeIssueCount(me) },
-    { id: "documents", label: "Mes documents P / R" },
-    { id: "tasks", label: "Mes TOT" },
-    { id: "team", label: "Avancement équipe" },
+    { id: "issues", label: "À corriger dans la DEM", count: () => activeIssueCount(me) },
+    { id: "team", label: "Équipe" },
   ],
   coordo: [
     { id: "overview", label: "Synthèse" },
-    { id: "owners", label: "Répartition par chargé" },
-    { id: "issues", label: "Corrections DEM", count: () => activeIssueCount($("owner").value) },
-    { id: "assignments", label: "Affectations SharePoint" },
-    { id: "documents", label: "Documents P / R" },
-    { id: "tasks", label: "Toutes les TOT" },
-    { id: "team", label: "Avancement équipe" },
+    { id: "issues", label: "À corriger dans la DEM", count: () => activeIssueCount($("owner").value) },
+    { id: "team", label: "Équipe" },
   ],
+};
+const MORE_TABS = {
+  ce: [{ id: "tasks", label: "Mes TOT" }, { id: "documents", label: "Mes documents P / R" }],
+  coordo: [{ id: "owners", label: "Répartition par chargé" }, { id: "tasks", label: "Toutes les TOT" }, { id: "documents", label: "Documents P / R" }, { id: "assignments", label: "Affectations SharePoint" }],
 };
 const HIDDEN_TABS = { coordo: ["affaires", "dossiers"], ce: [] };
 
@@ -1361,8 +1381,9 @@ function panel(title, body, { sub = "", actions = "", cls = "", help = "" } = {}
     ${body}</section>`;
 }
 
-function exportButton(label = "Exporter en CSV") {
-  return `<button type="button" data-export="csv">${esc(label)}</button>`;
+// L'export CSV passe par le menu « Exporter » de la barre d'onglets.
+function exportButton() {
+  return "";
 }
 
 function taskLink(t) {
@@ -1482,55 +1503,46 @@ function j0Range(g) {
   return same ? formatDate(g.j0Min) : `${formatShortDate(g.j0Min)} → ${formatShortDate(g.j0Max)}`;
 }
 
-function milestoneMeter(stats, n, label) {
-  const extra = Math.max(0, stats.produced - stats.done);
-  return meter(stats.done, n, {
-    extra, color: STATE_COLORS[STATE.realized],
-    tipText: `${fmt(stats.done)} signés sur ${fmt(n)}\n${label} · ${fmt(stats.produced)} produits (signés, prêts ou à reprendre)`,
-  });
+// Barre empilée des statuts des TOT (réalisé → en retard), avec infobulle.
+function stateBar(ts, { width = "" } = {}) {
+  const n = ts.length;
+  if (!n) return '<span class="muted">—</span>';
+  const counts = STATE_ORDER.map((s) => [s, ts.filter((t) => state(t) === s).length]).filter(([, c]) => c);
+  const tipText = counts.map(([s, c]) => `${fmt(c)} ${s.toLowerCase()}`).join(" · ");
+  return `<span class="stateBar"${width ? ` style="width:${width}"` : ""} data-tip="${fmt(n)} TOT\n${esc(tipText)}" tabindex="0">${counts.map(([s, c]) => `<span style="flex:${c} 1 0;background:${STATE_COLORS[s]}"></span>`).join("")}</span>`;
 }
 
 function attentionBadges(g) {
   const out = [];
   if (g.overdue) out.push(badge(`${fmt(g.overdue)} en retard`, "bad"));
-  if (g.dueSoon) out.push(badge(`${fmt(g.dueSoon)} sous 30 j`, "warn"));
-  if (g.missing) out.push(badge(`${fmt(g.missing)} infos manquantes`, "warn"));
-  if (g.issues) out.push(badge(`${plural(g.issues, "correction")}`, "info"));
+  else if (g.dueSoon) out.push(badge(`${fmt(g.dueSoon)} à boucler sous 30 j`, "warn"));
+  if (g.issues) out.push(`<span class="softCount">${plural(g.issues, "correction")}</span>`);
   return out.join(" ") || '<span class="muted">—</span>';
 }
 
-function affaireRows(groups, { showOwner = false } = {}) {
+function milestoneLine(t) {
+  return [["BPA", t.bpa], ["GER", t.ger], ["BPD", t.bpd]].map(([k, v]) => `<span class="ms"><b>${k}</b> ${esc(v || "—")}</span>`).join("");
+}
+
+function affaireRows(groups) {
   return groups.map((g) => {
     const open = expandedAffaires.has(g.affaire);
     const st = AFFAIRE_STATUS[g.status];
     const row = `<tr class="affaireRow${open ? " open" : ""}">
-      <td><button type="button" class="expander" data-expand="${esc(g.affaire)}" aria-expanded="${open}"><span class="chev" aria-hidden="true">›</span><span><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>${esc(g.libelle || "Libellé DI non renseigné")}</small></span></button>
-        <div class="sheetTags">${g.sheets.map((s) => `<span class="tag phase-${dossierPhase({ sheet: s })}">${esc(s)}</span>`).join("")}</div></td>
-      ${showOwner ? `<td>${esc(g.owners.join(", "))}</td>` : ""}
-      <td class="num">${fmt(g.n)}<small>${plural(g.rees, "REE", "REE")}</small></td>
-      <td>${j0Range(g)}${g.nextDue ? `<small>Prépa due : ${formatDate(g.nextDue)}</small>` : ""}</td>
-      <td>${meter(g.prep, g.n, { color: STATE_COLORS[STATE.ready], tipText: `${fmt(g.prep)} TOT prêtes sur ${fmt(g.n)}\nPréparation documentaire (MC, OT, TOT, RDU et TOT prête)` })}</td>
-      <td>${milestoneMeter(g.bpa, g.n, "BPA")}</td>
-      <td>${milestoneMeter(g.ger, g.n, "GER/1N")}</td>
-      <td>${milestoneMeter(g.bpd, g.n, "BPD")}</td>
-      <td class="attention">${attentionBadges(g)}</td>
+      <td><button type="button" class="expander" data-expand="${esc(g.affaire)}" aria-expanded="${open}"><span class="chev" aria-hidden="true">›</span><span><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>${esc(g.libelle || g.sheets.join(", "))}</small></span></button></td>
+      <td>${j0Range(g)}</td>
+      <td><div class="progressCell">${stateBar(g.ts)}<span>${fmt(g.realized)}/${fmt(g.n)} réalisées</span></div></td>
+      <td>${attentionBadges(g)}</td>
       <td>${badge(st.label, st.tone)}</td></tr>`;
     if (!open) return row;
     const sub = g.ts.slice().sort((a, b) => a.ree.localeCompare(b.ree, "fr", { numeric: true }) || a.rowNumber - b.rowNumber).map((t) => `<tr>
-      <td><button type="button" class="linkbutton" data-task="${t.index}">${esc(t.ree || "REE absent")}</button><small>${esc(t.reeLibelle || "")}</small></td>
-      <td>${esc(t.sheet)} · l.${t.rowNumber}</td>
-      <td>OT ${esc(t.ot || "—")}<small>TOT ${esc(t.tot || "—")}</small></td>
-      <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
-      <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">${esc(missingLabel(t))}</span>` : '<span class="muted">—</span>'}</td>
-      <td>${esc(t.bpa || "—")}</td><td>${esc(t.ger || "—")}</td><td>${esc(t.bpd || "—")}</td>
+      <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
+      <td>${t.j0Label}</td>
+      <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>
+      <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td></tr>`);
-    const colspan = showOwner ? 10 : 9;
-    return row + `<tr class="subRow"><td colspan="${colspan}">${table(["REE", "Feuille", "OT / TOT", "J0 / prépa", "À compléter", "BPA", "GER/1N", "BPD", "Statut"], sub, { cls: "compact" })}</td></tr>`;
+    return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut"], sub, { cls: "compact", free: true })}</td></tr>`;
   });
-}
-
-function affaireTableHead(showOwner) {
-  return ["Affaire", ...(showOwner ? ["Chargé"] : []), { label: "TOT", cls: "num" }, "J0", "Prépa doc.", "BPA signés", "GER/1N signés", "BPD signés", "Points d’attention", "Statut"];
 }
 
 function chooseMePanel() {
@@ -1552,73 +1564,49 @@ function meSelector() {
 
 function todoItems(ts, myIssues) {
   const overdue = ts.filter((t) => t.overdue), dueSoon = ts.filter((t) => t.dueSoon), missing = ts.filter((t) => t.infoMissing);
-  const noJ0 = ts.filter((t) => !t.j0), rework = documentRows(ts, "R"), ready = documentRows(ts, "P");
-  const affairesOf = (list) => countUnique(list, (t) => t.affaire);
+  const rework = documentRows(ts, "R");
   return [
-    { n: overdue.length, tone: "bad", title: "Préparations en retard", desc: `${plural(affairesOf(overdue), "affaire")} · l’échéance J0 − 30 est dépassée : compléter MC, OT, TOT, RDU ou « TOT prête ».`, go: "tasks:overdue" },
-    { n: dueSoon.length, tone: "warn", title: "Préparations à boucler sous 30 jours", desc: `${plural(affairesOf(dueSoon), "affaire")} · échéance J0 − 30 dans le mois.`, go: "tasks:dueSoon" },
-    { n: missing.length, tone: "warn", title: "Informations manquantes", desc: "GER/1N renseigné ou BPD signé alors que des informations de préparation manquent.", go: "tasks:missing" },
-    { n: myIssues.length, tone: "info", title: "Corrections à faire dans la DEM", desc: "Formats, statuts non reconnus, chronologie, J0 hors période… avec la cellule à corriger.", go: "tab:issues" },
-    { n: rework.length, tone: "warn", title: "Documents à reprendre (R)", desc: "BPA, GER/1N, BPD ou TOT prête retournés pour reprise.", go: "documents:R" },
-    { n: ready.length, tone: "info", title: "Documents prêts à valider (P)", desc: "En attente de validation ou de signature.", go: "documents:P" },
-    { n: noJ0.length, tone: "neutral", title: "TOT sans J0 exploitable", desc: "Sans J0, l’échéance de préparation ne peut pas être calculée.", go: "tasks:noJ0" },
+    { n: overdue.length, tone: "bad", title: "préparations en retard", go: "tasks:overdue" },
+    { n: dueSoon.length, tone: "warn", title: "préparations à boucler sous 30 jours", go: "tasks:dueSoon" },
+    { n: rework.length, tone: "warn", title: "documents à reprendre (R)", go: "documents:R" },
+    { n: myIssues.length, tone: "info", title: "corrections à faire dans la DEM", go: "tab:issues" },
+    { n: missing.length, tone: "neutral", title: "TOT avec des informations manquantes", go: "tasks:missing" },
   ].filter((item) => item.n > 0);
 }
 
 function todoPanel(ts, myIssues) {
   const items = todoItems(ts, myIssues);
   const body = items.length
-    ? `<ul class="todo">${items.map((i) => `<li><button type="button" data-go="${i.go}" class="todoItem tone-${i.tone}">
-        <span class="todoCount">${fmt(i.n)}</span><span class="todoText"><strong>${esc(i.title)}</strong><span>${esc(i.desc)}</span></span><span class="todoGo" aria-hidden="true">›</span></button></li>`).join("")}</ul>`
-    : emptyState("Aucune action en attente", "Toutes vos TOT du périmètre sont à jour.");
-  return panel("À traiter", body, { sub: "Par ordre de priorité · cliquez pour ouvrir la liste correspondante", cls: "todoPanel" });
-}
-
-function teamMiniPanel(myTs) {
-  const team = filteredBy("");
-  const n = team.length, mine = myTs.length;
-  const row = (label, myValue, teamValue, color) => `<div class="compareRow">
-      <span>${esc(label)}</span>
-      <div class="compareBars">
-        <span class="compareLine"><b>Moi</b><span class="meterTrack"><span style="width:${(myValue * 100).toFixed(1)}%;background:${color}"></span></span><em>${Math.round(myValue * 100)} %</em></span>
-        <span class="compareLine"><b>Équipe</b><span class="meterTrack"><span style="width:${(teamValue * 100).toFixed(1)}%;background:var(--ink-3)"></span></span><em>${Math.round(teamValue * 100)} %</em></span>
-      </div></div>`;
-  const body = `${row("Essais réalisés", ratio(myTs.filter(isRealized).length, mine), ratio(team.filter(isRealized).length, n), STATE_COLORS[STATE.realized])}
-    ${row("Préparation documentaire", ratio(myTs.filter((t) => t.prepComplete).length, mine), ratio(team.filter((t) => t.prepComplete).length, n), STATE_COLORS[STATE.ready])}
-    <p class="muted teamLate">Équipe : <strong>${fmt(team.filter((t) => t.overdue).length)}</strong> TOT en retard de préparation · <strong>${fmt(n)}</strong> TOT au total</p>
-    <button type="button" class="linkbutton" data-go="tab:team">Voir l’avancement de l’équipe ›</button>`;
-  return panel("Mon avancement / l’équipe", body, { sub: "Mêmes feuilles et recherche, tous les chargés", cls: "teamMini" });
+    ? `<ul class="todo">${items.map((i) => `<li><button type="button" data-go="${i.go}" class="todoItem tone-${i.tone}"><span class="todoCount">${fmt(i.n)}</span><span class="todoText">${esc(i.title)}</span><span class="todoGo" aria-hidden="true">›</span></button></li>`).join("")}</ul>`
+    : emptyState("Rien à traiter", "Toutes vos TOT sont à jour.");
+  return panel("À faire", body, { cls: "todoPanel" });
 }
 
 function viewMine() {
   if (!me) { $("view").innerHTML = chooseMePanel(); return; }
-  const ts = visible, n = ts.length;
+  const ts = visible, n = ts.length, team = filteredBy("");
   const groups = affaireGroups(ts);
   const realized = ts.filter(isRealized).length, prepared = ts.filter((t) => t.prepComplete).length;
-  const overdue = ts.filter((t) => t.overdue).length, dueSoon = ts.filter((t) => t.dueSoon).length;
-  const lateAffaires = groups.filter((g) => g.overdue).length;
+  const overdue = ts.filter((t) => t.overdue).length;
+  const teamPct = (f) => pct(team.filter(f).length, team.length);
   const kpis = [
-    kpi({ label: "Mes affaires", value: fmt(groups.length), sub: `${plural(dossierCount(ts), "REE", "REE")} · ${plural(n, "TOT", "TOT")}`, go: "tasks:" }),
-    kpi({ label: "Préparation documentaire", value: pct(prepared, n), sub: `${fmt(prepared)} / ${fmt(n)} TOT prêtes`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
-    kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `${fmt(realized)} / ${fmt(n)} TOT · GER/1N signé`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
-    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: overdue ? `${plural(lateAffaires, "affaire")} concernée${lateAffaires > 1 ? "s" : ""}` : "aucun retard", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
-    kpi({ label: "Échéances sous 30 j", value: fmt(dueSoon), sub: "préparations à boucler", tone: dueSoon ? "warn" : "", go: "tasks:dueSoon" }),
-    kpi({ label: "Corrections DEM", value: fmt(issues.length), sub: "signalements sur mes TOT", tone: issues.length ? "warn" : "good", go: "tab:issues" }),
+    kpi({ label: "Préparation terminée", value: pct(prepared, n), sub: `équipe : ${teamPct((t) => t.prepComplete)}`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
+    kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `équipe : ${teamPct(isRealized)}`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
+    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: overdue ? "TOT à préparer d’urgence" : "aucun retard", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
+    kpi({ label: "À corriger dans la DEM", value: fmt(issues.length), sub: issues.length ? "cellules à vérifier" : "rien à corriger", tone: issues.length ? "warn" : "good", go: "tab:issues" }),
   ].join("");
-
-  const head = `<div class="viewHead"><div><h2 class="viewTitle">Mes affaires</h2><p class="muted">${esc(scopeLabel())} · ${esc(periodLabel())}</p></div>${meSelector()}</div>`;
-  const table_ = n
-    ? table(affaireTableHead(false), affaireRows(groups), { cls: "affaires", free: true })
-    : emptyState("Aucune TOT pour ce chargé dans le périmètre", "Vérifiez les filtres de feuilles et la recherche.");
-  const allOpen = groups.length && groups.every((g) => expandedAffaires.has(g.affaire));
-  const actions = `<button type="button" data-expand-all="${allOpen ? "close" : "open"}">${allOpen ? "Tout replier" : "Tout déplier"}</button>${exportButton()}`;
-  $("view").innerHTML = `${head}<div class="kpis kpis-6">${kpis}</div>
-    <div class="split">${todoPanel(ts, issues)}${teamMiniPanel(ts)}</div>
-    ${panel(`Suivi par affaire · ${plural(groups.length, "affaire")}`, `${legend([["Signés", STATE_COLORS[STATE.realized]], ["Produits, non signés", "rgba(20,147,108,.35)"]])}${table_}`,
-      { sub: "Triées par urgence : retards, informations manquantes, puis prochaines échéances. Cliquez sur une affaire pour voir ses REE et TOT.", actions })}`;
+  const head = `<div class="viewHead"><div><h2 class="viewTitle">Mes affaires</h2><p class="muted">${plural(groups.length, "affaire")} · ${plural(n, "TOT", "TOT")}</p></div>${meSelector()}</div>`;
+  const tableHtml = n
+    ? table(["Affaire", "J0", "Avancement", "À surveiller", "Statut"], affaireRows(groups), { cls: "affaires", free: true })
+    : emptyState("Aucune TOT pour ce chargé", "Vérifiez la recherche et les filtres.");
+  $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
+    <div class="split mineSplit">
+      ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`, { sub: "Les plus urgentes en haut · cliquez sur une affaire pour voir le détail" })}
+      ${todoPanel(ts, issues)}
+    </div>`;
   currentExport = () => downloadMatrix(
-    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
-    groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.bpa.done, g.bpa.produced, g.ger.done, g.ger.produced, g.bpd.done, g.bpd.produced, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
+    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "BPA signés", "GER/1N signés", "BPD signés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
+    groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.realized, g.bpa.done, g.ger.done, g.bpd.done, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
     `Mes_affaires_${me.replace(/[^\p{L}\p{N}_-]+/gu, "_")}.csv`);
 }
 
@@ -1657,6 +1645,10 @@ function taskTitle() {
   return mode === "ce" ? "Mes TOT" : "Toutes les TOT";
 }
 
+function backToMine() {
+  return mode === "ce" ? `<button type="button" class="ghost" data-go="tab:mine">‹ Mes affaires</button>` : "";
+}
+
 function needsMe() {
   if (mode === "ce" && !me) { $("view").innerHTML = chooseMePanel(); return true; }
   return false;
@@ -1670,19 +1662,18 @@ function viewTasks() {
   if (needsMe()) return;
   const rows = taskRows(), p = paginate(rows), owner = showOwnerColumn();
   const base = visible.filter(scopeTest);
-  const focusOptions = TASK_FOCUS.filter(([key]) => mode === "coordo" || key !== "unassigned").map(([key, label]) => [key, label]);
+  const focusOptions = TASK_FOCUS.filter(([key, , test]) => (mode === "coordo" || key !== "unassigned") && (!key || key === taskFocus || base.some(test))).map(([key, label]) => [key, label]);
   const body = p.slice.map((t) => `<tr>
     <td>${taskLink(t)}</td>
     ${owner ? `<td>${esc(t.responsable)}</td>` : ""}
-    <td>OT ${esc(t.ot || "—")}<small>TOT ${esc(t.tot || "absente")}</small></td>
     <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
-    <td>${stateBadge(t)}${t.infoMissing || (t.missingInfoKeys.length && !t.prepComplete && !isRealized(t)) ? `<small class="missingKeys">À compléter : ${esc(missingLabel(t))}</small>` : ""}</td>
-    <td>${esc(t.bpa || "—")}</td><td>${esc(t.ger || "—")}</td><td>${esc(t.bpd || "—")}</td></tr>`);
+    <td>${stateBadge(t)}${t.missingInfoKeys.length && !t.prepComplete && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
+    <td class="msCell">${milestoneLine(t)}</td></tr>`);
   const scopeNote = taskScope ? ` <button type="button" class="linkbutton" data-go="tasks:${esc(taskFocus)}|clear">Retirer le filtre affaire</button>` : "";
   $("view").innerHTML = panel(`${esc(taskTitle())} · ${fmt(rows.length)}`,
     `${segment("taskFocus", focusOptions, taskFocus, { label: "Filtrer les TOT", counts: (key) => base.filter(focusTest(key)).length })}
-     ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "OT / TOT", "J0 / échéance prépa", "Statut", "BPA", "GER/1N", "BPD"], body)}${pager(p)}`,
-    { sub: esc(scopeLabel()) + scopeNote, actions: exportButton() });
+     ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "J0", "Statut", "Documents"], body)}${pager(p)}`,
+    { sub: esc(scopeLabel()) + scopeNote, actions: backToMine() });
   currentExport = () => downloadMatrix(
     ["Affaire", "Libellé DI", "REE", "Chargé", "Feuille", "Ligne", "OT", "TOT", "J0", "Échéance prépa", "Statut", "À compléter", "BPA", "GER/1N", "BPD", "Observations"],
     rows.map((t) => [t.affaire, t.libelle, t.ree, t.responsable, t.sheet, t.rowNumber, t.ot, t.tot, t.j0Label, t.prepDueLabel, state(t), t.missingInfoKeys.length && !isRealized(t) ? missingLabel(t) : "", t.bpa, t.ger, t.bpd, observations(t)]),
@@ -1701,41 +1692,37 @@ function ignoreButton(i) {
 }
 
 function ownerChips() {
-  // Répartition des signalements actifs par chargé, hors filtre chargé.
+  // Qui doit corriger : signalements actifs par chargé, hors filtre chargé.
   const pool = new Set(filteredBy(""));
-  const active = data.audit.filter((i) => pool.has(i.t) && !ignoredIssues.has(issueId(i)));
   const counts = new Map();
-  for (const i of active) counts.set(i.t.responsable, (counts.get(i.t.responsable) || 0) + 1);
+  for (const i of data.audit) if (pool.has(i.t) && !ignoredIssues.has(issueId(i))) counts.set(i.t.responsable, (counts.get(i.t.responsable) || 0) + 1);
   const current = $("owner").value;
-  const chips = [["", "Tous", active.length], ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => [n, n, c])];
-  return `<div class="ownerChips" role="group" aria-label="Signalements par chargé"><span class="muted">Par chargé :</span>${chips.map(([value, label, c]) => `<button type="button" data-owner="${esc(value)}" class="${value === current ? "active" : ""}" aria-pressed="${value === current}">${esc(label)} <span class="count">${fmt(c)}</span></button>`).join("")}</div>`;
+  const chips = [["", "Tous"], ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => [n, `${n} ${fmt(c)}`])];
+  return `<div class="ownerChips" role="group" aria-label="Chargé">${chips.map(([value, label]) => `<button type="button" data-owner="${esc(value)}" class="${value === current ? "active" : ""}" aria-pressed="${value === current}">${esc(label)}</button>`).join("")}</div>`;
 }
 
 function viewIssues() {
   if (needsMe()) return;
-  const rows = issueRows(), p = paginate(rows), owner = showOwnerColumn();
+  const rows = issueRows(), p = paginate(rows);
   const pool = allIssues.filter((i) => ignoredIssues.has(issueId(i)) === showIgnored && (!issueKind || i.kind === issueKind));
   const kinds = [...new Set([...allIssues.map((i) => i.kind), ...(issueKind ? [issueKind] : [])])].sort((a, b) => a.localeCompare(b, "fr"));
   const ignoredCount = allIssues.filter((i) => ignoredIssues.has(issueId(i))).length;
   const controls = `<div class="controlRow">
-      ${segment("issueLevel", [["", "Toutes priorités"], ...LEVELS.map((l) => [l, l])], issueLevel, { label: "Priorité", counts: (lvl) => pool.filter((i) => !lvl || i.level === lvl).length })}
-      <label class="inlineField">Contrôle <select data-change="issueKind"><option value="">Tous les contrôles</option>${kinds.map((k) => `<option ${k === issueKind ? "selected" : ""} value="${esc(k)}">${esc(k)}</option>`).join("")}</select></label>
-      <button type="button" data-toggle-ignored>${showIgnored ? "Voir les signalements actifs" : `Voir les ignorés (${fmt(ignoredCount)})`}</button>
-      ${tip("Ignorer un signalement", "Ignoré uniquement pour cet import (réactivable). Les données et les indicateurs ne changent pas.")}
+      ${segment("issueLevel", [["", "Toutes"], ...LEVELS.map((l) => [l, l])], issueLevel, { label: "Priorité", counts: (lvl) => pool.filter((i) => !lvl || i.level === lvl).length })}
+      <select data-change="issueKind" aria-label="Type de contrôle"><option value="">Tous les types</option>${kinds.map((k) => `<option ${k === issueKind ? "selected" : ""} value="${esc(k)}">${esc(k)}</option>`).join("")}</select>
+      <button type="button" class="ghost" data-toggle-ignored>${showIgnored ? "‹ Revenir aux corrections" : `Ignorées (${fmt(ignoredCount)})`}</button>
     </div>`;
   const body = p.slice.map((i) => `<tr>
-    <td>${badge(i.level, LEVEL_TONE[i.level])}<small>${esc(i.kind)}</small></td>
-    <td>${taskLink(i.t)}</td>
-    ${owner ? `<td>${esc(i.t.responsable)}</td>` : ""}
-    <td><span class="loc">${esc(i.t.sheet)}!${esc(i.cells)}</span></td>
-    <td class="valueCell">${esc(i.value)}</td>
-    <td>${esc(i.reason)}${observations(i.t) ? `<small class="obs">Obs. : ${esc(observations(i.t))}</small>` : ""}</td>
-    <td>${ignoreButton(i)}</td></tr>`);
-  const title = showIgnored ? "Signalements ignorés" : mode === "ce" ? "Mes corrections à faire dans la DEM" : "Corrections à faire dans la DEM";
+    <td>${badge(i.level, LEVEL_TONE[i.level])}</td>
+    <td><button type="button" class="linkbutton" data-task="${i.t.index}">${esc(i.t.affaire || "Affaire manquante")}</button><small>REE ${esc(i.t.ree || "absent")}${mode === "coordo" ? " · " + esc(i.t.responsable) : ""}</small></td>
+    <td><span class="loc">${esc(i.t.sheet)} ! ${esc(i.cells)}</span></td>
+    <td><strong class="issueKind">${esc(i.kind)}</strong><span class="issueReason">${esc(i.reason)}</span></td>
+    <td><button type="button" class="ignoreAction" data-ignore="${esc(issueId(i))}" title="Masquer ce signalement pour cet import">${ignoredIssues.has(issueId(i)) ? "Réactiver" : "Ignorer"}</button></td></tr>`);
+  const title = showIgnored ? "Signalements ignorés" : "À corriger dans la DEM";
   $("view").innerHTML = panel(`${title} · ${fmt(rows.length)}`,
     `${mode === "coordo" ? ownerChips() : ""}${controls}
-     ${table(["Priorité / contrôle", "Affaire / REE", ...(owner ? ["Chargé"] : []), "Cellule(s) à corriger", "Valeur constatée", "Action proposée", ""], body, { empty: showIgnored ? "Aucun signalement ignoré." : "Aucun signalement : la DEM est cohérente sur ce périmètre." })}${pager(p)}`,
-    { sub: `${esc(scopeLabel())} · ${esc(periodLabel())} · cliquez sur l’affaire pour voir toute la ligne Excel`, actions: exportButton() });
+     ${table(["Priorité", "Affaire", "Cellule Excel", "Problème et action", ""], body, { empty: showIgnored ? "Aucun signalement ignoré." : "Rien à corriger : la DEM est cohérente." })}${pager(p)}`,
+    { sub: "Ouvrez la cellule indiquée dans la DEM et corrigez-la · cliquez sur l’affaire pour voir toute la ligne" });
   currentExport = () => downloadMatrix(
     ["Priorité", "Contrôle", "Affaire", "REE", "Chargé", "Feuille", "Ligne", "Cellules", "Valeur", "Action", "Observations"],
     rows.map((i) => [i.level, i.kind, i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.rowNumber, i.cells, i.value, i.reason, observations(i.t)]),
@@ -1760,7 +1747,7 @@ function viewDocuments() {
     `<div class="controlRow">${segment("docCode", [["P", "Prêts à valider (P)"], ["R", "À reprendre (R)"]], docCode, { label: "État", counts: (code) => documentRows(visible, code, documentType).length })}
       ${segment("documentType", typeOptions, documentType, { label: "Document", counts: (type) => documentRows(visible, docCode, type).length })}</div>
      ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "OT / TOT", "Document", "État", "Cellule", "Observations"], body)}${pager(p)}`,
-    { sub: `${esc(scopeLabel())} · P : produit, en attente de validation ou de signature · R : retourné pour non-conformité`, actions: exportButton() });
+    { sub: "P : en attente de validation ou de signature · R : retourné pour reprise", actions: backToMine() });
   currentExport = () => downloadMatrix(
     ["Affaire", "REE", "Chargé", "Feuille", "OT", "TOT", "Document", "Valeur", "Cellule", "Observations"],
     rows.map((i) => [i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.ot, i.t.tot, i.kind, i.value, i.cells, observations(i.t)]),
@@ -1811,8 +1798,8 @@ function openGroup(index) {
 // Vue « Coordo essais » : charge de l'équipe et corrections à faire dans la DEM.
 // =============================================================================
 
-const CHARGE_MODES = [["tasks", "TOT par statut"], ["dossiers", "REE"], ["phase", "REE TEM / AT"]];
-const CHARGE_SORTS = [["total", "Charge totale"], ["AT", "Charge AT"], ["TEM", "Charge TEM"], ["name", "Nom"]];
+const CHARGE_MODES = [["tasks", "TOT par statut"], ["phase", "REE TEM / AT"], ["dossiers", "REE"]];
+const CHARGE_SORTS = [["total", "Total"], ["AT", "AT"], ["TEM", "TEM"], ["name", "Nom"]];
 const CHARGE_UNIT = { tasks: "TOT", dossiers: "REE", phase: "REE" };
 
 // Charge d'un chargé sur une phase, dans l'unité du mode choisi.
@@ -1861,15 +1848,12 @@ function chargeChart() {
   }).join("");
   const hidden = [...hiddenOwners].map((name) => `<button type="button" class="restore" data-hide="${esc(name)}">+ ${esc(name)}</button>`).join("");
   const legendEntries = chargeMode === "dossiers" ? [] : chargeSegments(visible).map((s) => [s.label, s.color]);
-  const sortNote = sortKey
-    ? `Tri par charge ${sortKey} (${unit} des feuilles ${sortKey === "AT" ? "CSxA" : "CSxM"}), puis charge totale.`
-    : chargeSort === "name" ? "Tri alphabétique." : "Tri par charge totale.";
   return `<div class="controlRow">${segment("chargeMode", CHARGE_MODES, chargeMode, { label: "Unité" })}
-      <span class="controlLabel">Trier par</span>${segment("chargeSort", CHARGE_SORTS, chargeSort, { label: "Tri de l’histogramme" })}</div>
+      <span class="controlLabel">Trier par charge</span>${segment("chargeSort", CHARGE_SORTS, chargeSort, { label: "Tri" })}</div>
     ${legendEntries.length ? legend(legendEntries) : ""}
     ${hidden ? `<div class="hiddenOwners"><span class="muted">Masqués :</span>${hidden}<button type="button" class="linkbutton" data-show-all>Tout réafficher</button></div>` : ""}
     <div class="chargeChart">${rows || emptyState("Aucun chargé affiché")}</div>
-    <p class="muted chartNote">${sortNote} Cliquez sur un nom pour le masquer et recalculer l’échelle. REE distincts par affaire, REE et phase ; un REE partagé compte chez chacun de ses chargés.</p>`;
+    <p class="muted chartNote">Cliquez sur un nom pour le retirer du graphique.</p>`;
 }
 
 function barList(entries, { go, color = "var(--ink-3)", empty = "Aucun signalement." } = {}) {
@@ -1882,20 +1866,16 @@ function barList(entries, { go, color = "var(--ink-3)", empty = "Aucun signaleme
 }
 
 function signalPanel() {
-  const byKind = [...new Set(issues.map((i) => i.kind))].map((k) => {
-    const list = issues.filter((i) => i.kind === k);
-    const level = LEVELS.find((l) => list.some((i) => i.level === l));
-    return { label: k, n: list.length, color: level === "Prioritaire" ? STATE_COLORS[STATE.late] : level === "À compléter" ? STATE_COLORS[STATE.missing] : "var(--ink-3)" };
+  const byOwner = [...new Set(issues.map((i) => i.t.responsable))].map((n) => {
+    const list = issues.filter((i) => i.t.responsable === n);
+    return { label: n, n: list.length, color: list.some((i) => i.level === "Prioritaire") ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.missing] };
   }).sort((a, b) => b.n - a.n);
-  const byOwner = [...new Set(issues.map((i) => i.t.responsable))].map((n) => ({ label: n, n: issues.filter((i) => i.t.responsable === n).length })).sort((a, b) => b.n - a.n);
-  const levels = `<div class="levelStats">${LEVELS.map((l) => {
-    const n = issues.filter((i) => i.level === l).length;
-    return `<button type="button" data-go="issues-level:${esc(l)}" class="levelStat tone-${LEVEL_TONE[l]}"><strong>${fmt(n)}</strong><span>${esc(l)}</span></button>`;
-  }).join("")}</div>`;
-  return panel(`Corrections à faire dans la DEM · ${fmt(issues.length)}`,
-    `${levels}<h3>Par type de contrôle</h3>${barList(byKind, { go: (e) => "issues:" + e.label })}
-     <h3>Par chargé d’essais</h3>${barList(byOwner, { go: (e) => "issues-owner:" + e.label, color: "var(--ink-3)" })}`,
-    { sub: `${plural(new Set(issues.map((i) => i.t)).size, "TOT concernée", "TOT concernées")} · cliquez pour ouvrir la liste`, cls: "signalPanel", actions: `<button type="button" data-go="tab:issues">Tout voir ›</button>` });
+  const urgent = issues.filter((i) => i.level === "Prioritaire").length;
+  return panel("Qui doit corriger la DEM ?",
+    `<p class="signalLead"><strong>${fmt(issues.length)}</strong> corrections, dont <strong class="lateDays">${fmt(urgent)}</strong> prioritaires (préparations en retard)</p>
+     ${barList(byOwner.slice(0, 10), { go: (e) => "issues-owner:" + e.label })}
+     ${byOwner.length > 10 ? `<p class="muted">+ ${plural(byOwner.length - 10, "autre chargé", "autres chargés")}</p>` : ""}`,
+    { sub: "Barre rouge : au moins une correction prioritaire · cliquez sur un nom pour voir ses corrections", cls: "signalPanel", actions: `<button type="button" data-go="tab:issues">Tout voir ›</button>` });
 }
 
 function milestoneCards(ts) {
@@ -1906,7 +1886,7 @@ function milestoneCards(ts) {
       ? "Produits : P, PS, TS, R, PSR, TSR. Signés : PSR ou TSR."
       : "Produits : P, R ou date de validation. Signés : date de validation.";
     return `<section class="milestone">
-      <div class="milestoneHead"><h3>${label}</h3>${tip("Règle de calcul", rule + ` Pourcentages sur les ${n} TOT non annulées du périmètre.`)}</div>
+      <div class="milestoneHead" title="${esc(rule)}"><h3>${label}</h3></div>
       <div class="milestoneFigures"><div><strong>${pct(prod, n)}</strong><span>produits · ${fmt(prod)}</span></div><div><strong class="signed">${pct(done, n)}</strong><span>signés · ${fmt(done)}</span></div></div>
       <span class="twoTone" data-tip="${fmt(done)} signés · ${fmt(prod)} produits\nsur ${fmt(n)} TOT" tabindex="0"><span style="width:${(ratio(done, n) * 100).toFixed(1)}%"></span><span class="light" style="width:${(ratio(Math.max(0, prod - done), n) * 100).toFixed(1)}%"></span></span>
     </section>`;
@@ -1916,21 +1896,17 @@ function milestoneCards(ts) {
 function viewOverview() {
   const ts = visible, n = ts.length;
   const realized = ts.filter(isRealized).length, prepared = ts.filter((t) => t.prepComplete).length;
-  const overdue = ts.filter((t) => t.overdue).length, unassigned = ts.filter((t) => t.responsable === UNASSIGNED).length;
+  const overdue = ts.filter((t) => t.overdue).length;
   const kpis = [
-    kpi({ label: "TOT", value: fmt(n), sub: "dans le périmètre", go: "tasks:" }),
-    kpi({ label: "Affaires", value: fmt(countUnique(ts, (t) => t.affaire)), sub: "références eDIM", go: "groups:affaires" }),
-    kpi({ label: "REE", value: fmt(dossierCount(ts)), sub: `TEM ${fmt(dossierCount(ts.filter((t) => dossierPhase(t) === "TEM")))} · AT ${fmt(dossierCount(ts.filter((t) => dossierPhase(t) === "AT")))}`, go: "groups:dossiers" }),
-    kpi({ label: "Préparation", value: pct(prepared, n), sub: `${fmt(prepared)} / ${fmt(n)} TOT`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
+    kpi({ label: "Préparation terminée", value: pct(prepared, n), sub: `${fmt(prepared)} / ${fmt(n)} TOT`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
     kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `${fmt(realized)} / ${fmt(n)} TOT`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
-    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: "échéance J0 − 30 dépassée", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
-    kpi({ label: "Non affectées", value: fmt(unassigned), sub: "TOT sans chargé", tone: unassigned ? "warn" : "good", go: "tasks:unassigned" }),
-    kpi({ label: "Corrections DEM", value: fmt(issues.length), sub: `${plural(new Set(issues.map((i) => i.t)).size, "TOT concernée", "TOT concernées")}`, tone: issues.length ? "warn" : "good", go: "tab:issues" }),
+    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: "TOT dont J0 − 30 est dépassé", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
+    kpi({ label: "À corriger dans la DEM", value: fmt(issues.length), sub: `${plural(new Set(issues.map((i) => i.t)).size, "TOT concernée", "TOT concernées")}`, tone: issues.length ? "warn" : "good", go: "tab:issues" }),
   ].join("");
-  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse coordination</h2><p class="muted">${esc(scopeLabel())} · ${esc(periodLabel())}</p></div></div>
-    <div class="kpis kpis-8">${kpis}</div>
-    <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { sub: "Survolez un segment pour le détail", cls: "chargePanel" })}${signalPanel()}</div>
-    ${panel("Avancement des états du REE", milestoneCards(ts), { sub: "Produits (clair) et signés (foncé) sur les TOT du périmètre" })}`;
+  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse</h2>
+      <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
+    <div class="kpis kpis-4">${kpis}</div>
+    <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { sub: "Survolez une barre pour le détail", cls: "chargePanel" })}${signalPanel()}</div>`;
   currentExport = () => downloadMatrix(["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"],
     chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]), "Charge_par_charge.csv");
 }
@@ -2153,8 +2129,8 @@ function teamModel() {
 // --- Graphique SVG (vue HTML) ----------------------------------------------------------
 
 function timelineSvg(tl) {
-  const cols = tl.columns, W = 1400, H = 340, top = 34, bottom = 52, left = 8, right = 8;
-  const plotH = H - top - bottom, slot = (W - left - right) / cols.length, barW = Math.min(56, slot * 0.6);
+  const cols = tl.columns, W = 900, H = 400, top = 34, bottom = 52, left = 4, right = 4;
+  const plotH = H - top - bottom, slot = (W - left - right) / cols.length, barW = Math.min(46, slot * 0.66);
   const parts = [];
   cols.forEach((c, i) => {
     const x = left + i * slot + (slot - barW) / 2, cx = x + barW / 2;
@@ -2183,49 +2159,40 @@ function timelineSvg(tl) {
   return `<svg class="timeline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Avancement des TOT par mois de J0">${parts.join("")}</svg>`;
 }
 
-function lateTable(late, limit = Infinity) {
-  const rows = late.slice(0, limit).map((g) => `<tr>
-    <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")} · ${esc(g.phase)} · ${esc(g.sheet)}</small></td>
-    <td>${esc(g.owners.join(", "))}</td>
-    <td>${formatDate(g.prepDue)}<small>J0 ${formatDate(g.j0)}</small></td>
-    <td class="num"><strong class="lateDays">+${fmt(g.late)} j</strong></td>
-    <td class="num">${fmt(g.ts.length)}</td>
+function lateTable(late) {
+  const rows = late.map((g) => `<tr>
+    <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")} · ${esc(g.owners.join(", "))}</small></td>
+    <td>${formatDate(g.j0)}</td>
+    <td class="num"><strong class="lateDays">${fmt(g.late)} j</strong></td>
     <td><span class="missingKeys">${esc(g.missing.join(", ") || "—")}</span></td></tr>`);
-  return table(["Affaire / REE", "Chargé", "Échéance prépa", { label: "Retard", cls: "num" }, { label: "TOT", cls: "num" }, "Manque"], rows, { empty: "Aucune préparation en retard sur ce périmètre." });
+  return table(["Affaire", "J0", { label: "Retard", cls: "num" }, "Ce qui manque"], rows, { empty: "Aucune préparation en retard.", free: true });
 }
+
+let showAllLate = false;
 
 function viewTeam() {
   const m = teamModel();
-  const lateRee = m.late.length;
-  const lateOwnersFilter = teamLateOwner && m.late.some((g) => g.owners.includes(teamLateOwner)) ? teamLateOwner : "";
-  const lateShown = lateOwnersFilter ? m.late.filter((g) => g.owners.includes(lateOwnersFilter)) : m.late;
-  const p = paginate(lateShown);
+  const shown = showAllLate ? m.late : m.late.slice(0, 10);
   const kpis = [
-    kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT · GER/1N signé`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
-    kpi({ label: "Préparation documentaire terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
-    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT · ${plural(lateRee, "REE", "REE")} · échéance J0 − 30 dépassée`, tone: m.overdue ? "bad" : "good" }),
-    kpi({ label: "Échéances sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer dans le mois", tone: m.dueSoon ? "warn" : "" }),
+    kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
+    kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
+    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT, sur ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
+    kpi({ label: "À boucler sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer", tone: m.dueSoon ? "warn" : "" }),
   ].join("");
-  const ownerFilter = m.lateByOwner.length ? `<div class="ownerChips"><span class="muted">Par chargé :</span>${[["", "Tous", m.overdue], ...m.lateByOwner.map(([n, c]) => [n, n, c])].map(([value, label, c]) => `<button type="button" data-set="teamLateOwner:${esc(value)}" class="${value === lateOwnersFilter ? "active" : ""}" aria-pressed="${value === lateOwnersFilter}">${esc(label)} <span class="count">${fmt(c)}</span></button>`).join("")}</div>` : "";
-  const ownerRows = m.owners.map((o) => `<tr><td>${esc(o.name)}</td><td class="num">${fmt(o.n)}</td>
-    <td>${meter(o.realized, o.n, { color: STATE_COLORS[STATE.realized] })}</td>
-    <td>${meter(o.prepared, o.n, { color: STATE_COLORS[STATE.ready] })}</td>
-    <td class="num">${o.overdue ? badge(fmt(o.overdue), "bad") : '<span class="muted">0</span>'}</td>
-    <td class="num">${o.dueSoon ? badge(fmt(o.dueSoon), "warn") : '<span class="muted">0</span>'}</td></tr>`);
-
-  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">DEM ${esc(m.dem)} · ${esc(m.period)} · ${esc(m.scope)} · données au ${esc(m.todayLabel)}</p></div>
-      <div class="panelActions"><button type="button" data-png-preview>Aperçu de l’écran</button><button type="button" class="accent" data-png>Exporter l’écran d’équipe (PNG)</button></div></div>
+  const more = m.late.length > 10
+    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(m.late.length)} REE en retard`}</button>` : "";
+  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">${esc(m.period)} · ${esc(m.scope)}</p></div>
+      <div class="panelActions"><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="kpis kpis-4 hero">${kpis}</div>
-    ${panel(`Avancement par mois de J0 · ${esc(m.timeline.title)}`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
-      { sub: "Répartition des TOT selon leur statut pour chaque mois de J0 · nombre de TOT au-dessus de chaque colonne · % de réalisés dans la partie verte", cls: "timelinePanel" })}
     <div class="split even">
-      ${panel(`Retards de préparation documentaire · ${fmt(lateRee)} REE`, `${ownerFilter}${lateTable(p.slice)}${pager(p)}`,
-        { sub: "REE dont l’échéance J0 − 30 est dépassée sans préparation complète · échéances les plus récentes en premier (J0 le plus proche)", cls: "latePanel", actions: exportButton("Exporter en CSV") })}
-      ${panel("Avancement par chargé d’essais", table(["Chargé", { label: "TOT", cls: "num" }, "Réalisés", "Prépa terminée", { label: "Retards", cls: "num" }, { label: "< 30 j", cls: "num" }], ownerRows, { cls: "compact" }), { sub: esc(m.scope) })}
+      ${panel(`Avancement par mois de J0`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
+        { sub: "Chaque colonne = les TOT dont le J0 tombe ce mois-là · le chiffre au-dessus = nombre de TOT", cls: "timelinePanel" })}
+      ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${lateTable(shown)}${more}`,
+        { sub: "J0 − 30 dépassé sans préparation complète · les plus proches du J0 en premier", cls: "latePanel" })}
     </div>
-    ${panel("Avancement des états du REE", milestoneCards(m.ts), { sub: "Produits (clair) et signés (foncé)" })}`;
+    ${panel("Documents des REE", milestoneCards(m.ts), { sub: "Partie claire : produits · partie foncée : signés" })}`;
   currentExport = () => downloadMatrix(["Affaire", "REE", "Phase", "Feuille", "Chargés", "Échéance prépa", "J0", "Retard (jours)", "TOT", "Informations manquantes"],
-    lateShown.map((g) => [g.affaire, g.ree, g.phase, g.sheet, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), g.late, g.ts.length, g.missing.join(", ")]),
+    m.late.map((g) => [g.affaire, g.ree, g.phase, g.sheet, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), g.late, g.ts.length, g.missing.join(", ")]),
     "Retards_preparation.csv");
 }
 
@@ -2401,7 +2368,7 @@ async function exportPNG() {
     $("message").innerHTML = `<div class="notice error">Export PNG impossible : ${esc(e.message)}</div>`;
   } finally {
     button.disabled = !data;
-    button.textContent = "Écran d’équipe (PNG)";
+    button.textContent = "Image pour l’écran d’équipe (PNG)";
   }
 }
 
@@ -2597,7 +2564,7 @@ async function exportPDF() {
     $("message").innerHTML = `<div class="notice error">Export PDF impossible : ${esc(e.message)}</div>`;
   } finally {
     b.disabled = !data;
-    b.textContent = "PDF de la vue";
+    b.textContent = "Cette vue en PDF";
   }
 }
 
@@ -3037,24 +3004,31 @@ function renderChrome() {
     b.setAttribute("aria-pressed", String(active));
   });
   $("ownerField").hidden = mode !== "coordo";
-  $("headerSub").textContent = data
-    ? `DEM ${activeDEM} · ${mode === "ce" ? (me ? "Vue de " + me : "Chargé d’essais") : "Coordination"} · données au ${formatDate(data.today)}`
-    : `DEM ${activeDEM} · aucun classeur chargé`;
+  $("headerSub").textContent = data ? `DEM ${activeDEM} · données au ${formatDate(data.today)}` : `DEM ${activeDEM}`;
   if (!data) return;
   $("sheetButtons").innerHTML = ["", ...new Set([...data.availableSheets, ...selectedSheets])].map((s) => {
     const active = s ? selectedSheets.has(s) : !selectedSheets.size;
     return `<button type="button" data-sheet="${esc(s)}" class="${active ? "active" : ""}${s ? " phase-" + dossierPhase({ sheet: s }) : ""}" aria-pressed="${active}"${s ? ` title="${esc(s)} · ${dossierPhase({ sheet: s }) === "AT" ? "AT (arrêt de tranche)" : "TEM"}"` : ""}>${esc(s || "Toutes")}${s && !data.availableSheets.includes(s) ? " (absente)" : ""}</button>`;
   }).join("");
-  $("tabs").innerHTML = TABS[mode].map((t) => {
+  const main = TABS[mode].map((t) => {
     const active = t.id === tab || (t.id === "overview" && HIDDEN_TABS[mode].includes(tab));
     const count = t.count ? t.count() : null;
     return `<button type="button" data-tab="${t.id}" class="${active ? "active" : ""}" aria-current="${active ? "page" : "false"}">${esc(t.label)}${count ? ` <span class="count">${fmt(count)}</span>` : ""}</button>`;
   }).join("");
+  const moreActive = MORE_TABS[mode].some((t) => t.id === tab);
+  const more = `<select class="moreTabs${moreActive ? " active" : ""}" data-change="moreTab" aria-label="Autres listes">
+      <option value="">${mode === "ce" ? "Mes listes…" : "Autres listes…"}</option>
+      ${MORE_TABS[mode].map((t) => `<option value="${t.id}" ${t.id === tab ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`;
+  $("tabs").innerHTML = main + more;
+  // Filtres actifs : signalés sur le bouton « Filtres » repliable.
+  const active = selectedSheets.size + (j0Period().label === String(+activeDEM) ? 0 : 1);
+  $("filterCount").hidden = !active;
+  $("filterCount").textContent = active;
 }
 
 function render() {
   if (!data) { renderChrome(); return; }
-  const allowed = [...TABS[mode].map((t) => t.id), ...HIDDEN_TABS[mode]];
+  const allowed = [...TABS[mode].map((t) => t.id), ...MORE_TABS[mode].map((t) => t.id), ...HIDDEN_TABS[mode]];
   if (!allowed.includes(tab)) tab = tabByMode[mode] = TABS[mode][0].id;
   visible = filtered();
   data.audit = audit(data.tasks.filter((t) => !t.cancelled));
@@ -3066,6 +3040,7 @@ function render() {
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
   $("pngExport").disabled = false;
+  $("csvExport").disabled = !currentExport;
 }
 
 function detail(t) {
@@ -3108,6 +3083,9 @@ const SETTABLE = {
 };
 
 function onClick(e) {
+  document.querySelectorAll("details.menu[open]").forEach((m) => {
+    if (!m.contains(e.target) || (e.target.closest("button") && !m.classList.contains("filterMenu"))) m.open = false;
+  });
   const el = e.target.closest("button, [data-go]");
   if (!el || el.disabled) return;
   const d = el.dataset;
@@ -3139,6 +3117,7 @@ function onClick(e) {
   if (d.me !== undefined) return setMe(d.me);
   if (d.owner !== undefined) { $("owner").value = d.owner; page = 1; return render(); }
   if (d.ownerTasks !== undefined) { $("owner").value = d.ownerTasks; return openTasks(""); }
+  if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
   if (d.toggleIgnored !== undefined) { showIgnored = !showIgnored; page = 1; return render(); }
   if (d.group !== undefined) return openGroup(+d.group);
   if (d.tab !== undefined) return setTab(d.tab);
@@ -3150,6 +3129,7 @@ function onChange(e) {
   const key = e.target.dataset?.change;
   if (key === "me") return setMe(e.target.value);
   if (key === "issueKind") { issueKind = e.target.value; page = 1; render(); }
+  if (key === "moreTab" && e.target.value) setTab(e.target.value);
 }
 
 // --- Démarrage ----------------------------------------------------------------------

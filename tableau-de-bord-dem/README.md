@@ -9,31 +9,31 @@ automatiquement toutes les 30 minutes de 7 h à 20 h (comme en V1.3).
 
 ## Deux profils (bouton en haut de page)
 
-### Chargé d'essais — « je pilote mes affaires »
-Le nom choisi est mémorisé sur le PC.
+Chaque profil a **3 onglets**, chacun répond à une question. Les listes détaillées
+sont dans le menu déroulant à droite des onglets. Les filtres (feuilles, période)
+sont repliés sous **Filtres**, les exports sous **Exporter**, le fichier sous **Fichier**.
 
-| Onglet | Contenu |
+**Chargé d'essais** (le nom choisi est mémorisé sur le PC)
+
+| Onglet | Question |
 |---|---|
-| Mes affaires | Indicateurs personnels, liste **À traiter** par priorité (retards, échéances sous 30 j, infos manquantes, corrections DEM, documents P / R, J0 absents), suivi **par affaire** (prépa, BPA, GER/1N, BPD signés / produits, points d'attention). Cliquer sur une affaire affiche ses REE et TOT. Comparaison « moi / équipe ». |
-| Mes corrections | Signalements sur mes TOT, avec la **cellule Excel à corriger**. |
-| Mes documents P / R | BPA, GER/1N, BPD, TOT prête prêts à valider ou à reprendre. |
-| Mes TOT | Liste filtrable (retard, échéance < 30 j, infos manquantes, J0 absent…). |
-| Avancement équipe | Avancement global de toute l'équipe (voir ci-dessous). |
+| Mes affaires | Où en sont mes affaires et que dois-je faire ? 4 chiffres, liste « À faire », une ligne par affaire (cliquer pour le détail REE / TOT). |
+| À corriger dans la DEM | Quelles cellules dois-je corriger ? |
+| Équipe | Où en est l'équipe ? (même contenu que l'écran d'équipe) |
+| *Mes listes…* | Mes TOT, mes documents P / R |
 
-### Coordo essais — « charge et corrections »
+**Coordo essais**
 
-| Onglet | Contenu |
+| Onglet | Question |
 |---|---|
-| Synthèse | Indicateurs, **histogramme de charge** par chargé, corrections DEM par priorité, par type et par chargé, états du REE. |
-| Répartition par chargé | Tableau complet par chargé (affaires, REE TEM / AT, prépa, réalisés, retards, corrections). |
-| Corrections DEM | Tous les signalements : filtres par chargé, priorité et type de contrôle, cellules à corriger, « Ignorer » pour l'import en cours. |
-| Affectations SharePoint | Feuille « Suivi modification IPE » (inchangé). |
-| Documents P / R, Toutes les TOT, Avancement équipe | Comme pour le profil CE, sur tout le périmètre. |
+| Synthèse | Qui est chargé, et qui doit corriger la DEM ? 4 chiffres, histogramme de charge, corrections par chargé. |
+| À corriger dans la DEM | Toutes les corrections, filtrables par chargé, priorité et type. |
+| Équipe | Avancement global, retards de préparation, documents. |
+| *Autres listes…* | Répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint |
 
-**Histogramme de charge :** unité *TOT par statut*, *REE* ou *REE TEM / AT* ; tri par
-**charge totale, charge AT, charge TEM** ou nom. Avec le tri AT, le segment AT est
-placé en premier (aligné à gauche) et la valeur AT est affichée à côté du total ;
-les chargés sans AT sont estompés. Cliquer sur un nom le masque du graphique.
+**Histogramme de charge :** unité *TOT par statut*, *REE TEM / AT* ou *REE* ; tri par
+charge **Total, AT, TEM** ou nom. Avec le tri AT, le segment AT est placé en premier et
+la valeur AT affichée à côté du total. Cliquer sur un nom le retire du graphique.
 
 ## Écran d'équipe (export PNG 1920 × 1080)
 

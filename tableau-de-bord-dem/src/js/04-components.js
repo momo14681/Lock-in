@@ -71,8 +71,9 @@ function panel(title, body, { sub = "", actions = "", cls = "", help = "" } = {}
     ${body}</section>`;
 }
 
-function exportButton(label = "Exporter en CSV") {
-  return `<button type="button" data-export="csv">${esc(label)}</button>`;
+// L'export CSV passe par le menu « Exporter » de la barre d'onglets.
+function exportButton() {
+  return "";
 }
 
 function taskLink(t) {

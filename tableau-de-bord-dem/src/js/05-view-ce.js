@@ -65,55 +65,46 @@ function j0Range(g) {
   return same ? formatDate(g.j0Min) : `${formatShortDate(g.j0Min)} → ${formatShortDate(g.j0Max)}`;
 }
 
-function milestoneMeter(stats, n, label) {
-  const extra = Math.max(0, stats.produced - stats.done);
-  return meter(stats.done, n, {
-    extra, color: STATE_COLORS[STATE.realized],
-    tipText: `${fmt(stats.done)} signés sur ${fmt(n)}\n${label} · ${fmt(stats.produced)} produits (signés, prêts ou à reprendre)`,
-  });
+// Barre empilée des statuts des TOT (réalisé → en retard), avec infobulle.
+function stateBar(ts, { width = "" } = {}) {
+  const n = ts.length;
+  if (!n) return '<span class="muted">—</span>';
+  const counts = STATE_ORDER.map((s) => [s, ts.filter((t) => state(t) === s).length]).filter(([, c]) => c);
+  const tipText = counts.map(([s, c]) => `${fmt(c)} ${s.toLowerCase()}`).join(" · ");
+  return `<span class="stateBar"${width ? ` style="width:${width}"` : ""} data-tip="${fmt(n)} TOT\n${esc(tipText)}" tabindex="0">${counts.map(([s, c]) => `<span style="flex:${c} 1 0;background:${STATE_COLORS[s]}"></span>`).join("")}</span>`;
 }
 
 function attentionBadges(g) {
   const out = [];
   if (g.overdue) out.push(badge(`${fmt(g.overdue)} en retard`, "bad"));
-  if (g.dueSoon) out.push(badge(`${fmt(g.dueSoon)} sous 30 j`, "warn"));
-  if (g.missing) out.push(badge(`${fmt(g.missing)} infos manquantes`, "warn"));
-  if (g.issues) out.push(badge(`${plural(g.issues, "correction")}`, "info"));
+  else if (g.dueSoon) out.push(badge(`${fmt(g.dueSoon)} à boucler sous 30 j`, "warn"));
+  if (g.issues) out.push(`<span class="softCount">${plural(g.issues, "correction")}</span>`);
   return out.join(" ") || '<span class="muted">—</span>';
 }
 
-function affaireRows(groups, { showOwner = false } = {}) {
+function milestoneLine(t) {
+  return [["BPA", t.bpa], ["GER", t.ger], ["BPD", t.bpd]].map(([k, v]) => `<span class="ms"><b>${k}</b> ${esc(v || "—")}</span>`).join("");
+}
+
+function affaireRows(groups) {
   return groups.map((g) => {
     const open = expandedAffaires.has(g.affaire);
     const st = AFFAIRE_STATUS[g.status];
     const row = `<tr class="affaireRow${open ? " open" : ""}">
-      <td><button type="button" class="expander" data-expand="${esc(g.affaire)}" aria-expanded="${open}"><span class="chev" aria-hidden="true">›</span><span><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>${esc(g.libelle || "Libellé DI non renseigné")}</small></span></button>
-        <div class="sheetTags">${g.sheets.map((s) => `<span class="tag phase-${dossierPhase({ sheet: s })}">${esc(s)}</span>`).join("")}</div></td>
-      ${showOwner ? `<td>${esc(g.owners.join(", "))}</td>` : ""}
-      <td class="num">${fmt(g.n)}<small>${plural(g.rees, "REE", "REE")}</small></td>
-      <td>${j0Range(g)}${g.nextDue ? `<small>Prépa due : ${formatDate(g.nextDue)}</small>` : ""}</td>
-      <td>${meter(g.prep, g.n, { color: STATE_COLORS[STATE.ready], tipText: `${fmt(g.prep)} TOT prêtes sur ${fmt(g.n)}\nPréparation documentaire (MC, OT, TOT, RDU et TOT prête)` })}</td>
-      <td>${milestoneMeter(g.bpa, g.n, "BPA")}</td>
-      <td>${milestoneMeter(g.ger, g.n, "GER/1N")}</td>
-      <td>${milestoneMeter(g.bpd, g.n, "BPD")}</td>
-      <td class="attention">${attentionBadges(g)}</td>
+      <td><button type="button" class="expander" data-expand="${esc(g.affaire)}" aria-expanded="${open}"><span class="chev" aria-hidden="true">›</span><span><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>${esc(g.libelle || g.sheets.join(", "))}</small></span></button></td>
+      <td>${j0Range(g)}</td>
+      <td><div class="progressCell">${stateBar(g.ts)}<span>${fmt(g.realized)}/${fmt(g.n)} réalisées</span></div></td>
+      <td>${attentionBadges(g)}</td>
       <td>${badge(st.label, st.tone)}</td></tr>`;
     if (!open) return row;
     const sub = g.ts.slice().sort((a, b) => a.ree.localeCompare(b.ree, "fr", { numeric: true }) || a.rowNumber - b.rowNumber).map((t) => `<tr>
-      <td><button type="button" class="linkbutton" data-task="${t.index}">${esc(t.ree || "REE absent")}</button><small>${esc(t.reeLibelle || "")}</small></td>
-      <td>${esc(t.sheet)} · l.${t.rowNumber}</td>
-      <td>OT ${esc(t.ot || "—")}<small>TOT ${esc(t.tot || "—")}</small></td>
-      <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
-      <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">${esc(missingLabel(t))}</span>` : '<span class="muted">—</span>'}</td>
-      <td>${esc(t.bpa || "—")}</td><td>${esc(t.ger || "—")}</td><td>${esc(t.bpd || "—")}</td>
+      <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
+      <td>${t.j0Label}</td>
+      <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>
+      <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td></tr>`);
-    const colspan = showOwner ? 10 : 9;
-    return row + `<tr class="subRow"><td colspan="${colspan}">${table(["REE", "Feuille", "OT / TOT", "J0 / prépa", "À compléter", "BPA", "GER/1N", "BPD", "Statut"], sub, { cls: "compact" })}</td></tr>`;
+    return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut"], sub, { cls: "compact", free: true })}</td></tr>`;
   });
-}
-
-function affaireTableHead(showOwner) {
-  return ["Affaire", ...(showOwner ? ["Chargé"] : []), { label: "TOT", cls: "num" }, "J0", "Prépa doc.", "BPA signés", "GER/1N signés", "BPD signés", "Points d’attention", "Statut"];
 }
 
 function chooseMePanel() {
@@ -135,72 +126,48 @@ function meSelector() {
 
 function todoItems(ts, myIssues) {
   const overdue = ts.filter((t) => t.overdue), dueSoon = ts.filter((t) => t.dueSoon), missing = ts.filter((t) => t.infoMissing);
-  const noJ0 = ts.filter((t) => !t.j0), rework = documentRows(ts, "R"), ready = documentRows(ts, "P");
-  const affairesOf = (list) => countUnique(list, (t) => t.affaire);
+  const rework = documentRows(ts, "R");
   return [
-    { n: overdue.length, tone: "bad", title: "Préparations en retard", desc: `${plural(affairesOf(overdue), "affaire")} · l’échéance J0 − 30 est dépassée : compléter MC, OT, TOT, RDU ou « TOT prête ».`, go: "tasks:overdue" },
-    { n: dueSoon.length, tone: "warn", title: "Préparations à boucler sous 30 jours", desc: `${plural(affairesOf(dueSoon), "affaire")} · échéance J0 − 30 dans le mois.`, go: "tasks:dueSoon" },
-    { n: missing.length, tone: "warn", title: "Informations manquantes", desc: "GER/1N renseigné ou BPD signé alors que des informations de préparation manquent.", go: "tasks:missing" },
-    { n: myIssues.length, tone: "info", title: "Corrections à faire dans la DEM", desc: "Formats, statuts non reconnus, chronologie, J0 hors période… avec la cellule à corriger.", go: "tab:issues" },
-    { n: rework.length, tone: "warn", title: "Documents à reprendre (R)", desc: "BPA, GER/1N, BPD ou TOT prête retournés pour reprise.", go: "documents:R" },
-    { n: ready.length, tone: "info", title: "Documents prêts à valider (P)", desc: "En attente de validation ou de signature.", go: "documents:P" },
-    { n: noJ0.length, tone: "neutral", title: "TOT sans J0 exploitable", desc: "Sans J0, l’échéance de préparation ne peut pas être calculée.", go: "tasks:noJ0" },
+    { n: overdue.length, tone: "bad", title: "préparations en retard", go: "tasks:overdue" },
+    { n: dueSoon.length, tone: "warn", title: "préparations à boucler sous 30 jours", go: "tasks:dueSoon" },
+    { n: rework.length, tone: "warn", title: "documents à reprendre (R)", go: "documents:R" },
+    { n: myIssues.length, tone: "info", title: "corrections à faire dans la DEM", go: "tab:issues" },
+    { n: missing.length, tone: "neutral", title: "TOT avec des informations manquantes", go: "tasks:missing" },
   ].filter((item) => item.n > 0);
 }
 
 function todoPanel(ts, myIssues) {
   const items = todoItems(ts, myIssues);
   const body = items.length
-    ? `<ul class="todo">${items.map((i) => `<li><button type="button" data-go="${i.go}" class="todoItem tone-${i.tone}">
-        <span class="todoCount">${fmt(i.n)}</span><span class="todoText"><strong>${esc(i.title)}</strong><span>${esc(i.desc)}</span></span><span class="todoGo" aria-hidden="true">›</span></button></li>`).join("")}</ul>`
-    : emptyState("Aucune action en attente", "Toutes vos TOT du périmètre sont à jour.");
-  return panel("À traiter", body, { sub: "Par ordre de priorité · cliquez pour ouvrir la liste correspondante", cls: "todoPanel" });
-}
-
-function teamMiniPanel(myTs) {
-  const team = filteredBy("");
-  const n = team.length, mine = myTs.length;
-  const row = (label, myValue, teamValue, color) => `<div class="compareRow">
-      <span>${esc(label)}</span>
-      <div class="compareBars">
-        <span class="compareLine"><b>Moi</b><span class="meterTrack"><span style="width:${(myValue * 100).toFixed(1)}%;background:${color}"></span></span><em>${Math.round(myValue * 100)} %</em></span>
-        <span class="compareLine"><b>Équipe</b><span class="meterTrack"><span style="width:${(teamValue * 100).toFixed(1)}%;background:var(--ink-3)"></span></span><em>${Math.round(teamValue * 100)} %</em></span>
-      </div></div>`;
-  const body = `${row("Essais réalisés", ratio(myTs.filter(isRealized).length, mine), ratio(team.filter(isRealized).length, n), STATE_COLORS[STATE.realized])}
-    ${row("Préparation documentaire", ratio(myTs.filter((t) => t.prepComplete).length, mine), ratio(team.filter((t) => t.prepComplete).length, n), STATE_COLORS[STATE.ready])}
-    <p class="muted teamLate">Équipe : <strong>${fmt(team.filter((t) => t.overdue).length)}</strong> TOT en retard de préparation · <strong>${fmt(n)}</strong> TOT au total</p>
-    <button type="button" class="linkbutton" data-go="tab:team">Voir l’avancement de l’équipe ›</button>`;
-  return panel("Mon avancement / l’équipe", body, { sub: "Mêmes feuilles et recherche, tous les chargés", cls: "teamMini" });
+    ? `<ul class="todo">${items.map((i) => `<li><button type="button" data-go="${i.go}" class="todoItem tone-${i.tone}"><span class="todoCount">${fmt(i.n)}</span><span class="todoText">${esc(i.title)}</span><span class="todoGo" aria-hidden="true">›</span></button></li>`).join("")}</ul>`
+    : emptyState("Rien à traiter", "Toutes vos TOT sont à jour.");
+  return panel("À faire", body, { cls: "todoPanel" });
 }
 
 function viewMine() {
   if (!me) { $("view").innerHTML = chooseMePanel(); return; }
-  const ts = visible, n = ts.length;
+  const ts = visible, n = ts.length, team = filteredBy("");
   const groups = affaireGroups(ts);
   const realized = ts.filter(isRealized).length, prepared = ts.filter((t) => t.prepComplete).length;
-  const overdue = ts.filter((t) => t.overdue).length, dueSoon = ts.filter((t) => t.dueSoon).length;
-  const lateAffaires = groups.filter((g) => g.overdue).length;
+  const overdue = ts.filter((t) => t.overdue).length;
+  const teamPct = (f) => pct(team.filter(f).length, team.length);
   const kpis = [
-    kpi({ label: "Mes affaires", value: fmt(groups.length), sub: `${plural(dossierCount(ts), "REE", "REE")} · ${plural(n, "TOT", "TOT")}`, go: "tasks:" }),
-    kpi({ label: "Préparation documentaire", value: pct(prepared, n), sub: `${fmt(prepared)} / ${fmt(n)} TOT prêtes`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
-    kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `${fmt(realized)} / ${fmt(n)} TOT · GER/1N signé`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
-    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: overdue ? `${plural(lateAffaires, "affaire")} concernée${lateAffaires > 1 ? "s" : ""}` : "aucun retard", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
-    kpi({ label: "Échéances sous 30 j", value: fmt(dueSoon), sub: "préparations à boucler", tone: dueSoon ? "warn" : "", go: "tasks:dueSoon" }),
-    kpi({ label: "Corrections DEM", value: fmt(issues.length), sub: "signalements sur mes TOT", tone: issues.length ? "warn" : "good", go: "tab:issues" }),
+    kpi({ label: "Préparation terminée", value: pct(prepared, n), sub: `équipe : ${teamPct((t) => t.prepComplete)}`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
+    kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `équipe : ${teamPct(isRealized)}`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
+    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: overdue ? "TOT à préparer d’urgence" : "aucun retard", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
+    kpi({ label: "À corriger dans la DEM", value: fmt(issues.length), sub: issues.length ? "cellules à vérifier" : "rien à corriger", tone: issues.length ? "warn" : "good", go: "tab:issues" }),
   ].join("");
-
-  const head = `<div class="viewHead"><div><h2 class="viewTitle">Mes affaires</h2><p class="muted">${esc(scopeLabel())} · ${esc(periodLabel())}</p></div>${meSelector()}</div>`;
-  const table_ = n
-    ? table(affaireTableHead(false), affaireRows(groups), { cls: "affaires", free: true })
-    : emptyState("Aucune TOT pour ce chargé dans le périmètre", "Vérifiez les filtres de feuilles et la recherche.");
-  const allOpen = groups.length && groups.every((g) => expandedAffaires.has(g.affaire));
-  const actions = `<button type="button" data-expand-all="${allOpen ? "close" : "open"}">${allOpen ? "Tout replier" : "Tout déplier"}</button>${exportButton()}`;
-  $("view").innerHTML = `${head}<div class="kpis kpis-6">${kpis}</div>
-    <div class="split">${todoPanel(ts, issues)}${teamMiniPanel(ts)}</div>
-    ${panel(`Suivi par affaire · ${plural(groups.length, "affaire")}`, `${legend([["Signés", STATE_COLORS[STATE.realized]], ["Produits, non signés", "rgba(20,147,108,.35)"]])}${table_}`,
-      { sub: "Triées par urgence : retards, informations manquantes, puis prochaines échéances. Cliquez sur une affaire pour voir ses REE et TOT.", actions })}`;
+  const head = `<div class="viewHead"><div><h2 class="viewTitle">Mes affaires</h2><p class="muted">${plural(groups.length, "affaire")} · ${plural(n, "TOT", "TOT")}</p></div>${meSelector()}</div>`;
+  const tableHtml = n
+    ? table(["Affaire", "J0", "Avancement", "À surveiller", "Statut"], affaireRows(groups), { cls: "affaires", free: true })
+    : emptyState("Aucune TOT pour ce chargé", "Vérifiez la recherche et les filtres.");
+  $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
+    <div class="split mineSplit">
+      ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`, { sub: "Les plus urgentes en haut · cliquez sur une affaire pour voir le détail" })}
+      ${todoPanel(ts, issues)}
+    </div>`;
   currentExport = () => downloadMatrix(
-    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
-    groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.bpa.done, g.bpa.produced, g.ger.done, g.ger.produced, g.bpd.done, g.bpd.produced, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
+    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "BPA signés", "GER/1N signés", "BPD signés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
+    groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.realized, g.bpa.done, g.ger.done, g.bpd.done, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
     `Mes_affaires_${me.replace(/[^\p{L}\p{N}_-]+/gu, "_")}.csv`);
 }

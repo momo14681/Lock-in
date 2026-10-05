@@ -89,28 +89,36 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .modeSwitch button { border: 0; background: transparent; color: #d6e3f0; font-weight: 600; font-size: 15px; padding: 9px 18px; border-radius: 9px; display: inline-flex; gap: 8px; align-items: center; }
 .modeSwitch button:hover { background: rgba(255, 255, 255, .1); }
 .modeSwitch button.active { background: #fff; color: var(--navy); box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
-.modeIcon { font-size: 13px; opacity: .8; }
 .headerActions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; }
 .headerActions select { font-weight: 600; min-width: 130px; }
 
 main { max-width: 1640px; margin: auto; padding: 18px 32px 40px; }
 
-/* --- Source / fichier ------------------------------------------------------- */
-.sourceBar {
-  display: flex; align-items: center; gap: 18px 28px; flex-wrap: wrap;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 18px; margin-bottom: 14px;
-}
-.sourceInfo { display: flex; align-items: center; gap: 12px; flex: 1 1 320px; min-width: 0; }
-.sourceInfo strong { display: block; font-size: 15px; overflow-wrap: anywhere; }
-.sourceInfo span, .sourceMeta span { display: block; font-size: 13px; color: var(--muted); }
-.sourceMeta { flex: 0 1 auto; }
-.sourceDot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; background: var(--neutral); }
+/* --- Source / fichier : une ligne discrète -------------------------------- */
+.sourceBar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 4px 2px 10px; font-size: 14px; }
+.sourceBar strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.sourceBar .muted { font-size: 13px; }
+.sourceDot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--neutral); }
 .sourceDot.ok { background: var(--good); box-shadow: 0 0 0 4px var(--good-bg); }
 .sourceDot.busy { background: var(--info); box-shadow: 0 0 0 4px var(--info-bg); }
 .sourceDot.idle { background: var(--warn); }
-.sourceButtons { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sourceAuto { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); margin-right: 6px; }
+button.small { padding: 5px 11px; font-size: 13px; }
+.sourceAuto { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
 .sourceAuto input { accent-color: var(--primary); width: auto; }
+
+/* --- Menus repliables (Fichier, Filtres, Exporter) ------------------------- */
+.menu { position: relative; }
+.menu > summary { list-style: none; cursor: pointer; font-size: 14px; font-weight: 500; border: 1px solid #c3d1de; border-radius: 9px; background: var(--surface); padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary::after { content: "▾"; font-size: 11px; color: var(--muted); }
+.menu[open] > summary { background: #eaf1f8; }
+.sourceMenu > summary { padding: 5px 10px; font-size: 13px; }
+.menuBody { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 280px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; box-shadow: 0 10px 30px rgba(16, 40, 66, .16); }
+.sourceMenu .menuBody { left: 0; right: auto; }
+.menuBody p { font-size: 13.5px; }
+.menuBody button { text-align: left; }
+.filterMenu .menuBody { min-width: 420px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 
 .notice { padding: 12px 16px; background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; margin: 0 0 14px; font-size: 14px; }
 .notice.error { background: var(--bad-bg); color: var(--bad-ink); }
@@ -120,30 +128,21 @@ main { max-width: 1640px; margin: auto; padding: 18px 32px 40px; }
 .drop p { margin-bottom: 20px; }
 .drop.over { border-color: var(--primary); background: #e1f5ef; }
 
-/* --- Filtres ------------------------------------------------------------------- */
-.filterBar {
-  display: flex; align-items: flex-end; gap: 14px 24px; flex-wrap: wrap;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 6px;
-}
-.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
-.searchField input { width: 220px; }
 .chips { display: flex; gap: 5px; flex-wrap: wrap; }
 .chips button { padding: 6px 10px; font-size: 13px; border-radius: 8px; font-weight: 500; }
 .chips button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
-.chips button.phase-AT:not(.active) { border-bottom: 3px solid var(--at); }
-.chips button.phase-TEM:not(.active) { border-bottom: 3px solid var(--tem); }
-.phaseKey { font-weight: 600; font-size: 11.5px; margin-left: 8px; padding-bottom: 1px; color: var(--ink-2); }
-.phaseKey.tem { border-bottom: 3px solid var(--tem); }
-.phaseKey.at { border-bottom: 3px solid var(--at); }
 
-/* --- Onglets ---------------------------------------------------------------------- */
-.tabBar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin: 10px 0 18px; }
-.tabs { display: flex; gap: 2px; flex-wrap: wrap; }
-.tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; background: transparent; padding: 11px 14px 9px; font-size: 15px; font-weight: 500; color: var(--ink-2); }
+/* --- Onglets et barre d'outils ------------------------------------------------ */
+.tabBar { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px 16px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin: 0 0 20px; }
+.tabs { display: flex; gap: 2px; flex-wrap: wrap; align-items: flex-end; }
+.tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; background: transparent; padding: 12px 16px 10px; font-size: 16px; font-weight: 500; color: var(--ink-2); }
 .tabs button:hover { background: #e3eaf2; }
 .tabs button.active { color: var(--ink); font-weight: 700; border-bottom-color: var(--primary); background: transparent; }
 .tabs button.active .count { background: var(--warn-bg); color: var(--warn-ink); }
-.exportActions { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 8px; }
+.moreTabs { margin: 0 0 6px 10px; border-color: transparent; background: transparent; color: var(--ink-2); font-size: 14.5px; }
+.moreTabs.active { border-color: var(--primary); color: var(--ink); font-weight: 600; background: var(--surface); }
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-bottom: 8px; }
+.toolbar input[type=search] { width: 240px; }
 
 /* --- Structure des vues ----------------------------------------------------------- */
 .viewHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -344,7 +343,6 @@ td.attention .badge { margin: 2px 0; }
 .timeline .tlToday { font-size: 11px; font-weight: 600; fill: var(--info); text-anchor: middle; }
 .timeline .tlYear { font-size: 11px; fill: var(--muted); text-anchor: middle; }
 .timeline [data-tip]:hover { filter: brightness(1.1); }
-.latePanel .tableWrap { max-height: 520px; }
 .pngPreview { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); display: block; margin-bottom: 12px; }
 
 /* --- Aide, infobulle, dialogue ----------------------------------------------------- */
@@ -390,8 +388,8 @@ dialog::backdrop { background: #091d37aa; }
   .kpis-4, .kpis-6, .kpis-8 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpiValue { font-size: 24px; }
   .hero .kpiValue { font-size: 28px; }
-  .searchField, .searchField input { width: 100%; }
-  .field { width: 100%; }
+  .toolbar { width: 100%; }
+  .toolbar input[type=search] { flex: 1 1 100%; }
   .panel { padding: 16px 14px; }
   .chargeRow { grid-template-columns: 96px minmax(0, 1fr) 64px; gap: 8px; }
   .levelStats { grid-template-columns: 1fr; }
@@ -400,7 +398,30 @@ dialog::backdrop { background: #091d37aa; }
 }
 @media print {
   .appHeader { background: #fff; color: #000; }
-  .sourceBar, .filterBar, .exportActions, .modeSwitch, .headerActions, .help, .ignoreAction, .pagination button { display: none !important; }
+  .sourceBar, .toolbar, .modeSwitch, .headerActions, .help, .ignoreAction, .pagination button { display: none !important; }
   .tableWrap { max-height: none; overflow: visible; }
   .panel { break-inside: avoid; box-shadow: none; }
+}
+
+/* --- Vue simplifiée : avancement par affaire, à faire, corrections ---------- */
+.mineSplit { grid-template-columns: minmax(0, 2.3fr) minmax(260px, 1fr); }
+.stateBar { display: flex; gap: 2px; width: 150px; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line-2); flex-shrink: 0; }
+.stateBar span { display: block; height: 100%; min-width: 3px; }
+.progressCell { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 13.5px; color: var(--ink-2); }
+.softCount { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.msCell { white-space: nowrap; }
+.ms { display: inline-block; font-size: 13px; margin-right: 12px; color: var(--ink-2); }
+.ms b { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-right: 3px; }
+.todoItem { grid-template-columns: 52px 1fr 16px; padding: 9px 12px; }
+.todoCount { font-size: 20px; padding: 4px 0; }
+.todoText { font-size: 15px; font-weight: 500; }
+.issueKind { display: block; font-size: 14.5px; }
+.issueReason { display: block; font-size: 13.5px; color: var(--ink-2); margin-top: 2px; max-width: 560px; }
+.signalLead { font-size: 15px; margin-bottom: 12px; color: var(--ink-2); }
+.signalLead strong { font-size: 18px; color: var(--ink); }
+.latePanel .ghost, .tableWrap + .ghost { margin-top: 10px; }
+@media (max-width: 1100px) {
+  .mineSplit { grid-template-columns: minmax(0, 1fr); }
+  .toolbar input[type=search] { width: 100%; }
+  .filterMenu .menuBody { min-width: 0; width: min(420px, 90vw); }
 }

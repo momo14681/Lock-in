@@ -19,23 +19,22 @@ function plural(n, one, many = one + "s") {
 
 // --- Profils et onglets ----------------------------------------------------------
 
+// Onglets principaux (une question par écran) et listes secondaires.
 const TABS = {
   ce: [
     { id: "mine", label: "Mes affaires" },
-    { id: "issues", label: "Mes corrections", count: () => activeIssueCount(me) },
-    { id: "documents", label: "Mes documents P / R" },
-    { id: "tasks", label: "Mes TOT" },
-    { id: "team", label: "Avancement équipe" },
+    { id: "issues", label: "À corriger dans la DEM", count: () => activeIssueCount(me) },
+    { id: "team", label: "Équipe" },
   ],
   coordo: [
     { id: "overview", label: "Synthèse" },
-    { id: "owners", label: "Répartition par chargé" },
-    { id: "issues", label: "Corrections DEM", count: () => activeIssueCount($("owner").value) },
-    { id: "assignments", label: "Affectations SharePoint" },
-    { id: "documents", label: "Documents P / R" },
-    { id: "tasks", label: "Toutes les TOT" },
-    { id: "team", label: "Avancement équipe" },
+    { id: "issues", label: "À corriger dans la DEM", count: () => activeIssueCount($("owner").value) },
+    { id: "team", label: "Équipe" },
   ],
+};
+const MORE_TABS = {
+  ce: [{ id: "tasks", label: "Mes TOT" }, { id: "documents", label: "Mes documents P / R" }],
+  coordo: [{ id: "owners", label: "Répartition par chargé" }, { id: "tasks", label: "Toutes les TOT" }, { id: "documents", label: "Documents P / R" }, { id: "assignments", label: "Affectations SharePoint" }],
 };
 const HIDDEN_TABS = { coordo: ["affaires", "dossiers"], ce: [] };
 

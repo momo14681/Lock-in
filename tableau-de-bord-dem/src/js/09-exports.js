@@ -176,6 +176,6 @@ async function exportPDF() {
     $("message").innerHTML = `<div class="notice error">Export PDF impossible : ${esc(e.message)}</div>`;
   } finally {
     b.disabled = !data;
-    b.textContent = "PDF de la vue";
+    b.textContent = "Cette vue en PDF";
   }
 }

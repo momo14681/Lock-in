@@ -15,24 +15,31 @@ function renderChrome() {
     b.setAttribute("aria-pressed", String(active));
   });
   $("ownerField").hidden = mode !== "coordo";
-  $("headerSub").textContent = data
-    ? `DEM ${activeDEM} · ${mode === "ce" ? (me ? "Vue de " + me : "Chargé d’essais") : "Coordination"} · données au ${formatDate(data.today)}`
-    : `DEM ${activeDEM} · aucun classeur chargé`;
+  $("headerSub").textContent = data ? `DEM ${activeDEM} · données au ${formatDate(data.today)}` : `DEM ${activeDEM}`;
   if (!data) return;
   $("sheetButtons").innerHTML = ["", ...new Set([...data.availableSheets, ...selectedSheets])].map((s) => {
     const active = s ? selectedSheets.has(s) : !selectedSheets.size;
     return `<button type="button" data-sheet="${esc(s)}" class="${active ? "active" : ""}${s ? " phase-" + dossierPhase({ sheet: s }) : ""}" aria-pressed="${active}"${s ? ` title="${esc(s)} · ${dossierPhase({ sheet: s }) === "AT" ? "AT (arrêt de tranche)" : "TEM"}"` : ""}>${esc(s || "Toutes")}${s && !data.availableSheets.includes(s) ? " (absente)" : ""}</button>`;
   }).join("");
-  $("tabs").innerHTML = TABS[mode].map((t) => {
+  const main = TABS[mode].map((t) => {
     const active = t.id === tab || (t.id === "overview" && HIDDEN_TABS[mode].includes(tab));
     const count = t.count ? t.count() : null;
     return `<button type="button" data-tab="${t.id}" class="${active ? "active" : ""}" aria-current="${active ? "page" : "false"}">${esc(t.label)}${count ? ` <span class="count">${fmt(count)}</span>` : ""}</button>`;
   }).join("");
+  const moreActive = MORE_TABS[mode].some((t) => t.id === tab);
+  const more = `<select class="moreTabs${moreActive ? " active" : ""}" data-change="moreTab" aria-label="Autres listes">
+      <option value="">${mode === "ce" ? "Mes listes…" : "Autres listes…"}</option>
+      ${MORE_TABS[mode].map((t) => `<option value="${t.id}" ${t.id === tab ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`;
+  $("tabs").innerHTML = main + more;
+  // Filtres actifs : signalés sur le bouton « Filtres » repliable.
+  const active = selectedSheets.size + (j0Period().label === String(+activeDEM) ? 0 : 1);
+  $("filterCount").hidden = !active;
+  $("filterCount").textContent = active;
 }
 
 function render() {
   if (!data) { renderChrome(); return; }
-  const allowed = [...TABS[mode].map((t) => t.id), ...HIDDEN_TABS[mode]];
+  const allowed = [...TABS[mode].map((t) => t.id), ...MORE_TABS[mode].map((t) => t.id), ...HIDDEN_TABS[mode]];
   if (!allowed.includes(tab)) tab = tabByMode[mode] = TABS[mode][0].id;
   visible = filtered();
   data.audit = audit(data.tasks.filter((t) => !t.cancelled));
@@ -44,6 +51,7 @@ function render() {
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
   $("pngExport").disabled = false;
+  $("csvExport").disabled = !currentExport;
 }
 
 function detail(t) {
@@ -86,6 +94,9 @@ const SETTABLE = {
 };
 
 function onClick(e) {
+  document.querySelectorAll("details.menu[open]").forEach((m) => {
+    if (!m.contains(e.target) || (e.target.closest("button") && !m.classList.contains("filterMenu"))) m.open = false;
+  });
   const el = e.target.closest("button, [data-go]");
   if (!el || el.disabled) return;
   const d = el.dataset;
@@ -117,6 +128,7 @@ function onClick(e) {
   if (d.me !== undefined) return setMe(d.me);
   if (d.owner !== undefined) { $("owner").value = d.owner; page = 1; return render(); }
   if (d.ownerTasks !== undefined) { $("owner").value = d.ownerTasks; return openTasks(""); }
+  if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
   if (d.toggleIgnored !== undefined) { showIgnored = !showIgnored; page = 1; return render(); }
   if (d.group !== undefined) return openGroup(+d.group);
   if (d.tab !== undefined) return setTab(d.tab);
@@ -128,6 +140,7 @@ function onChange(e) {
   const key = e.target.dataset?.change;
   if (key === "me") return setMe(e.target.value);
   if (key === "issueKind") { issueKind = e.target.value; page = 1; render(); }
+  if (key === "moreTab" && e.target.value) setTab(e.target.value);
 }
 
 // --- Démarrage ----------------------------------------------------------------------

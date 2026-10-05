@@ -32,6 +32,10 @@ function taskTitle() {
   return mode === "ce" ? "Mes TOT" : "Toutes les TOT";
 }
 
+function backToMine() {
+  return mode === "ce" ? `<button type="button" class="ghost" data-go="tab:mine">‹ Mes affaires</button>` : "";
+}
+
 function needsMe() {
   if (mode === "ce" && !me) { $("view").innerHTML = chooseMePanel(); return true; }
   return false;
@@ -45,19 +49,18 @@ function viewTasks() {
   if (needsMe()) return;
   const rows = taskRows(), p = paginate(rows), owner = showOwnerColumn();
   const base = visible.filter(scopeTest);
-  const focusOptions = TASK_FOCUS.filter(([key]) => mode === "coordo" || key !== "unassigned").map(([key, label]) => [key, label]);
+  const focusOptions = TASK_FOCUS.filter(([key, , test]) => (mode === "coordo" || key !== "unassigned") && (!key || key === taskFocus || base.some(test))).map(([key, label]) => [key, label]);
   const body = p.slice.map((t) => `<tr>
     <td>${taskLink(t)}</td>
     ${owner ? `<td>${esc(t.responsable)}</td>` : ""}
-    <td>OT ${esc(t.ot || "—")}<small>TOT ${esc(t.tot || "absente")}</small></td>
     <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
-    <td>${stateBadge(t)}${t.infoMissing || (t.missingInfoKeys.length && !t.prepComplete && !isRealized(t)) ? `<small class="missingKeys">À compléter : ${esc(missingLabel(t))}</small>` : ""}</td>
-    <td>${esc(t.bpa || "—")}</td><td>${esc(t.ger || "—")}</td><td>${esc(t.bpd || "—")}</td></tr>`);
+    <td>${stateBadge(t)}${t.missingInfoKeys.length && !t.prepComplete && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
+    <td class="msCell">${milestoneLine(t)}</td></tr>`);
   const scopeNote = taskScope ? ` <button type="button" class="linkbutton" data-go="tasks:${esc(taskFocus)}|clear">Retirer le filtre affaire</button>` : "";
   $("view").innerHTML = panel(`${esc(taskTitle())} · ${fmt(rows.length)}`,
     `${segment("taskFocus", focusOptions, taskFocus, { label: "Filtrer les TOT", counts: (key) => base.filter(focusTest(key)).length })}
-     ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "OT / TOT", "J0 / échéance prépa", "Statut", "BPA", "GER/1N", "BPD"], body)}${pager(p)}`,
-    { sub: esc(scopeLabel()) + scopeNote, actions: exportButton() });
+     ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "J0", "Statut", "Documents"], body)}${pager(p)}`,
+    { sub: esc(scopeLabel()) + scopeNote, actions: backToMine() });
   currentExport = () => downloadMatrix(
     ["Affaire", "Libellé DI", "REE", "Chargé", "Feuille", "Ligne", "OT", "TOT", "J0", "Échéance prépa", "Statut", "À compléter", "BPA", "GER/1N", "BPD", "Observations"],
     rows.map((t) => [t.affaire, t.libelle, t.ree, t.responsable, t.sheet, t.rowNumber, t.ot, t.tot, t.j0Label, t.prepDueLabel, state(t), t.missingInfoKeys.length && !isRealized(t) ? missingLabel(t) : "", t.bpa, t.ger, t.bpd, observations(t)]),
@@ -76,41 +79,37 @@ function ignoreButton(i) {
 }
 
 function ownerChips() {
-  // Répartition des signalements actifs par chargé, hors filtre chargé.
+  // Qui doit corriger : signalements actifs par chargé, hors filtre chargé.
   const pool = new Set(filteredBy(""));
-  const active = data.audit.filter((i) => pool.has(i.t) && !ignoredIssues.has(issueId(i)));
   const counts = new Map();
-  for (const i of active) counts.set(i.t.responsable, (counts.get(i.t.responsable) || 0) + 1);
+  for (const i of data.audit) if (pool.has(i.t) && !ignoredIssues.has(issueId(i))) counts.set(i.t.responsable, (counts.get(i.t.responsable) || 0) + 1);
   const current = $("owner").value;
-  const chips = [["", "Tous", active.length], ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => [n, n, c])];
-  return `<div class="ownerChips" role="group" aria-label="Signalements par chargé"><span class="muted">Par chargé :</span>${chips.map(([value, label, c]) => `<button type="button" data-owner="${esc(value)}" class="${value === current ? "active" : ""}" aria-pressed="${value === current}">${esc(label)} <span class="count">${fmt(c)}</span></button>`).join("")}</div>`;
+  const chips = [["", "Tous"], ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => [n, `${n} ${fmt(c)}`])];
+  return `<div class="ownerChips" role="group" aria-label="Chargé">${chips.map(([value, label]) => `<button type="button" data-owner="${esc(value)}" class="${value === current ? "active" : ""}" aria-pressed="${value === current}">${esc(label)}</button>`).join("")}</div>`;
 }
 
 function viewIssues() {
   if (needsMe()) return;
-  const rows = issueRows(), p = paginate(rows), owner = showOwnerColumn();
+  const rows = issueRows(), p = paginate(rows);
   const pool = allIssues.filter((i) => ignoredIssues.has(issueId(i)) === showIgnored && (!issueKind || i.kind === issueKind));
   const kinds = [...new Set([...allIssues.map((i) => i.kind), ...(issueKind ? [issueKind] : [])])].sort((a, b) => a.localeCompare(b, "fr"));
   const ignoredCount = allIssues.filter((i) => ignoredIssues.has(issueId(i))).length;
   const controls = `<div class="controlRow">
-      ${segment("issueLevel", [["", "Toutes priorités"], ...LEVELS.map((l) => [l, l])], issueLevel, { label: "Priorité", counts: (lvl) => pool.filter((i) => !lvl || i.level === lvl).length })}
-      <label class="inlineField">Contrôle <select data-change="issueKind"><option value="">Tous les contrôles</option>${kinds.map((k) => `<option ${k === issueKind ? "selected" : ""} value="${esc(k)}">${esc(k)}</option>`).join("")}</select></label>
-      <button type="button" data-toggle-ignored>${showIgnored ? "Voir les signalements actifs" : `Voir les ignorés (${fmt(ignoredCount)})`}</button>
-      ${tip("Ignorer un signalement", "Ignoré uniquement pour cet import (réactivable). Les données et les indicateurs ne changent pas.")}
+      ${segment("issueLevel", [["", "Toutes"], ...LEVELS.map((l) => [l, l])], issueLevel, { label: "Priorité", counts: (lvl) => pool.filter((i) => !lvl || i.level === lvl).length })}
+      <select data-change="issueKind" aria-label="Type de contrôle"><option value="">Tous les types</option>${kinds.map((k) => `<option ${k === issueKind ? "selected" : ""} value="${esc(k)}">${esc(k)}</option>`).join("")}</select>
+      <button type="button" class="ghost" data-toggle-ignored>${showIgnored ? "‹ Revenir aux corrections" : `Ignorées (${fmt(ignoredCount)})`}</button>
     </div>`;
   const body = p.slice.map((i) => `<tr>
-    <td>${badge(i.level, LEVEL_TONE[i.level])}<small>${esc(i.kind)}</small></td>
-    <td>${taskLink(i.t)}</td>
-    ${owner ? `<td>${esc(i.t.responsable)}</td>` : ""}
-    <td><span class="loc">${esc(i.t.sheet)}!${esc(i.cells)}</span></td>
-    <td class="valueCell">${esc(i.value)}</td>
-    <td>${esc(i.reason)}${observations(i.t) ? `<small class="obs">Obs. : ${esc(observations(i.t))}</small>` : ""}</td>
-    <td>${ignoreButton(i)}</td></tr>`);
-  const title = showIgnored ? "Signalements ignorés" : mode === "ce" ? "Mes corrections à faire dans la DEM" : "Corrections à faire dans la DEM";
+    <td>${badge(i.level, LEVEL_TONE[i.level])}</td>
+    <td><button type="button" class="linkbutton" data-task="${i.t.index}">${esc(i.t.affaire || "Affaire manquante")}</button><small>REE ${esc(i.t.ree || "absent")}${mode === "coordo" ? " · " + esc(i.t.responsable) : ""}</small></td>
+    <td><span class="loc">${esc(i.t.sheet)} ! ${esc(i.cells)}</span></td>
+    <td><strong class="issueKind">${esc(i.kind)}</strong><span class="issueReason">${esc(i.reason)}</span></td>
+    <td><button type="button" class="ignoreAction" data-ignore="${esc(issueId(i))}" title="Masquer ce signalement pour cet import">${ignoredIssues.has(issueId(i)) ? "Réactiver" : "Ignorer"}</button></td></tr>`);
+  const title = showIgnored ? "Signalements ignorés" : "À corriger dans la DEM";
   $("view").innerHTML = panel(`${title} · ${fmt(rows.length)}`,
     `${mode === "coordo" ? ownerChips() : ""}${controls}
-     ${table(["Priorité / contrôle", "Affaire / REE", ...(owner ? ["Chargé"] : []), "Cellule(s) à corriger", "Valeur constatée", "Action proposée", ""], body, { empty: showIgnored ? "Aucun signalement ignoré." : "Aucun signalement : la DEM est cohérente sur ce périmètre." })}${pager(p)}`,
-    { sub: `${esc(scopeLabel())} · ${esc(periodLabel())} · cliquez sur l’affaire pour voir toute la ligne Excel`, actions: exportButton() });
+     ${table(["Priorité", "Affaire", "Cellule Excel", "Problème et action", ""], body, { empty: showIgnored ? "Aucun signalement ignoré." : "Rien à corriger : la DEM est cohérente." })}${pager(p)}`,
+    { sub: "Ouvrez la cellule indiquée dans la DEM et corrigez-la · cliquez sur l’affaire pour voir toute la ligne" });
   currentExport = () => downloadMatrix(
     ["Priorité", "Contrôle", "Affaire", "REE", "Chargé", "Feuille", "Ligne", "Cellules", "Valeur", "Action", "Observations"],
     rows.map((i) => [i.level, i.kind, i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.rowNumber, i.cells, i.value, i.reason, observations(i.t)]),
@@ -135,7 +134,7 @@ function viewDocuments() {
     `<div class="controlRow">${segment("docCode", [["P", "Prêts à valider (P)"], ["R", "À reprendre (R)"]], docCode, { label: "État", counts: (code) => documentRows(visible, code, documentType).length })}
       ${segment("documentType", typeOptions, documentType, { label: "Document", counts: (type) => documentRows(visible, docCode, type).length })}</div>
      ${table(["Affaire / REE", ...(owner ? ["Chargé"] : []), "OT / TOT", "Document", "État", "Cellule", "Observations"], body)}${pager(p)}`,
-    { sub: `${esc(scopeLabel())} · P : produit, en attente de validation ou de signature · R : retourné pour non-conformité`, actions: exportButton() });
+    { sub: "P : en attente de validation ou de signature · R : retourné pour reprise", actions: backToMine() });
   currentExport = () => downloadMatrix(
     ["Affaire", "REE", "Chargé", "Feuille", "OT", "TOT", "Document", "Valeur", "Cellule", "Observations"],
     rows.map((i) => [i.t.affaire, i.t.ree, i.t.responsable, i.t.sheet, i.t.ot, i.t.tot, i.kind, i.value, i.cells, observations(i.t)]),

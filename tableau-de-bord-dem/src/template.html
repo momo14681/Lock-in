@@ -22,12 +22,11 @@
     </div>
   </div>
   <div class="modeSwitch" role="group" aria-label="Profil d’affichage">
-    <button type="button" data-mode="ce" aria-pressed="true"><span class="modeIcon" aria-hidden="true">◉</span>Chargé d’essais</button>
-    <button type="button" data-mode="coordo" aria-pressed="false"><span class="modeIcon" aria-hidden="true">▦</span>Coordo essais</button>
+    <button type="button" data-mode="ce" aria-pressed="true">Chargé d’essais</button>
+    <button type="button" data-mode="coordo" aria-pressed="false">Coordo essais</button>
   </div>
   <div class="headerActions">
     <select id="demSelector" aria-label="Classeur DEM"><option value="2026">DEM 2026</option><option value="2027">DEM 2027</option></select>
-    <button id="import" class="primary">Choisir / changer le fichier</button>
   </div>
 </header>
 
@@ -35,56 +34,57 @@
   <input id="file" type="file" accept=".xlsx,.xlsm" hidden>
   <div id="message" role="status" aria-live="polite"></div>
 
-  <section class="sourceBar" aria-label="Fichier Excel et actualisation">
-    <div class="sourceInfo">
-      <span class="sourceDot" id="sourceDot" aria-hidden="true"></span>
-      <div>
-        <strong id="sourceFile">Aucun fichier sélectionné</strong>
-        <span id="sourceState" role="status" aria-live="polite">Choisissez le fichier Excel à mémoriser sur ce PC.</span>
+  <section class="sourceBar" aria-label="Fichier Excel">
+    <span class="sourceDot" id="sourceDot" aria-hidden="true"></span>
+    <strong id="sourceFile">Aucun fichier sélectionné</strong>
+    <span id="sourceLastCheck" class="muted"></span>
+    <button id="sourceRefresh" class="small" disabled>Actualiser</button>
+    <details class="menu sourceMenu">
+      <summary>Fichier</summary>
+      <div class="menuBody">
+        <p id="sourceState" role="status" aria-live="polite">Choisissez le fichier Excel à mémoriser sur ce PC.</p>
+        <p id="sourceSchedule" class="muted">Sélectionnez un fichier pour activer la lecture automatique</p>
+        <label class="sourceAuto"><input type="checkbox" id="autoRefresh" checked disabled> Relire automatiquement le fichier</label>
+        <button id="sourceChange">Choisir le fichier</button>
+        <button id="import" hidden>Choisir / changer le fichier</button>
+        <button id="clear" class="ghost">Fermer le classeur</button>
       </div>
-    </div>
-    <div class="sourceMeta">
-      <span id="sourceLastCheck"></span>
-      <span id="sourceSchedule">Sélectionnez un fichier pour activer la lecture automatique</span>
-    </div>
-    <div class="sourceButtons">
-      <label class="sourceAuto"><input type="checkbox" id="autoRefresh" checked disabled> Actualisation auto.</label>
-      <button id="sourceRefresh" disabled>Actualiser</button>
-      <button id="sourceChange">Choisir le fichier</button>
-      <button id="clear" class="ghost">Fermer le classeur</button>
-    </div>
+    </details>
   </section>
 
   <section id="drop" class="panel drop">
-    <h2>Déposez votre copie Excel de la DEM</h2>
-    <p class="muted">Le fichier reste sur ce PC : il est lu localement, jamais modifié ni envoyé.</p>
-    <button id="choose" class="primary">Choisir un fichier .xlsm ou .xlsx</button>
+    <h2>Ouvrez la DEM pour commencer</h2>
+    <p class="muted">Le fichier reste sur ce PC : il est lu, jamais modifié ni envoyé.</p>
+    <button id="choose" class="primary">Choisir le fichier Excel de la DEM</button>
   </section>
 
   <section id="workspace" class="hidden">
-    <section class="filterBar" aria-label="Filtres">
-      <label class="field searchField">Rechercher<input id="search" placeholder="Affaire, REE, OT, TOT, chargé…" type="search"></label>
-      <label class="field" id="ownerField">Chargé d’essais<select id="owner"><option value="">Tous les CE</option></select></label>
-      <div class="field">
-        <span>Feuilles <span class="phaseKey tem">TEM</span><span class="phaseKey at">AT</span></span>
-        <div id="sheetButtons" class="chips" role="group" aria-label="Feuilles techniques"></div>
-      </div>
-      <div class="field">
-        <span>Période (année de J0)</span>
-        <div id="j0Years" class="chips" role="group" aria-label="Années de J0 attendues">
-          <button type="button" data-j0-year="2025" aria-pressed="false">2025</button>
-          <button type="button" data-j0-year="2026" aria-pressed="true" class="active">2026</button>
-          <button type="button" data-j0-year="2027" aria-pressed="false">2027</button>
-        </div>
-      </div>
-      <button id="reset" class="ghost">Réinitialiser</button>
-    </section>
-
     <div class="tabBar">
       <nav id="tabs" class="tabs" aria-label="Vues"></nav>
-      <div class="exportActions">
-        <button id="pngExport" class="accent" disabled title="Image 16:9 pour l’écran de l’équipe : avancement des essais et retards de préparation">Écran d’équipe (PNG)</button>
-        <button id="pdfExport" disabled>PDF de la vue</button>
+      <div class="toolbar">
+        <input id="search" placeholder="Rechercher…" title="Affaire, REE, OT, TOT ou chargé" type="search" aria-label="Rechercher">
+        <label id="ownerField" class="ownerField"><select id="owner" aria-label="Chargé d’essais"><option value="">Tous les CE</option></select></label>
+        <details class="menu filterMenu" id="filterMenu">
+          <summary>Filtres <span id="filterCount" class="count" hidden></span></summary>
+          <div class="menuBody">
+            <div class="field"><span>Feuilles</span><div id="sheetButtons" class="chips" role="group" aria-label="Feuilles techniques"></div></div>
+            <div class="field"><span>Période attendue (année de J0)</span>
+              <div id="j0Years" class="chips" role="group" aria-label="Années de J0 attendues">
+                <button type="button" data-j0-year="2025" aria-pressed="false">2025</button>
+                <button type="button" data-j0-year="2026" aria-pressed="true" class="active">2026</button>
+                <button type="button" data-j0-year="2027" aria-pressed="false">2027</button>
+              </div></div>
+            <button id="reset" class="ghost">Tout réinitialiser</button>
+          </div>
+        </details>
+        <details class="menu exportMenu">
+          <summary>Exporter</summary>
+          <div class="menuBody">
+            <button id="pngExport" disabled>Image pour l’écran d’équipe (PNG)</button>
+            <button id="pdfExport" disabled>Cette vue en PDF</button>
+            <button id="csvExport" data-export="csv">Ce tableau en CSV (Excel)</button>
+          </div>
+        </details>
       </div>
     </div>
 
