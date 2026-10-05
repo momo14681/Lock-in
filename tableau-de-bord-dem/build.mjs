@@ -7,7 +7,7 @@
 // Sources lisibles : src/template.html, src/styles.css, src/js/*.js (concaténés
 // dans l'ordre alphabétique, partagent une même portée).
 // Bibliothèques figées : vendor/ (SheetJS, pdf-lib, fontkit, police Work Sans).
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -50,3 +50,16 @@ const html = read("src", "template.html").replace(/\/\*@@([A-Z_]+)@@\*\/|<!--@@(
 const out = join(root, "Tableau_de_bord_DEM.html");
 writeFileSync(out, html);
 console.log(`${out} · ${(html.length / 1024 / 1024).toFixed(2)} Mo`);
+
+// Police EDF 2020 : propriété d'EDF, jamais versionnée (dossier fonts-edf/ ignoré).
+// Si elle est présente localement, une seconde version l'embarque pour un usage interne.
+const edfDir = join(root, "fonts-edf");
+const edfFaces = [["Light", 300], ["Regular", 400], ["Bold", 700]]
+  .filter(([name]) => existsSync(join(edfDir, `EDF2020W01-${name}.woff2`)))
+  .map(([name, weight]) => `@font-face{font-family:"EDF 2020";font-style:normal;font-weight:${weight};font-display:swap;src:url(data:font/woff2;base64,${readFileSync(join(edfDir, `EDF2020W01-${name}.woff2`)).toString("base64")}) format("woff2");}`);
+if (edfFaces.length) {
+  const edfHtml = html.replace("<style>", "<style>" + edfFaces.join(""));
+  const edfOut = join(root, "Tableau_de_bord_DEM_EDF.html");
+  writeFileSync(edfOut, edfHtml);
+  console.log(`${edfOut} · police EDF 2020 embarquée (usage interne, non versionné)`);
+}

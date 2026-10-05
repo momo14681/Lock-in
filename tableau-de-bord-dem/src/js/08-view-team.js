@@ -185,8 +185,9 @@ function viewTeam() {
 // --- Image 16:9 pour l'écran de l'équipe ---------------------------------------------
 
 const PNG = {
-  bg: "#eef2f6", navy: "#0c2444", card: "#ffffff", ink: "#102842", ink2: "#3e5368", muted: "#62788c", track: "#e3eaf1",
-  font: (weight, size) => `${weight} ${size}px "Work Sans", Arial, sans-serif`,
+  bg: "#eef2f6", navy: "#001A70", card: "#ffffff", ink: "#001A70", ink2: "#3A4A6B", muted: "#5E6B85", track: "#e3eaf1",
+  // EDF 2020 n'a que 300 / 400 / 700 : on reste en léger ou normal.
+  font: (weight, size) => `${weight >= 600 ? 400 : weight === 500 ? 400 : weight} ${size}px "EDF 2020", "Work Sans", Arial, sans-serif`,
 };
 
 function drawPNG(canvas, m) {
@@ -230,13 +231,13 @@ function drawPNG(canvas, m) {
   // Fond et bandeau
   c.fillStyle = PNG.bg; c.fillRect(0, 0, 1920, 1080);
   const grad = c.createLinearGradient(0, 0, 1920, 0);
-  grad.addColorStop(0, "#0c2444"); grad.addColorStop(1, "#163e61");
+  grad.addColorStop(0, "#001A70"); grad.addColorStop(1, "#0B2A8C");
   c.fillStyle = grad; c.fillRect(0, 0, 1920, 132);
-  c.fillStyle = "#34c4af"; c.fillRect(0, 0, 12, 132);
+  c.fillStyle = "#FE5815"; c.fillRect(0, 0, 12, 132);
   text("Avancement des essais", 56, 24, { size: 50, weight: 700, color: "#ffffff", width: 1000 });
-  text(`DEM ${m.dem}  ·  ${m.period}  ·  ${m.scope}`, 58, 88, { size: 24, color: "#b9cde0", width: 1180 });
+  text(`DEM ${m.dem}  ·  ${m.period}  ·  ${m.scope}`, 58, 88, { size: 24, color: "#C7D2EE", width: 1180 });
   text(`Données au ${m.todayLabel}`, 1864, 28, { size: 32, weight: 700, color: "#ffffff", width: 600, align: "right" });
-  text(`Import du ${m.importDate}`, 1864, 78, { size: 21, color: "#9eb5ca", width: 600, align: "right" });
+  text(`Import du ${m.importDate}`, 1864, 78, { size: 21, color: "#A9B6DA", width: 600, align: "right" });
 
   // Rangée 1 : indicateurs
   const y1 = 156, h1 = 196;
@@ -244,14 +245,14 @@ function drawPNG(canvas, m) {
     roundRect(x, y1, w, h1, 18, PNG.card);
     roundRect(x, y1, 8, h1, 4, accent);
     text(label, x + 32, y1 + 22, { size: 27, weight: 600, color: PNG.ink2, width: w - 56 });
-    const vw = text(value, x + 32, y1 + 58, { size: 76, weight: 700, color: valueColor, width: w - 56, min: 40 });
+    const vw = text(value, x + 32, y1 + 58, { size: 80, weight: 300, color: valueColor, width: w - 56, min: 40 });
     if (icon) text(icon, x + 32 + vw + 14, y1 + 76, { size: 34, color: accent });
     text(sub, x + 32, y1 + 146, { size: 22, color: PNG.muted, width: w - 56 });
     if (ratioValue !== null) bar(x + 32, y1 + 178, w - 64, 8, [[ratioValue, accent]]);
   }
   card(56, 640, "Essais réalisés", pct(m.realized, m.n), `${fmt(m.realized)} / ${fmt(m.n)} TOT · GER/1N signé`, { accent: STATE_COLORS[STATE.realized], ratioValue: ratio(m.realized, m.n) });
   card(720, 560, "Préparation documentaire terminée", pct(m.prepared, m.n), `${fmt(m.prepared)} / ${fmt(m.n)} TOT prêtes`, { accent: STATE_COLORS[STATE.ready], ratioValue: ratio(m.prepared, m.n) });
-  card(1304, 268, "Prépas en retard", fmt(m.overdue), `TOT · ${plural(m.late.length, "REE", "REE")}`, { accent: m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized], valueColor: m.overdue ? "#b3303e" : PNG.ink, icon: m.overdue ? "●" : "✓" });
+  card(1304, 268, "Prépas en retard", fmt(m.overdue), `TOT · ${plural(m.late.length, "REE", "REE")}`, { accent: m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized], valueColor: m.overdue ? "#C41E25" : PNG.ink, icon: m.overdue ? "●" : "✓" });
   card(1596, 268, "Échéances < 30 j", fmt(m.dueSoon), "TOT à préparer", { accent: m.dueSoon ? STATE_COLORS[STATE.missing] : "#b9c6d4", icon: m.dueSoon ? "▲" : "" });
 
   // Rangée 2 gauche : avancement par mois de J0
@@ -282,7 +283,7 @@ function drawPNG(canvas, m) {
     if (doneH >= 30) text(`${Math.round(done / col.total * 100)}%`, cx, plotTop + plotH - doneH / 2 - 11, { size: 19, weight: 700, color: "#ffffff", align: "center", width: barW + 6, min: 13 });
     text(col.total ? fmt(col.total) : "–", cx, plotTop - 32, { size: 21, weight: 600, color: PNG.ink2, align: "center", width: slot - 4, min: 13 });
     text(col.label, cx, plotTop + plotH + 12, { size: 21, weight: col.current ? 700 : 500, color: col.current ? PNG.ink : PNG.muted, align: "center", width: slot - 2, min: 12 });
-    if (col.current) text("aujourd’hui", cx, plotTop + plotH + 40, { size: 16, weight: 600, color: "#3570cc", align: "center", width: slot + 20, min: 11 });
+    if (col.current) text("aujourd’hui", cx, plotTop + plotH + 40, { size: 16, weight: 600, color: "#1057C8", align: "center", width: slot + 20, min: 11 });
     else if (m.timeline.monthly && col.month === 0 && cols.filter((x2) => x2.month === 0).length > 1) text(String(col.year), cx, plotTop + plotH + 40, { size: 17, color: PNG.muted, align: "center", width: slot });
   });
 
@@ -298,10 +299,10 @@ function drawPNG(canvas, m) {
     if (i) { c.fillStyle = "#e6ecf2"; c.fillRect(rx + 32, y - 6, rw - 64, 1); }
     text(`${g.affaire || "Affaire manquante"}  ·  ${g.ree || "REE absent"}`, rx + 32, y, { size: 22, weight: 700, width: 420, min: 15 });
     text(`${g.phase} · ${g.owners.join(", ")}${g.missing.length ? " · manque " + g.missing.join(", ") : ""}`, rx + 32, y + 26, { size: 17, color: PNG.muted, width: 430, min: 13 });
-    text(`+${fmt(g.late)} j`, rx + rw - 32, y + 2, { size: 25, weight: 700, color: "#b3303e", align: "right", width: 150 });
+    text(`+${fmt(g.late)} j`, rx + rw - 32, y + 2, { size: 25, weight: 700, color: "#C41E25", align: "right", width: 150 });
     text(`J0 ${formatShortDate(g.j0)}`, rx + rw - 32, y + 30, { size: 16, color: PNG.muted, align: "right", width: 150 });
   });
-  if (!shown.length) text("✓  Toutes les préparations échues sont complètes.", rx + 32, y2 + 120, { size: 24, color: "#0d7a59", width: rw - 64 });
+  if (!shown.length) text("✓  Toutes les préparations échues sont complètes.", rx + 32, y2 + 120, { size: 24, color: "#3D7F22", width: rw - 64 });
   if (m.late.length > shown.length) text(`+ ${plural(m.late.length - shown.length, "autre REE", "autres REE")} en retard`, rx + 32, y2 + 102 + shown.length * rowH, { size: 18, weight: 600, color: PNG.ink2, width: rw - 64 });
   if (m.lateByOwner.length) {
     // Autant de chargés que la largeur le permet, le reste résumé en « +N ».
@@ -326,7 +327,7 @@ function drawPNG(canvas, m) {
     roundRect(x, y3, mw, h3, 18, PNG.card);
     const waiting = Math.max(0, ms.produced - ms.done), none = Math.max(0, m.n - ms.produced);
     text(ms.label, x + 32, y3 + 18, { size: 28, weight: 700, width: 200 });
-    text(`${pct(ms.done, m.n)} signés`, x + mw - 32, y3 + 18, { size: 28, weight: 700, color: "#0d7a59", align: "right", width: 320 });
+    text(`${pct(ms.done, m.n)} signés`, x + mw - 32, y3 + 18, { size: 28, weight: 700, color: "#3D7F22", align: "right", width: 320 });
     bar(x + 32, y3 + 66, mw - 64, 22, [[ratio(ms.done, m.n), DOC_COLORS.signed], [ratio(waiting, m.n), DOC_COLORS.waiting]]);
     let lx2 = x + 32;
     for (const [v, color, label] of [[ms.done, DOC_COLORS.signed, "signés"], [waiting, DOC_COLORS.waiting, "à signer"], [none, "#c9d4df", "non produits"]]) {
@@ -339,7 +340,7 @@ function drawPNG(canvas, m) {
 }
 
 async function renderPNG() {
-  if (document.fonts) { await document.fonts.load('700 50px "Work Sans"'); await document.fonts.ready; }
+  if (document.fonts) { await Promise.all(['300 50px "EDF 2020"', '400 50px "EDF 2020"', '400 50px "Work Sans"'].map((f) => document.fonts.load(f).catch(() => null))); await document.fonts.ready; }
   return drawPNG(document.createElement("canvas"), teamModel());
 }
 

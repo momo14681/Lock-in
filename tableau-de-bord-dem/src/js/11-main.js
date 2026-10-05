@@ -54,6 +54,7 @@ function render() {
   $("pngExport").disabled = false;
   $("csvExport").disabled = !currentExport;
   restoreTableFocus();
+  positionColMenus();
 }
 
 function detail(t) {
@@ -77,8 +78,8 @@ function go(spec) {
   const kind = cut < 0 ? spec : spec.slice(0, cut), arg = cut < 0 ? "" : spec.slice(cut + 1);
   if (kind === "tab") return setTab(arg);
   if (kind === "tasks") return openTasks(arg.split("|")[0]);
-  if (kind === "issues") { tableState.issues = { search: "", open: false, filters: arg ? { [mode === "coordo" ? 4 : 3]: arg } : {} }; return openIssues(""); }
-  if (kind === "issues-level") { tableState.issues = { search: "", open: false, filters: { 0: arg } }; showIgnored = false; return openIssues(""); }
+  if (kind === "issues") { tableState.issues = { search: "", open: false, filters: arg ? { [mode === "coordo" ? 4 : 3]: [arg] } : {} }; return openIssues(""); }
+  if (kind === "issues-level") { tableState.issues = { search: "", open: false, filters: { 0: [arg] } }; showIgnored = false; return openIssues(""); }
   if (kind === "issues-owner") { if (mode === "coordo") $("owner").value = arg; issueKind = ""; issueLevel = ""; showIgnored = false; return setTab("issues"); }
   if (kind === "documents") { docCode = arg || "P"; documentType = ""; return setTab("documents"); }
   if (kind === "groups") { tab = tabByMode[mode] = arg; page = 1; return render(); }
@@ -97,8 +98,11 @@ const SETTABLE = {
 
 function onClick(e) {
   document.querySelectorAll("details.menu[open]").forEach((m) => {
-    if (!m.contains(e.target) || (e.target.closest("button") && !m.classList.contains("filterMenu"))) m.open = false;
+    if (!m.contains(e.target) || (e.target.closest("button") && !m.classList.contains("filterMenu") && !m.classList.contains("colMenu"))) m.open = false;
   });
+  const col = e.target.closest?.(".colMenu");
+  if (!col) openColFilter = null;
+  else if (e.target.closest("summary")) openColFilter = col.open ? null : col.dataset.colMenu;
   const el = e.target.closest("button, [data-go]");
   if (!el || el.disabled) return;
   const d = el.dataset;
@@ -138,6 +142,13 @@ function onClick(e) {
     page = 1;
     return render();
   }
+  if (d.tableClear !== undefined) {
+    const cut = d.tableClear.lastIndexOf(":");
+    tableStateFor(d.tableClear.slice(0, cut)).filters[d.tableClear.slice(cut + 1)] = [];
+    openColFilter = null;
+    page = 1;
+    return render();
+  }
   if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
   if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
   if (d.toggleIgnored !== undefined) { showIgnored = !showIgnored; page = 1; return render(); }
@@ -157,10 +168,13 @@ function onTableInput(e) {
 }
 
 function onChange(e) {
-  const tf = e.target.dataset?.tableFilter;
-  if (tf !== undefined) {
-    const cut = tf.lastIndexOf(":");
-    tableStateFor(tf.slice(0, cut)).filters[tf.slice(cut + 1)] = e.target.value;
+  const tc = e.target.dataset?.tableCheck;
+  if (tc !== undefined) {
+    const cut = tc.lastIndexOf(":"), st = tableStateFor(tc.slice(0, cut)), col = tc.slice(cut + 1);
+    const set = new Set(st.filters[col] || []);
+    if (e.target.checked) set.add(e.target.value); else set.delete(e.target.value);
+    st.filters[col] = [...set];
+    openColFilter = tc;
     page = 1;
     return render();
   }
@@ -184,6 +198,9 @@ function init() {
   document.addEventListener("click", onClick);
   document.addEventListener("change", onChange);
   document.addEventListener("input", onTableInput);
+  document.addEventListener("toggle", (e) => { if (e.target.classList?.contains("colMenu")) positionColMenus(); }, true);
+  window.addEventListener("resize", positionColMenus);
+  document.addEventListener("scroll", (e) => { if (!e.target.closest?.(".colMenuBody")) positionColMenus(); }, true);
   $("search").addEventListener("input", () => { page = 1; render(); });
   $("owner").addEventListener("change", () => { page = 1; render(); });
   document.querySelectorAll("[data-j0-year]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); toggleJ0Year(+b.dataset.j0Year); }));

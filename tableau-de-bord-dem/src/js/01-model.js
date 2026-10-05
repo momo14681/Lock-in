@@ -292,14 +292,14 @@ function state(t) {
 // Ordre d'empilement des graphiques : de l'acquis vers ce qui bloque.
 const STATE_ORDER = [STATE.realized, STATE.ready, STATE.ongoing, STATE.missing, STATE.late];
 const STATE_COLORS = {
-  [STATE.realized]: "#14936c",
-  [STATE.ready]: "#3570cc",
+  [STATE.realized]: "#509E2F",
+  [STATE.ready]: "#1057C8",
   [STATE.ongoing]: "#b9c6d4",
-  [STATE.missing]: "#e0a030",
-  [STATE.late]: "#c93c4b",
+  [STATE.missing]: "#EBA000",
+  [STATE.late]: "#E3262D",
 };
 const STATE_TONE = { [STATE.realized]: "good", [STATE.ready]: "info", [STATE.ongoing]: "neutral", [STATE.missing]: "warn", [STATE.late]: "bad", [STATE.cancelled]: "neutral" };
-const PHASE_COLORS = { TEM: "#0f95a3", AT: "#7b5fc9", "Non précisé": "#b9c6d4" };
+const PHASE_COLORS = { TEM: "#1057C8", AT: "#FE5815", "Non précisé": "#b9c6d4" };
 
 function observations(t) {
   return t.raw?.observations ?? t.observations ?? "";

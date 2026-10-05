@@ -131,6 +131,7 @@ function initTooltip() {
 // lignes, avant la pagination. L'état est conservé par tableau (clé `key`).
 const tableState = {};
 let tableFocus = null;
+let openColFilter = null; // menu de filtre resté ouvert pendant qu'on coche
 
 const ICON_SEARCH = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 
@@ -141,7 +142,7 @@ function tableStateFor(key) {
 function filterRows(key, columns, items) {
   const st = tableStateFor(key);
   const q = st.search.trim().toLowerCase();
-  return items.filter((it) => columns.every((c, i) => !c.filter || !st.filters[i] || String(c.value(it) ?? "") === st.filters[i])
+  return items.filter((it) => columns.every((c, i) => !c.filter || !st.filters[i]?.length || st.filters[i].includes(String(c.value(it) ?? "")))
     && (!q || columns.some((c) => c.value && String(c.value(it) ?? "").toLowerCase().includes(q))));
 }
 
@@ -149,13 +150,21 @@ function dataTable({ key, columns, items, row, paged = true, cls = "", empty = "
   const st = tableStateFor(key);
   const rows = filterRows(key, columns, items);
   const p = paged ? paginate(rows) : { slice: rows.slice(0, limit), pages: 1, total: rows.length };
-  const active = st.search.trim() || Object.values(st.filters).some(Boolean);
+  const active = st.search.trim() || Object.values(st.filters).some((v) => v?.length);
   const head = columns.map((c, i) => {
     if (!c.filter) return { label: c.label, cls: c.cls };
     const values = [...new Set(items.map((it) => String(c.value(it) ?? "")))].filter(Boolean).sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
-    const current = st.filters[i] || "";
-    const select = `<select class="colFilter${current ? " on" : ""}" data-table-filter="${esc(key)}:${i}" aria-label="Filtrer ${esc(c.label)}"><option value="">Tous</option>${values.map((v) => `<option value="${esc(v)}" ${v === current ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`;
-    return { label: `<span class="thLabel">${c.label}</span>${select}`, cls: (c.cls || "") + " filterable" };
+    // Filtre à choix multiples : cases à cocher dans un petit menu déroulant.
+    const chosen = st.filters[i] || [];
+    const id = `${key}:${i}`;
+    const summary = !chosen.length ? "Tous" : chosen.length === 1 ? chosen[0] : `${chosen.length} choix`;
+    const menu = `<details class="menu colMenu${chosen.length ? " on" : ""}" data-col-menu="${esc(id)}"${openColFilter === id ? " open" : ""}>
+        <summary title="Filtrer ${esc(c.label)}">${esc(summary)}</summary>
+        <div class="menuBody colMenuBody">
+          <button type="button" class="ghost" data-table-clear="${esc(id)}">Tout afficher</button>
+          ${values.map((v) => `<label class="check"><input type="checkbox" data-table-check="${esc(id)}" value="${esc(v)}" ${chosen.includes(v) ? "checked" : ""}> ${esc(v)}</label>`).join("")}
+        </div></details>`;
+    return { label: `<span class="thLabel">${c.label}</span>${menu}`, cls: (c.cls || "") + " filterable" };
   });
   const bar = `<div class="tableTools">
       <button type="button" class="iconButton${st.open || st.search ? " on" : ""}" data-table-toggle="${esc(key)}" title="Rechercher dans ce tableau" aria-label="Rechercher dans ce tableau">${ICON_SEARCH}</button>
@@ -170,4 +179,14 @@ function restoreTableFocus() {
   if (!tableFocus) return;
   const input = document.querySelector(`[data-table-search="${CSS.escape(tableFocus)}"]`);
   if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+}
+
+// Les menus de filtre sont dans des tableaux défilants : on les place au-dessus de la page.
+function positionColMenus() {
+  document.querySelectorAll(".colMenu[open]").forEach((menu) => {
+    const r = menu.querySelector("summary").getBoundingClientRect(), body = menu.querySelector(".colMenuBody");
+    body.style.top = Math.min(r.bottom + 4, window.innerHeight - 120) + "px";
+    body.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 240)) + "px";
+    body.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 24) + "px";
+  });
 }

@@ -13,7 +13,7 @@ Chaque profil a **3 onglets**, chacun répond à une question. Les listes détai
 sont dans le menu déroulant à droite des onglets. Les filtres (feuilles, période)
 sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel et sa dernière vérification sont en petit en bas de page (menu **Fichier**), le bouton **Actualiser** dans le bandeau.
 
-**Tableaux :** l'icône loupe ouvre une recherche propre au tableau ; les colonnes marquées d'une liste déroulante (statut, chargé, priorité, feuille, type…) se filtrent comme dans Excel. Recherche et filtres portent sur toutes les lignes et sont repris dans les exports CSV et PDF.
+**Tableaux :** l'icône loupe ouvre une recherche propre au tableau ; les colonnes marquées d'une liste déroulante (statut, chargé, priorité, feuille, type…) se filtrent comme dans Excel, avec plusieurs choix cochables. Recherche et filtres portent sur toutes les lignes et sont repris dans les exports CSV et PDF.
 
 **Chargé d'essais** (le nom choisi est mémorisé sur le PC)
 
@@ -60,6 +60,15 @@ seul le filtre « Chargé d'essais » la restreint) :
 Les indicateurs ont été comparés à la V1.3 sur `DEM_2026_1.xlsm` : mêmes valeurs
 (TOT, affaires, REE, préparation, réalisés, retards, non affectées, 676 signalements,
 charge par chargé, états du REE). Seul l'arrondi d'affichage passe à l'entier (83 % au lieu de 82,7 %).
+
+## Police et charte EDF
+
+La page utilise la police **EDF 2020** et la palette EDF (bleu `#001A70`, bleu électrique
+`#1057C8`, orange `#FE5815`). La police appartient à EDF : elle **n'est pas versionnée**
+(dépôt public). Pour l'embarquer, placer `EDF2020W01-Light.woff2`, `-Regular.woff2` et
+`-Bold.woff2` dans `fonts-edf/` (ignoré par Git) puis lancer `node build.mjs` : le fichier
+`Tableau_de_bord_DEM_EDF.html` (également ignoré) est produit pour l'usage interne.
+Sans ce dossier, la page utilise EDF 2020 si elle est installée sur le PC, sinon Work Sans.
 
 ## Modifier le code
 
