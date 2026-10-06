@@ -6,6 +6,16 @@
 const MONTHS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 const MONTHS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 
+// Sur l'écran d'équipe, « DEM incomplète » et « Infos manquantes » sont regroupées :
+// ce sont surtout des lignes Excel à mettre à jour, pas des retards d'essais.
+const TEAM_INCOMPLETE = "DEM à compléter";
+const TEAM_ORDER = [STATE.realized, STATE.ready, STATE.ongoing, TEAM_INCOMPLETE];
+const TEAM_COLORS = { [STATE.realized]: STATE_COLORS[STATE.realized], [STATE.ready]: STATE_COLORS[STATE.ready], [STATE.ongoing]: STATE_COLORS[STATE.ongoing], [TEAM_INCOMPLETE]: STATE_COLORS[STATE.missing] };
+function teamState(t) {
+  const s = state(t);
+  return s === STATE.missing || s === STATE.late ? TEAM_INCOMPLETE : s;
+}
+
 // Colonnes du graphique d'avancement : mois (ou années) de J0 de la période,
 // plus « Avant », « Après » et « Sans J0 » lorsqu'ils contiennent des TOT.
 function buildTimeline(ts, period, today) {
@@ -15,7 +25,7 @@ function buildTimeline(ts, period, today) {
   const first = years[0], last = years[years.length - 1];
   const monthly = last - first <= 1;
   const buckets = [];
-  const empty = () => Object.fromEntries(STATE_ORDER.map((s) => [s, 0]));
+  const empty = () => Object.fromEntries(TEAM_ORDER.map((s) => [s, 0]));
   if (monthly) {
     for (let y = first; y <= last; y++) for (let m = 0; m < 12; m++) {
       buckets.push({ key: `${y}-${m}`, label: MONTHS[m], long: `${MONTHS_LONG[m]} ${y}`, year: y, month: m, counts: empty(), total: 0, current: today.getFullYear() === y && today.getMonth() === m, past: y < today.getFullYear() || (y === today.getFullYear() && m < today.getMonth()) });
@@ -33,7 +43,7 @@ function buildTimeline(ts, period, today) {
       const y = t.j0.getFullYear();
       bucket = y < first ? before : y > last ? after : index.get(monthly ? `${y}-${t.j0.getMonth()}` : `${y}`);
     }
-    const s = state(t);
+    const s = teamState(t);
     if (!(s in bucket.counts)) continue;
     bucket.counts[s]++;
     bucket.total++;
@@ -62,6 +72,22 @@ function lateGroups(ts, today) {
     .sort((a, b) => b.prepDue - a.prepDue || a.affaire.localeCompare(b.affaire, "fr", { numeric: true }));
 }
 
+// À venir : REE dont le J0 tombe dans les `days` prochains jours (non réalisés).
+function upcomingGroups(ts, today, days = 60) {
+  const limit = addDays(today, days), groups = new Map();
+  for (const t of ts.filter((x) => x.j0 && x.j0 >= today && x.j0 <= limit && !isRealized(x))) {
+    const key = dossierKey(t) || JSON.stringify([t.affaire, t.sheet, t.rowNumber]);
+    if (!groups.has(key)) groups.set(key, { affaire: t.affaire, ree: t.ree, phase: dossierPhase(t), owners: new Set(), ts: [], j0: t.j0 });
+    const g = groups.get(key);
+    g.ts.push(t); g.owners.add(t.responsable);
+    if (t.j0 < g.j0) g.j0 = t.j0;
+  }
+  return [...groups.values()].map((g) => {
+    const status = g.ts.some((t) => teamState(t) === TEAM_INCOMPLETE) ? TEAM_INCOMPLETE : g.ts.every((t) => t.prepComplete) ? STATE.ready : STATE.ongoing;
+    return { ...g, owners: [...g.owners], inDays: daysBetween(today, g.j0), status };
+  }).sort((a, b) => a.j0 - b.j0 || a.affaire.localeCompare(b.affaire, "fr", { numeric: true }));
+}
+
 // L'écran d'équipe couvre toujours toute l'équipe ; seul le filtre chargé du
 // profil coordo (choix explicite) le restreint.
 function teamOwner() {
@@ -87,6 +113,8 @@ function teamModel() {
     missing: ts.filter((t) => t.infoMissing).length,
     timeline: buildTimeline(ts, period, today),
     late,
+    upcoming: upcomingGroups(ts, today),
+    upcomingTot: ts.filter((t) => t.j0 && t.j0 >= today && t.j0 <= addDays(today, 60) && !isRealized(t)).length,
     lateByOwner: [...lateByOwner.entries()].sort((a, b) => b[1] - a[1]),
     owners,
     milestones: [["BPA", "bpaState"], ["GER / 1N", "gerState"], ["BPD", "bpdState"]].map(([label, key]) => ({ label, ...milestoneStats(ts, key) })),
@@ -110,7 +138,7 @@ function timelineSvg(tl) {
     if (c.current) parts.push(`<rect x="${left + i * slot + 2}" y="${top - 30}" width="${slot - 4}" height="${plotH + 30 + 46}" rx="8" class="tlNow"/>`);
     parts.push(`<rect x="${x}" y="${top}" width="${barW}" height="${plotH}" rx="4" class="tlTrack"/>`);
     let y = top + plotH;
-    const segs = STATE_ORDER.filter((s) => c.counts[s] > 0);
+    const segs = TEAM_ORDER.filter((s) => c.counts[s] > 0);
     segs.forEach((s, k) => {
       const h = c.counts[s] / c.total * plotH;
       const gap = k < segs.length - 1 ? 2 : 0;
@@ -120,7 +148,7 @@ function timelineSvg(tl) {
       const shape = isTop
         ? `<path d="M${x},${y + hh} V${y + Math.min(4, hh)} Q${x},${y} ${x + Math.min(4, hh)},${y} H${x + barW - Math.min(4, hh)} Q${x + barW},${y} ${x + barW},${y + Math.min(4, hh)} V${y + hh} Z"`
         : `<rect x="${x}" y="${y + gap}" width="${barW}" height="${hh}"`;
-      parts.push(`${shape} fill="${STATE_COLORS[s]}" data-tip="${fmt(c.counts[s])} TOT · ${pct(c.counts[s], c.total)}\n${esc(s)} · ${esc(c.long)}" tabindex="0"/>`);
+      parts.push(`${shape} fill="${TEAM_COLORS[s]}" data-tip="${fmt(c.counts[s])} TOT · ${pct(c.counts[s], c.total)}\n${esc(s)} · ${esc(c.long)}" tabindex="0"/>`);
     });
     const done = c.counts[STATE.realized], doneH = c.total ? done / c.total * plotH : 0;
     if (doneH >= 22 && c.total) parts.push(`<text x="${cx}" y="${top + plotH - doneH / 2 + 5}" class="tlIn">${Math.round(done / c.total * 100)}%</text>`);
@@ -132,23 +160,22 @@ function timelineSvg(tl) {
   return `<svg class="timeline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Avancement des TOT par mois de J0">${parts.join("")}</svg>`;
 }
 
-function lateTable(late, limit) {
+const TEAM_TONE = { [TEAM_INCOMPLETE]: "warn", [STATE.ready]: "info", [STATE.ongoing]: "neutral" };
+
+function upcomingTable(list, limit) {
   return dataTable({
-    key: "late", items: late, paged: false, free: true, empty: "Aucune ligne incomplète : la DEM est à jour.",
+    key: "upcoming", items: list, paged: false, free: true, empty: "Aucun J0 dans les 60 prochains jours.", limit,
     columns: [
       { label: "Affaire", value: (g) => `${g.affaire} ${g.ree}` },
       { label: "Chargé", value: (g) => g.owners.join(", "), filter: true },
-      { label: "J0", value: (g) => formatDate(g.j0) },
-      { label: "Dépassé de", cls: "num", value: (g) => `${g.late} j` },
-      { label: "Ce qui manque", value: (g) => g.missing.join(", ") },
+      { label: "J0", value: (g) => `${MONTHS_LONG[g.j0.getMonth()]} ${g.j0.getFullYear()}`, filter: true },
+      { label: "Préparation", value: (g) => g.status, filter: true },
     ],
     row: (g) => `<tr>
-      <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")}</small></td>
+      <td><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>REE ${esc(g.ree || "absent")} · ${esc(g.phase)}</small></td>
       <td>${esc(g.owners.join(", "))}</td>
-      <td>${formatDate(g.j0)}</td>
-      <td class="num"><strong class="lateDays">${fmt(g.late)} j</strong></td>
-      <td><span class="missingKeys">${esc(g.missing.join(", ") || "—")}</span></td></tr>`,
-    limit,
+      <td>${formatDate(g.j0)}<small>dans ${plural(g.inDays, "jour")}</small></td>
+      <td>${badge(g.status, TEAM_TONE[g.status] || "neutral")}</td></tr>`,
   });
 }
 
@@ -156,30 +183,28 @@ let showAllLate = false;
 
 function viewTeam() {
   const m = teamModel();
-  const filteringLate = tableStateFor("late").search || Object.values(tableStateFor("late").filters).some(Boolean);
-  const late = lateTable(m.late, showAllLate || filteringLate ? Infinity : 10);
-  const filtering = tableStateFor("late").search || Object.values(tableStateFor("late").filters).some(Boolean);
+  const st = tableStateFor("upcoming");
+  const filtering = st.search || Object.values(st.filters).some((v) => v?.length);
+  const up = upcomingTable(m.upcoming, showAllLate || filtering ? Infinity : 10);
   const kpis = [
     kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
     kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
-    kpi({ label: "Lignes DEM incomplètes", value: fmt(m.overdue), sub: `échéance dépassée · ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
-    kpi({ label: "À boucler sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer", tone: m.dueSoon ? "warn" : "" }),
+    kpi({ label: "J0 dans les 60 jours", value: fmt(m.upcomingTot), sub: `TOT · ${plural(m.upcoming.length, "REE", "REE")} à venir` }),
+    kpi({ label: "À préparer sous 30 jours", value: fmt(m.dueSoon), sub: "échéance J0 − 30 proche", tone: m.dueSoon ? "warn" : "" }),
   ].join("");
-  const more = !filtering && late.rows.length > 10
-    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(late.rows.length)} REE concernés`}</button>` : "";
+  const more = !filtering && up.rows.length > 10
+    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 prochains" : `Afficher les ${fmt(up.rows.length)} REE à venir`}</button>` : "";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">${esc(m.period)} · ${esc(m.scope)}</p></div>
       <div class="panelActions"><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="kpis kpis-4 hero">${kpis}</div>
     <div class="split even">
-      ${panel(`Avancement par mois de J0`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
-        { cls: "timelinePanel" })}
-      ${panel(`Lignes de la DEM à compléter · ${fmt(m.late.length)} REE`, `${late.html}${more}`,
-        { cls: "latePanel" })}
+      ${panel("Avancement par mois de J0", `${legend(TEAM_ORDER.map((s) => [s, TEAM_COLORS[s]]))}${timelineSvg(m.timeline)}`, { cls: "timelinePanel" })}
+      ${panel(`À venir · J0 dans les 60 jours`, `${up.html}${more}`, { cls: "latePanel" })}
     </div>
     ${panel("Documents des REE", milestoneCards(m.ts))}`;
-  currentExport = () => downloadMatrix(["Affaire", "REE", "Phase", "Feuille", "Chargés", "Échéance prépa", "J0", "Retard (jours)", "TOT", "Informations manquantes"],
-    m.late.map((g) => [g.affaire, g.ree, g.phase, g.sheet, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), g.late, g.ts.length, g.missing.join(", ")]),
-    "Retards_preparation.csv");
+  currentExport = () => downloadMatrix(["Affaire", "REE", "Phase", "Chargés", "J0", "Dans (jours)", "TOT", "Préparation"],
+    up.rows.map((g) => [g.affaire, g.ree, g.phase, g.owners.join(", "), formatDate(g.j0), g.inDays, g.ts.length, g.status]),
+    "J0_a_venir.csv");
 }
 
 // --- Image 16:9 pour l'écran de l'équipe ---------------------------------------------
@@ -252,16 +277,16 @@ function drawPNG(canvas, m) {
   }
   card(56, 640, "Essais réalisés", pct(m.realized, m.n), `${fmt(m.realized)} / ${fmt(m.n)} TOT · GER/1N signé`, { accent: STATE_COLORS[STATE.realized], ratioValue: ratio(m.realized, m.n) });
   card(720, 560, "Préparation documentaire terminée", pct(m.prepared, m.n), `${fmt(m.prepared)} / ${fmt(m.n)} TOT prêtes`, { accent: STATE_COLORS[STATE.ready], ratioValue: ratio(m.prepared, m.n) });
-  card(1304, 268, "DEM à compléter", fmt(m.overdue), "lignes · échéance dépassée", { accent: m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized], valueColor: m.overdue ? "#C41E25" : PNG.ink, icon: "" });
-  card(1596, 268, "Échéances < 30 j", fmt(m.dueSoon), "TOT à préparer", { accent: m.dueSoon ? STATE_COLORS[STATE.missing] : "#b9c6d4", icon: "" });
+  card(1304, 268, "J0 sous 60 jours", fmt(m.upcomingTot), `TOT · ${plural(m.upcoming.length, "REE", "REE")}`, { accent: STATE_COLORS[STATE.ready] });
+  card(1596, 268, "À préparer < 30 j", fmt(m.dueSoon), "TOT", { accent: m.dueSoon ? STATE_COLORS[STATE.missing] : "#b9c6d4" });
 
   // Rangée 2 gauche : avancement par mois de J0
   const y2 = 376, h2 = 456, tx = 56, tw = 1120;
   roundRect(tx, y2, tw, h2, 18, PNG.card);
   text(`Avancement par mois de J0 · ${m.timeline.title}`, tx + 32, y2 + 24, { size: 30, weight: 700, width: tw - 64 });
   let lx = tx + 32;
-  for (const s of STATE_ORDER) {
-    roundRect(lx, y2 + 76, 18, 18, 4, STATE_COLORS[s]);
+  for (const s of TEAM_ORDER) {
+    roundRect(lx, y2 + 76, 18, 18, 4, TEAM_COLORS[s]);
     lx += 26 + text(s, lx + 26, y2 + 73, { size: 21, color: PNG.ink2 }) + 30;
   }
   const cols = m.timeline.columns, plotTop = y2 + 152, plotH = 218, slot = (tw - 64) / cols.length, barW = Math.min(52, slot * 0.68);
@@ -270,13 +295,13 @@ function drawPNG(canvas, m) {
     if (col.current) roundRect(tx + 32 + i * slot + 2, plotTop - 40, slot - 4, plotH + 104, 10, "#e8f0f8");
     roundRect(x, plotTop, barW, plotH, 5, "#edf1f5");
     let y = plotTop + plotH;
-    const segs = STATE_ORDER.filter((s) => col.counts[s] > 0);
+    const segs = TEAM_ORDER.filter((s) => col.counts[s] > 0);
     segs.forEach((s, k) => {
       const h = col.counts[s] / col.total * plotH, gap = k < segs.length - 1 ? 2 : 0;
       y -= h;
       const isTop = k === segs.length - 1;
-      c.fillStyle = STATE_COLORS[s];
-      if (isTop) roundRect(x, y, barW, Math.max(1, h - gap), Math.min(5, h / 2), STATE_COLORS[s]);
+      c.fillStyle = TEAM_COLORS[s];
+      if (isTop) roundRect(x, y, barW, Math.max(1, h - gap), Math.min(5, h / 2), TEAM_COLORS[s]);
       else c.fillRect(x, y + gap, barW, Math.max(0.5, h - gap));
     });
     const done = col.counts[STATE.realized], doneH = col.total ? done / col.total * plotH : 0;
@@ -287,38 +312,23 @@ function drawPNG(canvas, m) {
     else if (m.timeline.monthly && col.month === 0 && cols.filter((x2) => x2.month === 0).length > 1) text(String(col.year), cx, plotTop + plotH + 40, { size: 17, color: PNG.muted, align: "center", width: slot });
   });
 
-  // Rangée 2 droite : retards de préparation documentaire
+  // Rangée 2 droite : à venir (J0 des 60 prochains jours)
   const rx = 1200, rw = 664;
   roundRect(rx, y2, rw, h2, 18, PNG.card);
-  roundRect(rx, y2, rw, 8, 4, m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized]);
-  text("Lignes de la DEM à compléter", rx + 32, y2 + 26, { size: 29, weight: 700, width: rw - 64 });
-  text(m.late.length ? `${plural(m.overdue, "ligne", "lignes")} Excel · ${plural(m.late.length, "REE", "REE")} · échéance J0 − 30 dépassée` : "Aucune ligne incomplète", rx + 32, y2 + 66, { size: 20, color: PNG.muted, width: rw - 64 });
-  const shown = m.late.slice(0, 5), rowH = 54;
+  roundRect(rx, y2, rw, 8, 4, STATE_COLORS[STATE.ready]);
+  text("À venir : J0 des 60 prochains jours", rx + 32, y2 + 26, { size: 29, width: rw - 64 });
+  text(m.upcoming.length ? `${plural(m.upcoming.length, "REE", "REE")} · ${plural(m.upcomingTot, "TOT", "TOT")} · du plus proche au plus lointain` : "Aucun J0 dans les 60 prochains jours", rx + 32, y2 + 66, { size: 20, color: PNG.muted, width: rw - 64 });
+  const shown = m.upcoming.slice(0, 6), rowH = 54;
   shown.forEach((g, i) => {
-    const y = y2 + 102 + i * rowH;
+    const y = y2 + 104 + i * rowH;
     if (i) { c.fillStyle = "#e6ecf2"; c.fillRect(rx + 32, y - 6, rw - 64, 1); }
-    text(`${g.affaire || "Affaire manquante"}  ·  ${g.ree || "REE absent"}`, rx + 32, y, { size: 22, weight: 700, width: 420, min: 15 });
-    text(`${g.phase} · ${g.owners.join(", ")}${g.missing.length ? " · manque " + g.missing.join(", ") : ""}`, rx + 32, y + 26, { size: 17, color: PNG.muted, width: 430, min: 13 });
-    text(`+${fmt(g.late)} j`, rx + rw - 32, y + 2, { size: 25, weight: 700, color: "#C41E25", align: "right", width: 150 });
-    text(`J0 ${formatShortDate(g.j0)}`, rx + rw - 32, y + 30, { size: 16, color: PNG.muted, align: "right", width: 150 });
+    text(`${g.affaire || "Affaire manquante"}  ·  ${g.ree || "REE absent"}`, rx + 32, y, { size: 22, width: 420, min: 15 });
+    roundRect(rx + 32, y + 30, 12, 12, 3, TEAM_COLORS[g.status]);
+    text(`${g.status} · ${g.phase} · ${g.owners.join(", ")}`, rx + 52, y + 27, { size: 17, color: PNG.muted, width: 410, min: 13 });
+    text(`J0 ${formatShortDate(g.j0)}`, rx + rw - 32, y + 2, { size: 23, align: "right", width: 170 });
+    text(`dans ${plural(g.inDays, "jour")}`, rx + rw - 32, y + 30, { size: 16, color: PNG.muted, align: "right", width: 170 });
   });
-  if (!shown.length) text("✓  Toutes les préparations échues sont complètes.", rx + 32, y2 + 120, { size: 24, color: "#3D7F22", width: rw - 64 });
-  if (m.late.length > shown.length) text(`+ ${plural(m.late.length - shown.length, "autre REE", "autres REE")} à compléter`, rx + 32, y2 + 102 + shown.length * rowH, { size: 18, weight: 600, color: PNG.ink2, width: rw - 64 });
-  if (m.lateByOwner.length) {
-    // Autant de chargés que la largeur le permet, le reste résumé en « +N ».
-    c.font = PNG.font(600, 18);
-    let line = "Par chargé :", shownOwners = 0;
-    for (const [name, n] of m.lateByOwner) {
-      const next = `${line}${shownOwners ? "  ·" : ""}  ${name} ${n}`;
-      const restLabel = shownOwners + 1 < m.lateByOwner.length ? `  ·  +${m.lateByOwner.length - shownOwners - 1} autres` : "";
-      if (c.measureText(next + restLabel).width > rw - 64) break;
-      line = next;
-      shownOwners++;
-    }
-    if (shownOwners < m.lateByOwner.length) line += `  ·  +${m.lateByOwner.length - shownOwners} autres`;
-    roundRect(rx + 16, y2 + h2 - 58, rw - 32, 42, 10, "#f1f5f9");
-    text(line, rx + 32, y2 + h2 - 47, { size: 18, weight: 600, color: PNG.ink2, width: rw - 64, min: 14 });
-  }
+  if (m.upcoming.length > shown.length) text(`+ ${plural(m.upcoming.length - shown.length, "autre REE", "autres REE")} à venir`, rx + 32, y2 + 104 + shown.length * rowH, { size: 18, color: PNG.ink2, width: rw - 64 });
 
   // Rangée 3 : états du REE
   const y3 = 856, h3 = 160, mw = 586;

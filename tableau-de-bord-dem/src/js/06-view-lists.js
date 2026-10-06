@@ -33,7 +33,7 @@ function taskTitle() {
 }
 
 function backToMine() {
-  return mode === "ce" ? `<button type="button" class="ghost" data-go="tab:mine">‹ Mes affaires</button>` : "";
+  return "";
 }
 
 function needsMe() {

@@ -298,7 +298,7 @@ const STATE_COLORS = {
   [STATE.missing]: "#EBA000",
   [STATE.late]: "#E3262D",
 };
-const STATE_TONE = { [STATE.realized]: "good", [STATE.ready]: "info", [STATE.ongoing]: "neutral", [STATE.missing]: "warn", [STATE.late]: "bad", [STATE.cancelled]: "neutral" };
+const STATE_TONE = { [STATE.realized]: "good", [STATE.ready]: "info", [STATE.ongoing]: "neutral", [STATE.missing]: "warn", [STATE.late]: "warn", [STATE.cancelled]: "neutral" };
 const PHASE_COLORS = { TEM: "#1057C8", AT: "#FE5815", "Non précisé": "#b9c6d4" };
 
 function observations(t) {

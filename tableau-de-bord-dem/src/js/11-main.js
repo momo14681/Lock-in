@@ -53,6 +53,10 @@ function render() {
   $("pdfExport").disabled = false;
   $("pngExport").disabled = false;
   $("csvExport").disabled = !currentExport;
+  $("view").insertAdjacentHTML("afterbegin", backBar());
+  $("view").querySelectorAll("tbody tr:not(.subRow)").forEach((tr) => {
+    if (tr.querySelector("[data-expand], [data-task], [data-group], [data-owner-tasks], [data-go]")) tr.classList.add("rowLink");
+  });
   restoreTableFocus();
   positionColMenus();
 }
@@ -72,6 +76,38 @@ function detail(t) {
 }
 
 // --- Navigation ---------------------------------------------------------------------
+
+// --- Historique : bouton « ‹ Retour » vers l'écran précédent -------------------------
+const navStack = [];
+
+function viewLabel() {
+  const t = [...TABS[mode], ...MORE_TABS[mode]].find((x) => x.id === tab);
+  if (tab === "tasks") return taskTitle();
+  if (tab === "affaires") return "Affaires";
+  if (tab === "dossiers") return "REE";
+  return t ? t.label : "écran précédent";
+}
+
+function pushNav() {
+  navStack.push({ mode, tab, taskFocus, taskScope, docCode, page, owner: $("owner").value, tables: JSON.stringify(tableState), label: viewLabel(), scroll: window.scrollY });
+  if (navStack.length > 30) navStack.shift();
+}
+
+function goBack() {
+  const s = navStack.pop();
+  if (!s) return;
+  mode = s.mode; tab = tabByMode[mode] = s.tab; taskFocus = s.taskFocus; taskScope = s.taskScope; docCode = s.docCode; page = s.page;
+  $("owner").value = s.owner;
+  for (const k of Object.keys(tableState)) delete tableState[k];
+  Object.assign(tableState, JSON.parse(s.tables));
+  render();
+  window.scrollTo(0, s.scroll || 0);
+}
+
+function backBar() {
+  const prev = navStack[navStack.length - 1];
+  return prev ? `<div class="backBar"><button type="button" class="backButton" data-back>‹ Retour à « ${esc(prev.label)} »</button></div>` : "";
+}
 
 function go(spec) {
   const cut = spec.indexOf(":");
@@ -103,11 +139,18 @@ function onClick(e) {
   const col = e.target.closest?.(".colMenu");
   if (!col) openColFilter = null;
   else if (e.target.closest("summary")) openColFilter = col.open ? null : col.dataset.colMenu;
+  // Ligne de tableau entièrement cliquable : déclenche l'action principale de la ligne.
+  if (!e.target.closest("button, a, input, select, label, summary, details")) {
+    const tr = e.target.closest("tr.rowLink");
+    const main = tr?.querySelector("[data-expand], [data-task], [data-group], [data-owner-tasks], [data-go]");
+    if (main) { main.click(); return; }
+  }
   const el = e.target.closest("button, [data-go]");
   if (!el || el.disabled) return;
   const d = el.dataset;
   if (d.task !== undefined) return detail(data.tasks[+d.task]);
-  if (d.go !== undefined) { if ($("detail").open) $("detail").close(); return go(d.go); }
+  if (d.back !== undefined) return goBack();
+  if (d.go !== undefined) { if ($("detail").open) $("detail").close(); pushNav(); return go(d.go); }
   if (d.set !== undefined) {
     const cut = d.set.indexOf(":"), key = d.set.slice(0, cut);
     if (SETTABLE[key]) { SETTABLE[key](d.set.slice(cut + 1)); page = 1; render(); }
@@ -133,7 +176,7 @@ function onClick(e) {
   if (d.pngPreview !== undefined) return previewPNG();
   if (d.me !== undefined) return setMe(d.me);
   if (d.owner !== undefined) { $("owner").value = d.owner; page = 1; return render(); }
-  if (d.ownerTasks !== undefined) { $("owner").value = d.ownerTasks; return openTasks(""); }
+  if (d.ownerTasks !== undefined) { pushNav(); $("owner").value = d.ownerTasks; return openTasks(""); }
   if (d.tableToggle !== undefined) {
     const st = tableStateFor(d.tableToggle);
     st.open = !(st.open || st.search);
@@ -152,10 +195,10 @@ function onClick(e) {
   if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
   if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
   if (d.toggleIgnored !== undefined) { showIgnored = !showIgnored; page = 1; return render(); }
-  if (d.group !== undefined) return openGroup(+d.group);
-  if (d.tab !== undefined) return setTab(d.tab);
+  if (d.group !== undefined) { pushNav(); return openGroup(+d.group); }
+  if (d.tab !== undefined) { navStack.length = 0; return setTab(d.tab); }
   if (d.sheet !== undefined) return toggleSheet(d.sheet);
-  if (d.mode !== undefined) return setMode(d.mode);
+  if (d.mode !== undefined) { navStack.length = 0; return setMode(d.mode); }
 }
 
 function onTableInput(e) {
@@ -181,7 +224,7 @@ function onChange(e) {
   const key = e.target.dataset?.change;
   if (key === "me") return setMe(e.target.value);
   if (key === "issueKind") { issueKind = e.target.value; page = 1; render(); }
-  if (key === "moreTab" && e.target.value) setTab(e.target.value);
+  if (key === "moreTab" && e.target.value) { navStack.length = 0; setTab(e.target.value); }
 }
 
 // --- Démarrage ----------------------------------------------------------------------

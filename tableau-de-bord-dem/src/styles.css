@@ -473,3 +473,10 @@ th { overflow: visible; }
 
 /* Pas de pastilles de couleur : le statut se lit dans le libellé et la couleur du badge. */
 .sourceDot { display: none; }
+
+/* --- Lignes cliquables et retour ------------------------------------------------ */
+tr.rowLink { cursor: pointer; }
+tr.rowLink:hover > td { background: var(--info-bg); }
+.backBar { margin: -6px 0 14px; }
+.backButton { border: 0; background: none; padding: 6px 0; color: var(--primary); font-size: 15px; }
+.backButton:hover { background: none; text-decoration: underline; }

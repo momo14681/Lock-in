@@ -50,7 +50,8 @@ function audit(tasks) {
       const d = isoDay(t.j0);
       if ((min && d < min) || (max && d > max)) add(t, "J0 hors période", ["j0"], `Date hors de la période ${min || "sans début"} au ${max || "sans fin"}. Confirmer si l’activité est historique.`);
     }
-    if (t.overdue) add(t, "DEM incomplète (échéance dépassée)", [...t.missingPrerequisites, ...(!t.totReady ? ["totPrete"] : []), "j0"], `Préparation attendue le ${t.prepDueLabel}. Compléter les informations ou confirmer le planning.`, "Prioritaire");
+    // Prioritaire seulement si l'activité (J0) est encore à venir ; sinon simple mise à jour de la DEM.
+    if (t.overdue) add(t, "DEM incomplète (échéance dépassée)", [...t.missingPrerequisites, ...(!t.totReady ? ["totPrete"] : []), "j0"], `Préparation attendue le ${t.prepDueLabel}. Compléter les informations ou confirmer le planning.`, t.j0 && data?.today && t.j0 >= data.today ? "Prioritaire" : "À compléter");
     if (t.duplicate) add(t, "Doublon possible", ["affaire", "ree", "ot", "tot"], "Même combinaison feuille, affaire, REE, OT et TOT sur plusieurs lignes. Vérifier avant toute suppression.");
 
     for (const key of ["j0", "totPrete", "bpa", "ger", "bpd"]) {
