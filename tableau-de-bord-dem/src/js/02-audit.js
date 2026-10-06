@@ -71,7 +71,6 @@ function audit(tasks) {
     const prep = parseExcelDate(t.cells.totPrete?.v), bpa = parseExcelDate(t.cells.bpa?.v), bpd = parseExcelDate(t.cells.bpd?.v);
     if (prep && bpa && bpa < prep) add(t, "Chronologie", ["totPrete", "bpa"], "La date BPA précède la date TOT prête. Vérifier les deux dates.");
     if (bpa && bpd && bpd < bpa) add(t, "Chronologie", ["bpa", "bpd"], "La date BPD précède la date BPA. Vérifier la séquence métier.");
-    if (prep && t.j0 && prep > t.j0) add(t, "Chronologie", ["totPrete", "j0"], "La préparation est datée après le début prévu de l’activité.");
     for (const [key, c] of Object.entries(t.cells)) if (c?.t === "e") add(t, "Erreur Excel", [key], "La cellule contient une erreur Excel. Vérifier la formule dans le classeur.", "À compléter");
   }
   return out.sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || a.t.sheet.localeCompare(b.t.sheet) || a.t.rowNumber - b.t.rowNumber);
