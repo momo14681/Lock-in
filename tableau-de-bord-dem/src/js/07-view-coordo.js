@@ -117,7 +117,7 @@ function viewOverview() {
   const kpis = [
     kpi({ label: "Préparation terminée", value: pct(prepared, n), sub: `${fmt(prepared)} / ${fmt(n)} TOT`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
     kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `${fmt(realized)} / ${fmt(n)} TOT`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
-    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: "TOT dont J0 − 30 est dépassé", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
+    kpi({ label: "Lignes DEM incomplètes", value: fmt(overdue), sub: "échéance J0 − 30 dépassée", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
     kpi({ label: "À corriger dans la DEM", value: fmt(issues.length), sub: `${plural(new Set(issues.map((i) => i.t)).size, "TOT concernée", "TOT concernées")}`, tone: issues.length ? "warn" : "good", go: "tab:issues" }),
   ].join("");
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse</h2>
@@ -179,7 +179,7 @@ function viewOwners() {
   });
   $("view").innerHTML = panel("Répartition par chargé d’essais", dt.html, {});
   currentExport = () => downloadMatrix(
-    ["Chargé", "Type", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
+    ["Chargé", "Type", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Lignes DEM incomplètes", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
     dt.rows.map((s) => [s.name, s.type, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
     "Repartition_par_charge.csv");
 }

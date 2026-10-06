@@ -5,7 +5,7 @@
 
 const TASK_FOCUS = [
   ["", "Toutes", () => true],
-  ["overdue", "Prépa en retard", (t) => t.overdue],
+  ["overdue", "DEM incomplète", (t) => t.overdue],
   ["dueSoon", "Échéance < 30 j", (t) => t.dueSoon],
   ["missing", "Infos manquantes", (t) => t.infoMissing],
   ["noJ0", "J0 absent", (t) => !t.j0],

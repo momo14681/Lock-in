@@ -480,6 +480,9 @@ h1, h2, h3 { font-weight: 400; }
 .colMenuBody input { accent-color: var(--primary); width: 16px; height: 16px; }
 .colMenuBody .ghost { margin-bottom: 4px; }
 th { overflow: visible; }
+
+/* Pas de pastilles de couleur : le statut se lit dans le libellé et la couleur du badge. */
+.sourceDot { display: none; }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -998,7 +1001,7 @@ function isRealized(t) {
 }
 
 // Statut d'avancement d'une TOT (ordre d'évaluation de la V1.3).
-const STATE = { realized: "Réalisé", missing: "Infos manquantes", ready: "Prépa terminée", late: "Prépa en retard", ongoing: "En préparation", cancelled: "Annulée" };
+const STATE = { realized: "Réalisé", missing: "Infos manquantes", ready: "Prépa terminée", late: "DEM incomplète", ongoing: "En préparation", cancelled: "Annulée" };
 function state(t) {
   return t.cancelled ? STATE.cancelled : isRealized(t) ? STATE.realized : t.infoMissing ? STATE.missing : t.prepComplete ? STATE.ready : t.overdue ? STATE.late : STATE.ongoing;
 }
@@ -1114,7 +1117,7 @@ function audit(tasks) {
       const d = isoDay(t.j0);
       if ((min && d < min) || (max && d > max)) add(t, "J0 hors période", ["j0"], `Date hors de la période ${min || "sans début"} au ${max || "sans fin"}. Confirmer si l’activité est historique.`);
     }
-    if (t.overdue) add(t, "Préparation en retard", [...t.missingPrerequisites, ...(!t.totReady ? ["totPrete"] : []), "j0"], `Préparation attendue le ${t.prepDueLabel}. Compléter les informations ou confirmer le planning.`, "Prioritaire");
+    if (t.overdue) add(t, "DEM incomplète (échéance dépassée)", [...t.missingPrerequisites, ...(!t.totReady ? ["totPrete"] : []), "j0"], `Préparation attendue le ${t.prepDueLabel}. Compléter les informations ou confirmer le planning.`, "Prioritaire");
     if (t.duplicate) add(t, "Doublon possible", ["affaire", "ree", "ot", "tot"], "Même combinaison feuille, affaire, REE, OT et TOT sur plusieurs lignes. Vérifier avant toute suppression.");
 
     for (const key of ["j0", "totPrete", "bpa", "ger", "bpd"]) {
@@ -1362,7 +1365,7 @@ function openTasks(focus = "", scope = null) {
 
 const TONE_ICON = { good: "✓", info: "◆", neutral: "○", warn: "▲", bad: "●" };
 
-function badge(label, tone = "neutral", { icon = true, title = "" } = {}) {
+function badge(label, tone = "neutral", { icon = false, title = "" } = {}) {
   return `<span class="badge tone-${tone}"${title ? ` title="${esc(title)}"` : ""}>${icon ? `<span aria-hidden="true">${TONE_ICON[tone] || ""}</span>` : ""}${esc(label)}</span>`;
 }
 
@@ -1553,7 +1556,7 @@ function positionColMenus() {
 // =============================================================================
 
 const AFFAIRE_STATUS = {
-  late: { label: "Prépa en retard", tone: "bad", rank: 0 },
+  late: { label: "DEM incomplète", tone: "bad", rank: 0 },
   missing: { label: "À compléter", tone: "warn", rank: 1 },
   ongoing: { label: "En préparation", tone: "neutral", rank: 2 },
   ready: { label: "Prépa terminée", tone: "info", rank: 3 },
@@ -1626,7 +1629,7 @@ function stateBar(ts, { width = "" } = {}) {
 
 function attentionBadges(g) {
   const out = [];
-  if (g.overdue) out.push(badge(`${fmt(g.overdue)} en retard`, "bad"));
+  if (g.overdue) out.push(badge(`${fmt(g.overdue)} ligne${g.overdue > 1 ? "s" : ""} DEM incomplète${g.overdue > 1 ? "s" : ""}`, "bad"));
   else if (g.dueSoon) out.push(badge(`${fmt(g.dueSoon)} à boucler sous 30 j`, "warn"));
   if (g.issues) out.push(`<span class="softCount">${plural(g.issues, "correction")}</span>`);
   return out.join(" ") || '<span class="muted">—</span>';
@@ -1658,7 +1661,7 @@ function affaireRow(g) {
 }
 
 function attentionLabel(g) {
-  return g.overdue ? "Prépa en retard" : g.dueSoon ? "À boucler sous 30 j" : g.issues ? "Corrections DEM" : "Rien";
+  return g.overdue ? "DEM incomplète" : g.dueSoon ? "À boucler sous 30 j" : g.issues ? "Corrections DEM" : "Rien";
 }
 
 function chooseMePanel() {
@@ -1682,7 +1685,7 @@ function todoItems(ts, myIssues) {
   const overdue = ts.filter((t) => t.overdue), dueSoon = ts.filter((t) => t.dueSoon), missing = ts.filter((t) => t.infoMissing);
   const rework = documentRows(ts, "R");
   return [
-    { n: overdue.length, tone: "bad", title: "préparations en retard", go: "tasks:overdue" },
+    { n: overdue.length, tone: "bad", title: "lignes DEM incomplètes (échéance dépassée)", go: "tasks:overdue" },
     { n: dueSoon.length, tone: "warn", title: "préparations à boucler sous 30 jours", go: "tasks:dueSoon" },
     { n: rework.length, tone: "warn", title: "documents à reprendre (R)", go: "documents:R" },
     { n: myIssues.length, tone: "info", title: "corrections à faire dans la DEM", go: "tab:issues" },
@@ -1708,7 +1711,7 @@ function viewMine() {
   const kpis = [
     kpi({ label: "Préparation terminée", value: pct(prepared, n), sub: `équipe : ${teamPct((t) => t.prepComplete)}`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
     kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `équipe : ${teamPct(isRealized)}`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
-    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: overdue ? "TOT à préparer d’urgence" : "aucun retard", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
+    kpi({ label: "Lignes DEM incomplètes", value: fmt(overdue), sub: overdue ? "échéance J0 − 30 dépassée" : "aucune", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
     kpi({ label: "À corriger dans la DEM", value: fmt(issues.length), sub: issues.length ? "cellules à vérifier" : "rien à corriger", tone: issues.length ? "warn" : "good", go: "tab:issues" }),
   ].join("");
   const head = `<div class="viewHead"><div><h2 class="viewTitle">Mes affaires</h2><p class="muted">${plural(groups.length, "affaire")} · ${plural(n, "TOT", "TOT")}</p></div>${meSelector()}</div>`;
@@ -1730,7 +1733,7 @@ function viewMine() {
       ${todoPanel(ts, issues)}
     </div>`;
   currentExport = () => downloadMatrix(
-    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "BPA signés", "GER/1N signés", "BPD signés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
+    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "BPA signés", "GER/1N signés", "BPD signés", "Lignes DEM incomplètes", "Infos manquantes", "Corrections DEM", "Statut"],
     groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.realized, g.bpa.done, g.ger.done, g.bpd.done, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
     `Mes_affaires_${me.replace(/[^\p{L}\p{N}_-]+/gu, "_")}.csv`);
 }
@@ -1743,7 +1746,7 @@ function viewMine() {
 
 const TASK_FOCUS = [
   ["", "Toutes", () => true],
-  ["overdue", "Prépa en retard", (t) => t.overdue],
+  ["overdue", "DEM incomplète", (t) => t.overdue],
   ["dueSoon", "Échéance < 30 j", (t) => t.dueSoon],
   ["missing", "Infos manquantes", (t) => t.infoMissing],
   ["noJ0", "J0 absent", (t) => !t.j0],
@@ -2068,7 +2071,7 @@ function viewOverview() {
   const kpis = [
     kpi({ label: "Préparation terminée", value: pct(prepared, n), sub: `${fmt(prepared)} / ${fmt(n)} TOT`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
     kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `${fmt(realized)} / ${fmt(n)} TOT`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
-    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: "TOT dont J0 − 30 est dépassé", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
+    kpi({ label: "Lignes DEM incomplètes", value: fmt(overdue), sub: "échéance J0 − 30 dépassée", tone: overdue ? "bad" : "good", go: "tasks:overdue" }),
     kpi({ label: "À corriger dans la DEM", value: fmt(issues.length), sub: `${plural(new Set(issues.map((i) => i.t)).size, "TOT concernée", "TOT concernées")}`, tone: issues.length ? "warn" : "good", go: "tab:issues" }),
   ].join("");
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse</h2>
@@ -2130,7 +2133,7 @@ function viewOwners() {
   });
   $("view").innerHTML = panel("Répartition par chargé d’essais", dt.html, {});
   currentExport = () => downloadMatrix(
-    ["Chargé", "Type", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
+    ["Chargé", "Type", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Lignes DEM incomplètes", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
     dt.rows.map((s) => [s.name, s.type, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
     "Repartition_par_charge.csv");
 }
@@ -2347,12 +2350,12 @@ function timelineSvg(tl) {
 
 function lateTable(late, limit) {
   return dataTable({
-    key: "late", items: late, paged: false, free: true, empty: "Aucune préparation en retard.",
+    key: "late", items: late, paged: false, free: true, empty: "Aucune ligne incomplète : la DEM est à jour.",
     columns: [
       { label: "Affaire", value: (g) => `${g.affaire} ${g.ree}` },
       { label: "Chargé", value: (g) => g.owners.join(", "), filter: true },
       { label: "J0", value: (g) => formatDate(g.j0) },
-      { label: "Retard", cls: "num", value: (g) => `${g.late} j` },
+      { label: "Dépassé de", cls: "num", value: (g) => `${g.late} j` },
       { label: "Ce qui manque", value: (g) => g.missing.join(", ") },
     ],
     row: (g) => `<tr>
@@ -2375,18 +2378,18 @@ function viewTeam() {
   const kpis = [
     kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
     kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
-    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT · ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
+    kpi({ label: "Lignes DEM incomplètes", value: fmt(m.overdue), sub: `échéance dépassée · ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
     kpi({ label: "À boucler sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer", tone: m.dueSoon ? "warn" : "" }),
   ].join("");
   const more = !filtering && late.rows.length > 10
-    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(late.rows.length)} REE en retard`}</button>` : "";
+    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(late.rows.length)} REE concernés`}</button>` : "";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">${esc(m.period)} · ${esc(m.scope)}</p></div>
       <div class="panelActions"><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="kpis kpis-4 hero">${kpis}</div>
     <div class="split even">
       ${panel(`Avancement par mois de J0`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
         { cls: "timelinePanel" })}
-      ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${late.html}${more}`,
+      ${panel(`Lignes de la DEM à compléter · ${fmt(m.late.length)} REE`, `${late.html}${more}`,
         { cls: "latePanel" })}
     </div>
     ${panel("Documents des REE", milestoneCards(m.ts))}`;
@@ -2465,8 +2468,8 @@ function drawPNG(canvas, m) {
   }
   card(56, 640, "Essais réalisés", pct(m.realized, m.n), `${fmt(m.realized)} / ${fmt(m.n)} TOT · GER/1N signé`, { accent: STATE_COLORS[STATE.realized], ratioValue: ratio(m.realized, m.n) });
   card(720, 560, "Préparation documentaire terminée", pct(m.prepared, m.n), `${fmt(m.prepared)} / ${fmt(m.n)} TOT prêtes`, { accent: STATE_COLORS[STATE.ready], ratioValue: ratio(m.prepared, m.n) });
-  card(1304, 268, "Prépas en retard", fmt(m.overdue), `TOT · ${plural(m.late.length, "REE", "REE")}`, { accent: m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized], valueColor: m.overdue ? "#C41E25" : PNG.ink, icon: m.overdue ? "●" : "✓" });
-  card(1596, 268, "Échéances < 30 j", fmt(m.dueSoon), "TOT à préparer", { accent: m.dueSoon ? STATE_COLORS[STATE.missing] : "#b9c6d4", icon: m.dueSoon ? "▲" : "" });
+  card(1304, 268, "DEM à compléter", fmt(m.overdue), "lignes · échéance dépassée", { accent: m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized], valueColor: m.overdue ? "#C41E25" : PNG.ink, icon: "" });
+  card(1596, 268, "Échéances < 30 j", fmt(m.dueSoon), "TOT à préparer", { accent: m.dueSoon ? STATE_COLORS[STATE.missing] : "#b9c6d4", icon: "" });
 
   // Rangée 2 gauche : avancement par mois de J0
   const y2 = 376, h2 = 456, tx = 56, tw = 1120;
@@ -2504,8 +2507,8 @@ function drawPNG(canvas, m) {
   const rx = 1200, rw = 664;
   roundRect(rx, y2, rw, h2, 18, PNG.card);
   roundRect(rx, y2, rw, 8, 4, m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized]);
-  text("Retards de préparation documentaire", rx + 32, y2 + 26, { size: 29, weight: 700, width: rw - 64 });
-  text(m.late.length ? `${plural(m.late.length, "REE", "REE")} · ${fmt(m.overdue)} TOT · échéances les plus récentes d’abord` : "Aucune préparation en retard", rx + 32, y2 + 66, { size: 20, color: PNG.muted, width: rw - 64 });
+  text("Lignes de la DEM à compléter", rx + 32, y2 + 26, { size: 29, weight: 700, width: rw - 64 });
+  text(m.late.length ? `${plural(m.overdue, "ligne", "lignes")} Excel · ${plural(m.late.length, "REE", "REE")} · échéance J0 − 30 dépassée` : "Aucune ligne incomplète", rx + 32, y2 + 66, { size: 20, color: PNG.muted, width: rw - 64 });
   const shown = m.late.slice(0, 5), rowH = 54;
   shown.forEach((g, i) => {
     const y = y2 + 102 + i * rowH;
@@ -2516,7 +2519,7 @@ function drawPNG(canvas, m) {
     text(`J0 ${formatShortDate(g.j0)}`, rx + rw - 32, y + 30, { size: 16, color: PNG.muted, align: "right", width: 150 });
   });
   if (!shown.length) text("✓  Toutes les préparations échues sont complètes.", rx + 32, y2 + 120, { size: 24, color: "#3D7F22", width: rw - 64 });
-  if (m.late.length > shown.length) text(`+ ${plural(m.late.length - shown.length, "autre REE", "autres REE")} en retard`, rx + 32, y2 + 102 + shown.length * rowH, { size: 18, weight: 600, color: PNG.ink2, width: rw - 64 });
+  if (m.late.length > shown.length) text(`+ ${plural(m.late.length - shown.length, "autre REE", "autres REE")} à compléter`, rx + 32, y2 + 102 + shown.length * rowH, { size: 18, weight: 600, color: PNG.ink2, width: rw - 64 });
   if (m.lateByOwner.length) {
     // Autant de chargés que la largeur le permet, le reste résumé en « +N ».
     c.font = PNG.font(600, 18);
@@ -2622,12 +2625,12 @@ function reportModel() {
   if (tab === "mine") {
     title = `Mes affaires — ${me || "chargé non choisi"}`;
     const groups = affaireGroups(ts);
-    sections.push(indicatorSection([["Affaires", groups.length], ["REE", dossierCount(ts)], ["TOT", n], ["Préparation documentaire", pct(prepared, n)], ["Essais réalisés", pct(realized, n)], ["Prépas en retard", ts.filter((t) => t.overdue).length], ["Échéances sous 30 jours", ts.filter((t) => t.dueSoon).length], ["Corrections DEM", issues.length]]));
+    sections.push(indicatorSection([["Affaires", groups.length], ["REE", dossierCount(ts)], ["TOT", n], ["Préparation documentaire", pct(prepared, n)], ["Essais réalisés", pct(realized, n)], ["Lignes DEM incomplètes", ts.filter((t) => t.overdue).length], ["Échéances sous 30 jours", ts.filter((t) => t.dueSoon).length], ["Corrections DEM", issues.length]]));
     sections.push({ title: "Suivi par affaire", headers: ["Affaire", "Libellé DI", "TOT", "J0", "Prépa", "BPA signés", "GER/1N signés", "BPD signés", "Statut"], widths: [.13, .25, .05, .13, .08, .08, .09, .08, .11],
       rows: groups.map((g) => [g.affaire, g.libelle, g.n, g.j0Min ? (g.j0Max - g.j0Min ? `du ${formatDate(g.j0Min)} au ${formatDate(g.j0Max)}` : formatDate(g.j0Min)) : "—", `${g.prep}/${g.n}`, `${g.bpa.done}/${g.n}`, `${g.ger.done}/${g.n}`, `${g.bpd.done}/${g.n}`, AFFAIRE_STATUS[g.status].label]) });
   } else if (tab === "overview") {
     title = "Synthèse coordination";
-    sections.push(indicatorSection([["TOT", n], ["Affaires", countUnique(ts, (t) => t.affaire)], ["REE", dossierCount(ts)], ["Préparation", pct(prepared, n)], ["Essais réalisés", pct(realized, n)], ["Non affectées", ts.filter((t) => t.responsable === UNASSIGNED).length], ["Prépas en retard", ts.filter((t) => t.overdue).length], ["Corrections DEM", issues.length]]));
+    sections.push(indicatorSection([["TOT", n], ["Affaires", countUnique(ts, (t) => t.affaire)], ["REE", dossierCount(ts)], ["Préparation", pct(prepared, n)], ["Essais réalisés", pct(realized, n)], ["Non affectées", ts.filter((t) => t.responsable === UNASSIGNED).length], ["Lignes DEM incomplètes", ts.filter((t) => t.overdue).length], ["Corrections DEM", issues.length]]));
     const sortLabel = CHARGE_SORTS.find(([k]) => k === chargeSort)?.[1] || "";
     sections.push({ title: `Charge par chargé — ${CHARGE_MODES.find(([k]) => k === chargeMode)?.[1]} · tri : ${sortLabel}${hiddenOwners.size ? " (masquage appliqué)" : ""}`, headers: ["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"], rows: chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]) });
     sections.push({ title: "Corrections DEM par type", headers: ["Contrôle", "Nombre"], widths: [.8, .2], rows: [...new Set(issues.map((i) => i.kind))].map((k) => [k, issues.filter((i) => i.kind === k).length]).sort((a, b) => b[1] - a[1]) });
@@ -2636,10 +2639,10 @@ function reportModel() {
   } else if (tab === "team") {
     const m = teamModel();
     title = "Avancement de l’équipe";
-    sections.push(indicatorSection([["TOT", m.n], ["Essais réalisés", `${pct(m.realized, m.n)} (${m.realized})`], ["Préparation documentaire terminée", `${pct(m.prepared, m.n)} (${m.prepared})`], ["Prépas en retard (TOT)", m.overdue], ["REE en retard de préparation", m.late.length], ["Échéances sous 30 jours", m.dueSoon]]));
+    sections.push(indicatorSection([["TOT", m.n], ["Essais réalisés", `${pct(m.realized, m.n)} (${m.realized})`], ["Préparation documentaire terminée", `${pct(m.prepared, m.n)} (${m.prepared})`], ["Lignes DEM incomplètes", m.overdue], ["REE concernés", m.late.length], ["Échéances sous 30 jours", m.dueSoon]]));
     sections.push({ title: `Avancement par mois de J0 — ${m.timeline.title}`, headers: ["Période", "TOT", ...STATE_ORDER, "% réalisés"], rows: m.timeline.columns.map((c) => [c.long, c.total, ...STATE_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized], c.total)]) });
-    sections.push({ title: "Retards de préparation documentaire", headers: ["Affaire / REE", "Chargé", "Échéance prépa", "J0", "Retard", "TOT", "Manque"], widths: [.2, .15, .12, .11, .08, .06, .28], rows: m.late.map((g) => [`${g.affaire} / ${g.ree} (${g.phase})`, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), `${g.late} j`, g.ts.length, g.missing.join(", ")]) });
-    sections.push({ title: "Avancement par chargé", headers: ["Chargé", "TOT", "Réalisés", "Prépa terminée", "Prépas en retard", "Échéances < 30 j"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, `${o.prepared} (${pct(o.prepared, o.n)})`, o.overdue, o.dueSoon]) });
+    sections.push({ title: "Lignes de la DEM à compléter (échéance J0 − 30 dépassée)", headers: ["Affaire / REE", "Chargé", "Échéance prépa", "J0", "Dépassement", "TOT", "Manque"], widths: [.2, .15, .12, .11, .08, .06, .28], rows: m.late.map((g) => [`${g.affaire} / ${g.ree} (${g.phase})`, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), `${g.late} j`, g.ts.length, g.missing.join(", ")]) });
+    sections.push({ title: "Avancement par chargé", headers: ["Chargé", "TOT", "Réalisés", "Prépa terminée", "Lignes DEM incomplètes", "Échéances < 30 j"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, `${o.prepared} (${pct(o.prepared, o.n)})`, o.overdue, o.dueSoon]) });
   } else if (tab === "owners") {
     sections.push({ title, headers: ["Chargé", "Affaires", "REE", "TOT", "Prépa terminée", "Réalisés", "Retards", "Infos manq.", "Corrections"], rows: ownerStats().map((s) => [s.name, s.affaires, s.ree, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues]) });
   } else if (tab === "assignments") {

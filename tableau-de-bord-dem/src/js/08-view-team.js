@@ -134,12 +134,12 @@ function timelineSvg(tl) {
 
 function lateTable(late, limit) {
   return dataTable({
-    key: "late", items: late, paged: false, free: true, empty: "Aucune préparation en retard.",
+    key: "late", items: late, paged: false, free: true, empty: "Aucune ligne incomplète : la DEM est à jour.",
     columns: [
       { label: "Affaire", value: (g) => `${g.affaire} ${g.ree}` },
       { label: "Chargé", value: (g) => g.owners.join(", "), filter: true },
       { label: "J0", value: (g) => formatDate(g.j0) },
-      { label: "Retard", cls: "num", value: (g) => `${g.late} j` },
+      { label: "Dépassé de", cls: "num", value: (g) => `${g.late} j` },
       { label: "Ce qui manque", value: (g) => g.missing.join(", ") },
     ],
     row: (g) => `<tr>
@@ -162,18 +162,18 @@ function viewTeam() {
   const kpis = [
     kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] } }),
     kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] } }),
-    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: `TOT · ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
+    kpi({ label: "Lignes DEM incomplètes", value: fmt(m.overdue), sub: `échéance dépassée · ${plural(m.late.length, "REE", "REE")}`, tone: m.overdue ? "bad" : "good" }),
     kpi({ label: "À boucler sous 30 jours", value: fmt(m.dueSoon), sub: "TOT à préparer", tone: m.dueSoon ? "warn" : "" }),
   ].join("");
   const more = !filtering && late.rows.length > 10
-    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(late.rows.length)} REE en retard`}</button>` : "";
+    ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 plus urgents" : `Afficher les ${fmt(late.rows.length)} REE concernés`}</button>` : "";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">${esc(m.period)} · ${esc(m.scope)}</p></div>
       <div class="panelActions"><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="kpis kpis-4 hero">${kpis}</div>
     <div class="split even">
       ${panel(`Avancement par mois de J0`, `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${timelineSvg(m.timeline)}`,
         { cls: "timelinePanel" })}
-      ${panel(`Préparations en retard · ${fmt(m.late.length)} REE`, `${late.html}${more}`,
+      ${panel(`Lignes de la DEM à compléter · ${fmt(m.late.length)} REE`, `${late.html}${more}`,
         { cls: "latePanel" })}
     </div>
     ${panel("Documents des REE", milestoneCards(m.ts))}`;
@@ -252,8 +252,8 @@ function drawPNG(canvas, m) {
   }
   card(56, 640, "Essais réalisés", pct(m.realized, m.n), `${fmt(m.realized)} / ${fmt(m.n)} TOT · GER/1N signé`, { accent: STATE_COLORS[STATE.realized], ratioValue: ratio(m.realized, m.n) });
   card(720, 560, "Préparation documentaire terminée", pct(m.prepared, m.n), `${fmt(m.prepared)} / ${fmt(m.n)} TOT prêtes`, { accent: STATE_COLORS[STATE.ready], ratioValue: ratio(m.prepared, m.n) });
-  card(1304, 268, "Prépas en retard", fmt(m.overdue), `TOT · ${plural(m.late.length, "REE", "REE")}`, { accent: m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized], valueColor: m.overdue ? "#C41E25" : PNG.ink, icon: m.overdue ? "●" : "✓" });
-  card(1596, 268, "Échéances < 30 j", fmt(m.dueSoon), "TOT à préparer", { accent: m.dueSoon ? STATE_COLORS[STATE.missing] : "#b9c6d4", icon: m.dueSoon ? "▲" : "" });
+  card(1304, 268, "DEM à compléter", fmt(m.overdue), "lignes · échéance dépassée", { accent: m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized], valueColor: m.overdue ? "#C41E25" : PNG.ink, icon: "" });
+  card(1596, 268, "Échéances < 30 j", fmt(m.dueSoon), "TOT à préparer", { accent: m.dueSoon ? STATE_COLORS[STATE.missing] : "#b9c6d4", icon: "" });
 
   // Rangée 2 gauche : avancement par mois de J0
   const y2 = 376, h2 = 456, tx = 56, tw = 1120;
@@ -291,8 +291,8 @@ function drawPNG(canvas, m) {
   const rx = 1200, rw = 664;
   roundRect(rx, y2, rw, h2, 18, PNG.card);
   roundRect(rx, y2, rw, 8, 4, m.overdue ? STATE_COLORS[STATE.late] : STATE_COLORS[STATE.realized]);
-  text("Retards de préparation documentaire", rx + 32, y2 + 26, { size: 29, weight: 700, width: rw - 64 });
-  text(m.late.length ? `${plural(m.late.length, "REE", "REE")} · ${fmt(m.overdue)} TOT · échéances les plus récentes d’abord` : "Aucune préparation en retard", rx + 32, y2 + 66, { size: 20, color: PNG.muted, width: rw - 64 });
+  text("Lignes de la DEM à compléter", rx + 32, y2 + 26, { size: 29, weight: 700, width: rw - 64 });
+  text(m.late.length ? `${plural(m.overdue, "ligne", "lignes")} Excel · ${plural(m.late.length, "REE", "REE")} · échéance J0 − 30 dépassée` : "Aucune ligne incomplète", rx + 32, y2 + 66, { size: 20, color: PNG.muted, width: rw - 64 });
   const shown = m.late.slice(0, 5), rowH = 54;
   shown.forEach((g, i) => {
     const y = y2 + 102 + i * rowH;
@@ -303,7 +303,7 @@ function drawPNG(canvas, m) {
     text(`J0 ${formatShortDate(g.j0)}`, rx + rw - 32, y + 30, { size: 16, color: PNG.muted, align: "right", width: 150 });
   });
   if (!shown.length) text("✓  Toutes les préparations échues sont complètes.", rx + 32, y2 + 120, { size: 24, color: "#3D7F22", width: rw - 64 });
-  if (m.late.length > shown.length) text(`+ ${plural(m.late.length - shown.length, "autre REE", "autres REE")} en retard`, rx + 32, y2 + 102 + shown.length * rowH, { size: 18, weight: 600, color: PNG.ink2, width: rw - 64 });
+  if (m.late.length > shown.length) text(`+ ${plural(m.late.length - shown.length, "autre REE", "autres REE")} à compléter`, rx + 32, y2 + 102 + shown.length * rowH, { size: 18, weight: 600, color: PNG.ink2, width: rw - 64 });
   if (m.lateByOwner.length) {
     // Autant de chargés que la largeur le permet, le reste résumé en « +N ».
     c.font = PNG.font(600, 18);

@@ -6,7 +6,7 @@
 
 const TONE_ICON = { good: "✓", info: "◆", neutral: "○", warn: "▲", bad: "●" };
 
-function badge(label, tone = "neutral", { icon = true, title = "" } = {}) {
+function badge(label, tone = "neutral", { icon = false, title = "" } = {}) {
   return `<span class="badge tone-${tone}"${title ? ` title="${esc(title)}"` : ""}>${icon ? `<span aria-hidden="true">${TONE_ICON[tone] || ""}</span>` : ""}${esc(label)}</span>`;
 }
 

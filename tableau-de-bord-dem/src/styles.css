@@ -470,3 +470,6 @@ h1, h2, h3 { font-weight: 400; }
 .colMenuBody input { accent-color: var(--primary); width: 16px; height: 16px; }
 .colMenuBody .ghost { margin-bottom: 4px; }
 th { overflow: visible; }
+
+/* Pas de pastilles de couleur : le statut se lit dans le libellé et la couleur du badge. */
+.sourceDot { display: none; }

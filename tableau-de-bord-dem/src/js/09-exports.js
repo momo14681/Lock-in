@@ -32,12 +32,12 @@ function reportModel() {
   if (tab === "mine") {
     title = `Mes affaires — ${me || "chargé non choisi"}`;
     const groups = affaireGroups(ts);
-    sections.push(indicatorSection([["Affaires", groups.length], ["REE", dossierCount(ts)], ["TOT", n], ["Préparation documentaire", pct(prepared, n)], ["Essais réalisés", pct(realized, n)], ["Prépas en retard", ts.filter((t) => t.overdue).length], ["Échéances sous 30 jours", ts.filter((t) => t.dueSoon).length], ["Corrections DEM", issues.length]]));
+    sections.push(indicatorSection([["Affaires", groups.length], ["REE", dossierCount(ts)], ["TOT", n], ["Préparation documentaire", pct(prepared, n)], ["Essais réalisés", pct(realized, n)], ["Lignes DEM incomplètes", ts.filter((t) => t.overdue).length], ["Échéances sous 30 jours", ts.filter((t) => t.dueSoon).length], ["Corrections DEM", issues.length]]));
     sections.push({ title: "Suivi par affaire", headers: ["Affaire", "Libellé DI", "TOT", "J0", "Prépa", "BPA signés", "GER/1N signés", "BPD signés", "Statut"], widths: [.13, .25, .05, .13, .08, .08, .09, .08, .11],
       rows: groups.map((g) => [g.affaire, g.libelle, g.n, g.j0Min ? (g.j0Max - g.j0Min ? `du ${formatDate(g.j0Min)} au ${formatDate(g.j0Max)}` : formatDate(g.j0Min)) : "—", `${g.prep}/${g.n}`, `${g.bpa.done}/${g.n}`, `${g.ger.done}/${g.n}`, `${g.bpd.done}/${g.n}`, AFFAIRE_STATUS[g.status].label]) });
   } else if (tab === "overview") {
     title = "Synthèse coordination";
-    sections.push(indicatorSection([["TOT", n], ["Affaires", countUnique(ts, (t) => t.affaire)], ["REE", dossierCount(ts)], ["Préparation", pct(prepared, n)], ["Essais réalisés", pct(realized, n)], ["Non affectées", ts.filter((t) => t.responsable === UNASSIGNED).length], ["Prépas en retard", ts.filter((t) => t.overdue).length], ["Corrections DEM", issues.length]]));
+    sections.push(indicatorSection([["TOT", n], ["Affaires", countUnique(ts, (t) => t.affaire)], ["REE", dossierCount(ts)], ["Préparation", pct(prepared, n)], ["Essais réalisés", pct(realized, n)], ["Non affectées", ts.filter((t) => t.responsable === UNASSIGNED).length], ["Lignes DEM incomplètes", ts.filter((t) => t.overdue).length], ["Corrections DEM", issues.length]]));
     const sortLabel = CHARGE_SORTS.find(([k]) => k === chargeSort)?.[1] || "";
     sections.push({ title: `Charge par chargé — ${CHARGE_MODES.find(([k]) => k === chargeMode)?.[1]} · tri : ${sortLabel}${hiddenOwners.size ? " (masquage appliqué)" : ""}`, headers: ["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"], rows: chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]) });
     sections.push({ title: "Corrections DEM par type", headers: ["Contrôle", "Nombre"], widths: [.8, .2], rows: [...new Set(issues.map((i) => i.kind))].map((k) => [k, issues.filter((i) => i.kind === k).length]).sort((a, b) => b[1] - a[1]) });
@@ -46,10 +46,10 @@ function reportModel() {
   } else if (tab === "team") {
     const m = teamModel();
     title = "Avancement de l’équipe";
-    sections.push(indicatorSection([["TOT", m.n], ["Essais réalisés", `${pct(m.realized, m.n)} (${m.realized})`], ["Préparation documentaire terminée", `${pct(m.prepared, m.n)} (${m.prepared})`], ["Prépas en retard (TOT)", m.overdue], ["REE en retard de préparation", m.late.length], ["Échéances sous 30 jours", m.dueSoon]]));
+    sections.push(indicatorSection([["TOT", m.n], ["Essais réalisés", `${pct(m.realized, m.n)} (${m.realized})`], ["Préparation documentaire terminée", `${pct(m.prepared, m.n)} (${m.prepared})`], ["Lignes DEM incomplètes", m.overdue], ["REE concernés", m.late.length], ["Échéances sous 30 jours", m.dueSoon]]));
     sections.push({ title: `Avancement par mois de J0 — ${m.timeline.title}`, headers: ["Période", "TOT", ...STATE_ORDER, "% réalisés"], rows: m.timeline.columns.map((c) => [c.long, c.total, ...STATE_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized], c.total)]) });
-    sections.push({ title: "Retards de préparation documentaire", headers: ["Affaire / REE", "Chargé", "Échéance prépa", "J0", "Retard", "TOT", "Manque"], widths: [.2, .15, .12, .11, .08, .06, .28], rows: m.late.map((g) => [`${g.affaire} / ${g.ree} (${g.phase})`, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), `${g.late} j`, g.ts.length, g.missing.join(", ")]) });
-    sections.push({ title: "Avancement par chargé", headers: ["Chargé", "TOT", "Réalisés", "Prépa terminée", "Prépas en retard", "Échéances < 30 j"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, `${o.prepared} (${pct(o.prepared, o.n)})`, o.overdue, o.dueSoon]) });
+    sections.push({ title: "Lignes de la DEM à compléter (échéance J0 − 30 dépassée)", headers: ["Affaire / REE", "Chargé", "Échéance prépa", "J0", "Dépassement", "TOT", "Manque"], widths: [.2, .15, .12, .11, .08, .06, .28], rows: m.late.map((g) => [`${g.affaire} / ${g.ree} (${g.phase})`, g.owners.join(", "), formatDate(g.prepDue), formatDate(g.j0), `${g.late} j`, g.ts.length, g.missing.join(", ")]) });
+    sections.push({ title: "Avancement par chargé", headers: ["Chargé", "TOT", "Réalisés", "Prépa terminée", "Lignes DEM incomplètes", "Échéances < 30 j"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, `${o.prepared} (${pct(o.prepared, o.n)})`, o.overdue, o.dueSoon]) });
   } else if (tab === "owners") {
     sections.push({ title, headers: ["Chargé", "Affaires", "REE", "TOT", "Prépa terminée", "Réalisés", "Retards", "Infos manq.", "Corrections"], rows: ownerStats().map((s) => [s.name, s.affaires, s.ree, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues]) });
   } else if (tab === "assignments") {
