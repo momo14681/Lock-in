@@ -34,7 +34,7 @@ const TABS = {
 };
 const MORE_TABS = {
   ce: [{ id: "tasks", label: "Mes TOT" }, { id: "documents", label: "Mes documents à reprendre (R)" }],
-  coordo: [{ id: "owners", label: "Répartition par chargé" }, { id: "tasks", label: "Toutes les TOT" }, { id: "documents", label: "Documents à valider (P) / à reprendre (R)" }, { id: "assignments", label: "Affectations SharePoint" }],
+  coordo: [{ id: "owners", label: "Répartition par chargé" }, { id: "tasks", label: "Toutes les TOT" }, { id: "documents", label: "Documents à valider (P) / à reprendre (R)" }, { id: "cru", label: "TOT par ECU (feuille CRU)" }, { id: "assignments", label: "Affectations SharePoint" }],
 };
 const HIDDEN_TABS = { coordo: ["affaires", "dossiers"], ce: [] };
 

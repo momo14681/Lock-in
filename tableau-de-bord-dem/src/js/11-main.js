@@ -4,7 +4,7 @@
 
 const VIEWS = {
   mine: viewMine, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
-  documents: viewDocuments, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
+  documents: viewDocuments, cru: viewCRU, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
 };
 
 function renderChrome() {
@@ -193,6 +193,7 @@ function onClick(e) {
     return render();
   }
   if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
+  if (d.ecu !== undefined) return toggleEcu(d.ecu);
   if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
   if (d.toggleIgnored !== undefined) { showIgnored = !showIgnored; page = 1; return render(); }
   if (d.group !== undefined) { pushNav(); return openGroup(+d.group); }

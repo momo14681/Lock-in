@@ -65,6 +65,10 @@ function reportModel() {
     title = (showIgnored ? "Signalements ignorés" : "Corrections à faire dans la DEM") + (issueKind ? " — " + issueKind : "") + (issueLevel ? " — " + issueLevel : "");
     sections.push({ title, headers: ["Priorité / contrôle", "Affaire / REE", "Chargé", "Cellules", "Valeur", "Action"], widths: [.14, .16, .1, .14, .2, .26],
       rows: (currentRows || issueRows()).map((i) => [`${i.level} · ${i.kind}`, `${i.t.affaire} / ${i.t.ree}`, i.t.responsable, `${i.t.sheet}!${i.cells}`, i.value, i.reason + (observations(i.t) ? " — Obs. : " + observations(i.t) : "")]) });
+  } else if (tab === "cru") {
+    title = "TOT par ECU (feuille CRU)";
+    sections.push({ title, headers: ["Affaire / TOT", "Description", "ECU", "Statut", "Chargé (DEM)", "Début", "Dernier commentaire"], widths: [.16, .3, .06, .1, .12, .1, .16],
+      rows: (currentRows || []).map((r) => [`${r.edim} / ${r.tot}`, r.description || r.intitule, r.ecu, r.statut, r.owner, formatDate(r.debut), [r.commentType, formatDate(r.commentDate === null ? null : r.commentDate), r.resultat].filter((x) => x && x !== "—").join(" · ")]) });
   } else if (tab === "documents") {
     title = (docCode === "P" ? "Documents prêts à valider (P)" : "Documents à reprendre (R)") + (documentType ? " — " + names[documentType] : "");
     sections.push({ title, headers: ["Affaire / REE", "Chargé", "OT / TOT", "Document", "Cellule", "Observations"], widths: [.2, .13, .14, .1, .1, .33],

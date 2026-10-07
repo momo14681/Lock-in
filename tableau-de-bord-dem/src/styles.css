@@ -480,3 +480,13 @@ tr.rowLink:hover > td { background: var(--info-bg); }
 .backBar { margin: -6px 0 14px; }
 .backButton { border: 0; background: none; padding: 6px 0; color: var(--primary); font-size: 15px; }
 .backButton:hover { background: none; text-decoration: underline; }
+
+/* --- TOT par ECU --------------------------------------------------------------- */
+.ecuChips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.ecuChip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 7px 14px; border-radius: 10px; min-width: 88px; }
+.ecuChip .ecuName { font-size: 13px; color: var(--muted); }
+.ecuChip .ecuCount { font-size: 22px; font-weight: 300; color: var(--ink); line-height: 1.2; }
+.ecuChip.on { background: var(--primary); border-color: var(--primary); }
+.ecuChip.on .ecuName, .ecuChip.on .ecuCount { color: #fff; }
+.ecuTag { display: inline-block; min-width: 34px; text-align: center; padding: 2px 8px; border-radius: 6px; background: var(--info-bg); color: var(--info-ink); }
+.cruDesc { max-width: 380px; font-size: 13.5px; color: var(--ink-2); }

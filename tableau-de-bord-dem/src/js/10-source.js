@@ -21,7 +21,7 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
     const bytes = await file.arrayBuffer();
     await new Promise((r) => setTimeout(r, 30));
     const result = await parseWorkbook(bytes, file);
-    const wb = XLSX.read(bytes, { type: "array", cellDates: true, cellFormula: true, sheets: [...TECHNICAL_SHEETS, IPE_SHEET] });
+    const wb = XLSX.read(bytes, { type: "array", cellDates: true, cellFormula: true, sheets: [...TECHNICAL_SHEETS, IPE_SHEET, CRU_SHEET] });
     result.ipe = readAssignments(wb.Sheets[IPE_SHEET]);
     for (const t of result.tasks) {
       const sheet = wb.Sheets[t.sheet];
@@ -47,6 +47,8 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
     const liveCounts = new Map();
     for (const t of result.tasks.filter((x) => !x.cancelled)) liveCounts.set(t.id, (liveCounts.get(t.id) || 0) + 1);
     result.tasks.forEach((t, i) => { t.duplicate = !t.cancelled && (liveCounts.get(t.id) || 0) > 1; t.index = i; });
+    result.cru = readCRU(wb.Sheets[CRU_SHEET]);
+    linkCRU(result.cru, result.tasks.filter((t) => !t.cancelled));
 
     data = result;
     data.fileName = file.name;
