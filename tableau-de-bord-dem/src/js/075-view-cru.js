@@ -67,6 +67,20 @@ function linkCRU(cru, tasks) {
   }
 }
 
+// TOT cochées « traitées » (passées FINI / CLÔTURÉ dans EAM) : masquées de la liste.
+// Mémorisées sur ce PC, par DEM, pour survivre aux actualisations de la CRU.
+const CRU_DONE_KEY = "dem-essais-cru-traitees-v1:";
+let showDoneCru = false;
+function cruDone() {
+  try { return new Set(JSON.parse(localStorage.getItem(CRU_DONE_KEY + activeDEM) || "[]")); } catch (e) { return new Set(); }
+}
+function setCruDone(tot, done) {
+  const set = cruDone();
+  if (done) set.add(tot); else set.delete(tot);
+  try { localStorage.setItem(CRU_DONE_KEY + activeDEM, JSON.stringify([...set])); }
+  catch (e) { $("message").innerHTML = `<div class="notice error">Impossible de mémoriser la sélection sur ce PC (stockage du navigateur indisponible).</div>`; }
+}
+
 function ecuSort(a, b) {
   const na = parseInt(a, 10), nb = parseInt(b, 10);
   if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
@@ -78,11 +92,14 @@ function ecuSort(a, b) {
 function viewCRU() {
   const cru = data.cru;
   if (!cru || cru.error) { $("view").innerHTML = panel("TOT par ECU", `<p>${esc(cru?.error || "Feuille CRU non lue.")}</p>`); return; }
-  const owner = $("owner").value;
-  const items = owner ? cru.rows.filter((r) => r.owner === owner) : cru.rows;
+  const owner = $("owner").value, done = cruDone();
+  const scoped = owner ? cru.rows.filter((r) => r.owner === owner) : cru.rows;
+  const hiddenCount = scoped.filter((r) => done.has(r.tot)).length;
+  if (!hiddenCount) showDoneCru = false;
+  const items = scoped.filter((r) => done.has(r.tot) === showDoneCru);
   const counts = new Map();
   for (const r of items) counts.set(r.ecu, (counts.get(r.ecu) || 0) + 1);
-  const st = tableStateFor("cru"), ecuCol = 2;
+  const st = tableStateFor("cru"), ecuCol = 3;
   const chosen = st.filters[ecuCol] || [];
   const chips = [...counts.entries()].sort((a, b) => ecuSort(a[0], b[0])).map(([ecu, n]) => {
     const on = chosen.includes(ecu);
@@ -90,7 +107,9 @@ function viewCRU() {
   }).join("");
   const dt = dataTable({
     key: "cru", items,
+    tools: hiddenCount ? `<button type="button" class="ghost" data-cru-show-done>${showDoneCru ? "‹ Revenir aux TOT à suivre" : `Masquées (${fmt(hiddenCount)})`}</button>` : "",
     columns: [
+      { label: "Traitée", value: () => "" },
       { label: "Affaire / TOT", value: (r) => `${r.edim} ${r.tot} ${r.ree} ${r.intitule}` },
       { label: "Description", value: (r) => r.description },
       { label: "ECU", value: (r) => r.ecu, filter: true },
@@ -100,7 +119,8 @@ function viewCRU() {
       { label: "Dernier commentaire", value: (r) => `${r.commentType} ${r.auteur} ${r.resultat}` },
       { label: "Liens", value: () => "" },
     ],
-    row: (r) => `<tr>
+    row: (r) => `<tr${showDoneCru ? ' class="doneRow"' : ""}>
+      <td class="checkCell"><input type="checkbox" class="doneCheck" data-cru-done="${esc(r.tot)}" ${showDoneCru ? "checked" : ""} title="${showDoneCru ? "Décocher pour réafficher cette TOT" : "Cocher une fois la TOT passée FINI ou CLÔTURÉ : elle sera masquée"}" aria-label="TOT ${esc(r.tot)} traitée"></td>
       <td>${r.task ? `<button type="button" class="linkbutton" data-task="${r.task.index}">${esc(r.edim || "—")}</button>` : `<strong>${esc(r.edim || "—")}</strong>`}<small>TOT ${esc(r.tot)}${r.ree ? " · REE " + esc(r.ree) : ""}</small></td>
       <td class="cruDesc">${esc(r.description || r.intitule || "—")}</td>
       <td><span class="ecuTag">${esc(r.ecu === CRU_NO_ECU ? "—" : r.ecu)}</span></td>
@@ -111,7 +131,7 @@ function viewCRU() {
       <td>${toolLinks(...r.tot.split("-"))}</td></tr>`,
   });
   currentRows = dt.rows;
-  $("view").innerHTML = panel(`TOT par ECU · ${fmt(dt.rows.length)}`,
+  $("view").innerHTML = panel(`${showDoneCru ? "TOT masquées (traitées)" : "TOT par ECU"} · ${fmt(dt.rows.length)}`,
     `<div class="ecuChips" role="group" aria-label="Filtrer par ECU">${chips}</div>${dt.html}`,
     { sub: `Feuille « ${CRU_SHEET} » · une ligne par TOT (dernier commentaire)${owner ? " · " + esc(owner) : ""}` });
   currentExport = () => downloadMatrix(
@@ -121,9 +141,9 @@ function viewCRU() {
 }
 
 function toggleEcu(ecu) {
-  const st = tableStateFor("cru"), set = new Set(st.filters[2] || []);
+  const st = tableStateFor("cru"), set = new Set(st.filters[3] || []);
   if (set.has(ecu)) set.delete(ecu); else set.add(ecu);
-  st.filters[2] = [...set];
+  st.filters[3] = [...set];
   page = 1;
   render();
 }

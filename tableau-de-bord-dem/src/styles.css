@@ -495,3 +495,8 @@ tr.rowLink:hover > td { background: var(--info-bg); }
 .toolLinks { display: inline-flex; gap: 6px; white-space: nowrap; }
 .toolLinks a { font-size: 12.5px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--primary); text-decoration: none; background: #fff; }
 .toolLinks a:hover { background: var(--info-bg); border-color: var(--primary); }
+
+/* --- TOT par ECU : case « traitée » --------------------------------------------- */
+.checkCell { width: 56px; text-align: center; }
+.doneCheck { width: 18px; height: 18px; accent-color: var(--good); cursor: pointer; }
+tr.doneRow > td { color: var(--muted); }

@@ -194,6 +194,7 @@ function onClick(e) {
   }
   if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
   if (d.ecu !== undefined) return toggleEcu(d.ecu);
+  if (d.cruShowDone !== undefined) { showDoneCru = !showDoneCru; page = 1; return render(); }
   if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
   if (d.toggleIgnored !== undefined) { showIgnored = !showIgnored; page = 1; return render(); }
   if (d.group !== undefined) { pushNav(); return openGroup(+d.group); }
@@ -212,6 +213,7 @@ function onTableInput(e) {
 }
 
 function onChange(e) {
+  if (e.target.dataset?.cruDone !== undefined) { setCruDone(e.target.dataset.cruDone, e.target.checked); return render(); }
   const tc = e.target.dataset?.tableCheck;
   if (tc !== undefined) {
     const cut = tc.lastIndexOf(":"), st = tableStateFor(tc.slice(0, cut)), col = tc.slice(cut + 1);
