@@ -190,3 +190,27 @@ function positionColMenus() {
     body.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 24) + "px";
   });
 }
+
+// --- Liens vers les outils EDF (EAM, eDRT) pour une TOT -------------------------------
+// Exemple TOT 06100540-25 :
+//   EAM  : https://prod-sdin.edf.fr/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=0610054025
+//   eDRT : https://prod-sdin.edf.fr/drt/06100540/25/cloture
+function totIds(ot, tot) {
+  const o = String(ot ?? "").replace(/\D/g, ""), n = String(tot ?? "").replace(/\D/g, "");
+  if (!o || !n) return null;
+  return { ot: o.padStart(8, "0"), tot: n.padStart(2, "0") };
+}
+
+function eamUrl(ids) {
+  return `https://prod-sdin.edf.fr/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=${ids.ot}${ids.tot}`;
+}
+
+function edrtUrl(ids) {
+  return `https://prod-sdin.edf.fr/drt/${ids.ot}/${ids.tot}/cloture`;
+}
+
+function toolLinks(ot, tot) {
+  const ids = totIds(ot, tot);
+  if (!ids) return '<span class="muted">—</span>';
+  return `<span class="toolLinks"><a href="${esc(eamUrl(ids))}" target="_blank" rel="noopener noreferrer" title="Ouvrir la TOT ${ids.ot}-${ids.tot} dans EAM">EAM ↗</a><a href="${esc(edrtUrl(ids))}" target="_blank" rel="noopener noreferrer" title="Ouvrir la clôture eDRT de la TOT ${ids.ot}-${ids.tot}">eDRT ↗</a></span>`;
+}

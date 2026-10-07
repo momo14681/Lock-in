@@ -98,6 +98,7 @@ function viewCRU() {
       { label: "Chargé (DEM)", value: (r) => r.owner, filter: true },
       { label: "Début", value: (r) => (r.debut ? `${MONTHS_LONG[r.debut.getMonth()]} ${r.debut.getFullYear()}` : "Sans date"), filter: true },
       { label: "Dernier commentaire", value: (r) => `${r.commentType} ${r.auteur} ${r.resultat}` },
+      { label: "Liens", value: () => "" },
     ],
     row: (r) => `<tr>
       <td>${r.task ? `<button type="button" class="linkbutton" data-task="${r.task.index}">${esc(r.edim || "—")}</button>` : `<strong>${esc(r.edim || "—")}</strong>`}<small>TOT ${esc(r.tot)}${r.ree ? " · REE " + esc(r.ree) : ""}</small></td>
@@ -106,15 +107,16 @@ function viewCRU() {
       <td>${esc(r.statut)}</td>
       <td>${r.task ? esc(r.owner) : `<span class="muted" title="OT / TOT non trouvée dans les feuilles techniques de la DEM">Hors DEM</span>`}</td>
       <td>${r.debut ? formatDate(r.debut) : '<span class="muted">—</span>'}</td>
-      <td>${r.commentType || r.resultat ? `${r.commentType ? `<strong>${esc(r.commentType)}</strong> ` : ""}${r.commentDate ? formatDate(r.commentDate) : ""}<small class="obs">${esc(r.resultat || r.auteur)}</small>` : '<span class="muted">—</span>'}</td></tr>`,
+      <td>${r.commentType || r.resultat ? `${r.commentType ? `<strong>${esc(r.commentType)}</strong> ` : ""}${r.commentDate ? formatDate(r.commentDate) : ""}<small class="obs">${esc(r.resultat || r.auteur)}</small>` : '<span class="muted">—</span>'}</td>
+      <td>${toolLinks(...r.tot.split("-"))}</td></tr>`,
   });
   currentRows = dt.rows;
   $("view").innerHTML = panel(`TOT par ECU · ${fmt(dt.rows.length)}`,
     `<div class="ecuChips" role="group" aria-label="Filtrer par ECU">${chips}</div>${dt.html}`,
     { sub: `Feuille « ${CRU_SHEET} » · une ligne par TOT (dernier commentaire)${owner ? " · " + esc(owner) : ""}` });
   currentExport = () => downloadMatrix(
-    ["Référence eDIM", "Intitulé", "TOT", "REE", "Description", "ECU", "Statut", "Chargé (DEM)", "Début", "Fin", "RDU", "Type commentaire", "Auteur", "Date commentaire", "Résultat", "Ligne CRU"],
-    dt.rows.map((r) => [r.edim, r.intitule, r.tot, r.ree, r.description, r.ecu, r.statut, r.owner, formatDate(r.debut), formatDate(r.fin), r.rdu, r.commentType, r.auteur, formatDate(r.commentDate), r.resultat, r.row]),
+    ["Référence eDIM", "Intitulé", "TOT", "REE", "Description", "ECU", "Statut", "Chargé (DEM)", "Début", "Fin", "RDU", "Type commentaire", "Auteur", "Date commentaire", "Résultat", "Ligne CRU", "Lien EAM", "Lien eDRT"],
+    dt.rows.map((r) => { const ids = totIds(...r.tot.split("-")); return [r.edim, r.intitule, r.tot, r.ree, r.description, r.ecu, r.statut, r.owner, formatDate(r.debut), formatDate(r.fin), r.rdu, r.commentType, r.auteur, formatDate(r.commentDate), r.resultat, r.row, ids ? eamUrl(ids) : "", ids ? edrtUrl(ids) : ""]; }),
     "TOT_par_ECU.csv");
 }
 

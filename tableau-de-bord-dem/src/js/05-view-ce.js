@@ -102,8 +102,9 @@ function affaireRow(g) {
       <td>${t.j0Label}</td>
       <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>
       <td class="msCell">${milestoneLine(t)}</td>
-      <td>${stateBadge(t)}</td></tr>`);
-    return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut"], sub, { cls: "compact", free: true })}</td></tr>`;
+      <td>${stateBadge(t)}</td>
+      <td>${toolLinks(t.ot, t.tot)}</td></tr>`);
+    return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens"], sub, { cls: "compact", free: true })}</td></tr>`;
   }
 }
 

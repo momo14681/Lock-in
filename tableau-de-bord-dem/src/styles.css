@@ -490,3 +490,8 @@ tr.rowLink:hover > td { background: var(--info-bg); }
 .ecuChip.on .ecuName, .ecuChip.on .ecuCount { color: #fff; }
 .ecuTag { display: inline-block; min-width: 34px; text-align: center; padding: 2px 8px; border-radius: 6px; background: var(--info-bg); color: var(--info-ink); }
 .cruDesc { max-width: 380px; font-size: 13.5px; color: var(--ink-2); }
+
+/* --- Liens EAM / eDRT ------------------------------------------------------------ */
+.toolLinks { display: inline-flex; gap: 6px; white-space: nowrap; }
+.toolLinks a { font-size: 12.5px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--primary); text-decoration: none; background: #fff; }
+.toolLinks a:hover { background: var(--info-bg); border-color: var(--primary); }

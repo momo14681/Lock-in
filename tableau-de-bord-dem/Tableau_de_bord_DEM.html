@@ -500,6 +500,11 @@ tr.rowLink:hover > td { background: var(--info-bg); }
 .ecuChip.on .ecuName, .ecuChip.on .ecuCount { color: #fff; }
 .ecuTag { display: inline-block; min-width: 34px; text-align: center; padding: 2px 8px; border-radius: 6px; background: var(--info-bg); color: var(--info-ink); }
 .cruDesc { max-width: 380px; font-size: 13.5px; color: var(--ink-2); }
+
+/* --- Liens EAM / eDRT ------------------------------------------------------------ */
+.toolLinks { display: inline-flex; gap: 6px; white-space: nowrap; }
+.toolLinks a { font-size: 12.5px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--primary); text-decoration: none; background: #fff; }
+.toolLinks a:hover { background: var(--info-bg); border-color: var(--primary); }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -1567,6 +1572,30 @@ function positionColMenus() {
   });
 }
 
+// --- Liens vers les outils EDF (EAM, eDRT) pour une TOT -------------------------------
+// Exemple TOT 06100540-25 :
+//   EAM  : https://prod-sdin.edf.fr/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=0610054025
+//   eDRT : https://prod-sdin.edf.fr/drt/06100540/25/cloture
+function totIds(ot, tot) {
+  const o = String(ot ?? "").replace(/\D/g, ""), n = String(tot ?? "").replace(/\D/g, "");
+  if (!o || !n) return null;
+  return { ot: o.padStart(8, "0"), tot: n.padStart(2, "0") };
+}
+
+function eamUrl(ids) {
+  return `https://prod-sdin.edf.fr/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=${ids.ot}${ids.tot}`;
+}
+
+function edrtUrl(ids) {
+  return `https://prod-sdin.edf.fr/drt/${ids.ot}/${ids.tot}/cloture`;
+}
+
+function toolLinks(ot, tot) {
+  const ids = totIds(ot, tot);
+  if (!ids) return '<span class="muted">—</span>';
+  return `<span class="toolLinks"><a href="${esc(eamUrl(ids))}" target="_blank" rel="noopener noreferrer" title="Ouvrir la TOT ${ids.ot}-${ids.tot} dans EAM">EAM ↗</a><a href="${esc(edrtUrl(ids))}" target="_blank" rel="noopener noreferrer" title="Ouvrir la clôture eDRT de la TOT ${ids.ot}-${ids.tot}">eDRT ↗</a></span>`;
+}
+
 // ---- 05-view-ce.js ----
 // =============================================================================
 // Vue « Chargé d'essais » : chacun pilote ses affaires.
@@ -1672,8 +1701,9 @@ function affaireRow(g) {
       <td>${t.j0Label}</td>
       <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>
       <td class="msCell">${milestoneLine(t)}</td>
-      <td>${stateBadge(t)}</td></tr>`);
-    return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut"], sub, { cls: "compact", free: true })}</td></tr>`;
+      <td>${stateBadge(t)}</td>
+      <td>${toolLinks(t.ot, t.tot)}</td></tr>`);
+    return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens"], sub, { cls: "compact", free: true })}</td></tr>`;
   }
 }
 
@@ -1814,6 +1844,7 @@ function viewTasks() {
     { label: "J0", value: (t) => (t.j0 ? `${MONTHS_LONG[t.j0.getMonth()]} ${t.j0.getFullYear()}` : "J0 absent"), filter: true },
     { label: "Statut", value: state, filter: true },
     { label: "Documents", value: (t) => `${t.bpa} ${t.ger} ${t.bpd}` },
+    { label: "Liens", value: () => "" },
   ];
   const dt = dataTable({
     key: "tasks", columns, items: taskRows(),
@@ -1823,7 +1854,8 @@ function viewTasks() {
       <td>${esc(t.sheet)}</td>
       <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
       <td>${stateBadge(t)}${t.missingInfoKeys.length && !t.prepComplete && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
-      <td class="msCell">${milestoneLine(t)}</td></tr>`,
+      <td class="msCell">${milestoneLine(t)}</td>
+      <td>${toolLinks(t.ot, t.tot)}</td></tr>`,
   });
   const scopeNote = taskScope ? ` <button type="button" class="linkbutton" data-go="tasks:${esc(taskFocus)}|clear">Retirer le filtre affaire</button>` : "";
   currentRows = dt.rows;
@@ -1831,8 +1863,8 @@ function viewTasks() {
     `${segment("taskFocus", focusOptions, taskFocus, { label: "Filtrer les TOT", counts: (key) => base.filter(focusTest(key)).length })}${dt.html}`,
     { sub: scopeNote, actions: backToMine() });
   currentExport = () => downloadMatrix(
-    ["Affaire", "Libellé DI", "REE", "Chargé", "Feuille", "Ligne", "OT", "TOT", "J0", "Échéance prépa", "Statut", "À compléter", "BPA", "GER/1N", "BPD", "Observations"],
-    dt.rows.map((t) => [t.affaire, t.libelle, t.ree, t.responsable, t.sheet, t.rowNumber, t.ot, t.tot, t.j0Label, t.prepDueLabel, state(t), t.missingInfoKeys.length && !isRealized(t) ? missingLabel(t) : "", t.bpa, t.ger, t.bpd, observations(t)]),
+    ["Affaire", "Libellé DI", "REE", "Chargé", "Feuille", "Ligne", "OT", "TOT", "J0", "Échéance prépa", "Statut", "À compléter", "BPA", "GER/1N", "BPD", "Observations", "Lien EAM", "Lien eDRT"],
+    dt.rows.map((t) => { const ids = totIds(t.ot, t.tot); return [t.affaire, t.libelle, t.ree, t.responsable, t.sheet, t.rowNumber, t.ot, t.tot, t.j0Label, t.prepDueLabel, state(t), t.missingInfoKeys.length && !isRealized(t) ? missingLabel(t) : "", t.bpa, t.ger, t.bpd, observations(t), ids ? eamUrl(ids) : "", ids ? edrtUrl(ids) : ""]; }),
     "TOT_Essais.csv");
 }
 
@@ -2331,6 +2363,7 @@ function viewCRU() {
       { label: "Chargé (DEM)", value: (r) => r.owner, filter: true },
       { label: "Début", value: (r) => (r.debut ? `${MONTHS_LONG[r.debut.getMonth()]} ${r.debut.getFullYear()}` : "Sans date"), filter: true },
       { label: "Dernier commentaire", value: (r) => `${r.commentType} ${r.auteur} ${r.resultat}` },
+      { label: "Liens", value: () => "" },
     ],
     row: (r) => `<tr>
       <td>${r.task ? `<button type="button" class="linkbutton" data-task="${r.task.index}">${esc(r.edim || "—")}</button>` : `<strong>${esc(r.edim || "—")}</strong>`}<small>TOT ${esc(r.tot)}${r.ree ? " · REE " + esc(r.ree) : ""}</small></td>
@@ -2339,15 +2372,16 @@ function viewCRU() {
       <td>${esc(r.statut)}</td>
       <td>${r.task ? esc(r.owner) : `<span class="muted" title="OT / TOT non trouvée dans les feuilles techniques de la DEM">Hors DEM</span>`}</td>
       <td>${r.debut ? formatDate(r.debut) : '<span class="muted">—</span>'}</td>
-      <td>${r.commentType || r.resultat ? `${r.commentType ? `<strong>${esc(r.commentType)}</strong> ` : ""}${r.commentDate ? formatDate(r.commentDate) : ""}<small class="obs">${esc(r.resultat || r.auteur)}</small>` : '<span class="muted">—</span>'}</td></tr>`,
+      <td>${r.commentType || r.resultat ? `${r.commentType ? `<strong>${esc(r.commentType)}</strong> ` : ""}${r.commentDate ? formatDate(r.commentDate) : ""}<small class="obs">${esc(r.resultat || r.auteur)}</small>` : '<span class="muted">—</span>'}</td>
+      <td>${toolLinks(...r.tot.split("-"))}</td></tr>`,
   });
   currentRows = dt.rows;
   $("view").innerHTML = panel(`TOT par ECU · ${fmt(dt.rows.length)}`,
     `<div class="ecuChips" role="group" aria-label="Filtrer par ECU">${chips}</div>${dt.html}`,
     { sub: `Feuille « ${CRU_SHEET} » · une ligne par TOT (dernier commentaire)${owner ? " · " + esc(owner) : ""}` });
   currentExport = () => downloadMatrix(
-    ["Référence eDIM", "Intitulé", "TOT", "REE", "Description", "ECU", "Statut", "Chargé (DEM)", "Début", "Fin", "RDU", "Type commentaire", "Auteur", "Date commentaire", "Résultat", "Ligne CRU"],
-    dt.rows.map((r) => [r.edim, r.intitule, r.tot, r.ree, r.description, r.ecu, r.statut, r.owner, formatDate(r.debut), formatDate(r.fin), r.rdu, r.commentType, r.auteur, formatDate(r.commentDate), r.resultat, r.row]),
+    ["Référence eDIM", "Intitulé", "TOT", "REE", "Description", "ECU", "Statut", "Chargé (DEM)", "Début", "Fin", "RDU", "Type commentaire", "Auteur", "Date commentaire", "Résultat", "Ligne CRU", "Lien EAM", "Lien eDRT"],
+    dt.rows.map((r) => { const ids = totIds(...r.tot.split("-")); return [r.edim, r.intitule, r.tot, r.ree, r.description, r.ecu, r.statut, r.owner, formatDate(r.debut), formatDate(r.fin), r.rdu, r.commentType, r.auteur, formatDate(r.commentDate), r.resultat, r.row, ids ? eamUrl(ids) : "", ids ? edrtUrl(ids) : ""]; }),
     "TOT_par_ECU.csv");
 }
 
@@ -3421,7 +3455,7 @@ function detail(t) {
   const controls = (data.audit || []).filter((i) => i.t === t);
   $("detail").classList.remove("wideDialog");
   $("detailTitle").textContent = `${t.affaire || "Affaire manquante"} · REE ${t.ree || "absent"}`;
-  $("detailBody").innerHTML = `<p class="detailIntro">${stateBadge(t)} <span class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${esc(t.responsable)}</span></p>
+  $("detailBody").innerHTML = `<p class="detailIntro">${stateBadge(t)} <span class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${esc(t.responsable)}</span> ${toolLinks(t.ot, t.tot)}</p>
     ${t.libelle || t.reeLibelle ? `<p class="muted">${esc([t.libelle, t.reeLibelle].filter(Boolean).join(" — "))}</p>` : ""}
     <div class="detailGrid">${Object.keys(fields).map((k) => `<div class="${k === "observations" ? "full" : ""}"><span>${names[k]} <span class="loc">${esc(address(t, k))}</span></span><strong>${esc(t.raw[k] || "—")}</strong></div>`).join("")}
       <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>

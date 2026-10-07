@@ -56,6 +56,7 @@ function viewTasks() {
     { label: "J0", value: (t) => (t.j0 ? `${MONTHS_LONG[t.j0.getMonth()]} ${t.j0.getFullYear()}` : "J0 absent"), filter: true },
     { label: "Statut", value: state, filter: true },
     { label: "Documents", value: (t) => `${t.bpa} ${t.ger} ${t.bpd}` },
+    { label: "Liens", value: () => "" },
   ];
   const dt = dataTable({
     key: "tasks", columns, items: taskRows(),
@@ -65,7 +66,8 @@ function viewTasks() {
       <td>${esc(t.sheet)}</td>
       <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
       <td>${stateBadge(t)}${t.missingInfoKeys.length && !t.prepComplete && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
-      <td class="msCell">${milestoneLine(t)}</td></tr>`,
+      <td class="msCell">${milestoneLine(t)}</td>
+      <td>${toolLinks(t.ot, t.tot)}</td></tr>`,
   });
   const scopeNote = taskScope ? ` <button type="button" class="linkbutton" data-go="tasks:${esc(taskFocus)}|clear">Retirer le filtre affaire</button>` : "";
   currentRows = dt.rows;
@@ -73,8 +75,8 @@ function viewTasks() {
     `${segment("taskFocus", focusOptions, taskFocus, { label: "Filtrer les TOT", counts: (key) => base.filter(focusTest(key)).length })}${dt.html}`,
     { sub: scopeNote, actions: backToMine() });
   currentExport = () => downloadMatrix(
-    ["Affaire", "Libellé DI", "REE", "Chargé", "Feuille", "Ligne", "OT", "TOT", "J0", "Échéance prépa", "Statut", "À compléter", "BPA", "GER/1N", "BPD", "Observations"],
-    dt.rows.map((t) => [t.affaire, t.libelle, t.ree, t.responsable, t.sheet, t.rowNumber, t.ot, t.tot, t.j0Label, t.prepDueLabel, state(t), t.missingInfoKeys.length && !isRealized(t) ? missingLabel(t) : "", t.bpa, t.ger, t.bpd, observations(t)]),
+    ["Affaire", "Libellé DI", "REE", "Chargé", "Feuille", "Ligne", "OT", "TOT", "J0", "Échéance prépa", "Statut", "À compléter", "BPA", "GER/1N", "BPD", "Observations", "Lien EAM", "Lien eDRT"],
+    dt.rows.map((t) => { const ids = totIds(t.ot, t.tot); return [t.affaire, t.libelle, t.ree, t.responsable, t.sheet, t.rowNumber, t.ot, t.tot, t.j0Label, t.prepDueLabel, state(t), t.missingInfoKeys.length && !isRealized(t) ? missingLabel(t) : "", t.bpa, t.ger, t.bpd, observations(t), ids ? eamUrl(ids) : "", ids ? edrtUrl(ids) : ""]; }),
     "TOT_Essais.csv");
 }
 
