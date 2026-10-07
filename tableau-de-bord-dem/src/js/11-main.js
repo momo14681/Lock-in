@@ -194,6 +194,7 @@ function onClick(e) {
   }
   if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
   if (d.ecu !== undefined) return toggleEcu(d.ecu);
+  if (d.sheetOnly !== undefined) { selectedSheets.clear(); selectedSheets.add(d.sheetOnly); page = 1; return render(); }
   if (d.cruHideInactive !== undefined) return toggleHideInactiveCru();
   if (d.cruShowDone !== undefined) { showDoneCru = !showDoneCru; page = 1; return render(); }
   if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }

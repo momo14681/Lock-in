@@ -8,7 +8,7 @@ const CRU_NO_ECU = "Non renseigné";
 
 // Colonnes cherchées par leur titre (repli sur la position du modèle actuel).
 const CRU_COLUMNS = {
-  edim: [/^r[ée]f[ée]rence edim/i, 0], intitule: [/^intitul/i, 1], ree: [/^ree$/i, 11], tot: [/^tot concern/i, 16],
+  edim: [/^r[ée]f[ée]rence edim/i, 0], intitule: [/^intitul/i, 1], codeProjet: [/^code projet/i, 2], ree: [/^ree$/i, 11], tot: [/^tot concern/i, 16],
   description: [/^description t[âa]che/i, 17], statut: [/^statut$/i, 18], debut: [/^date d[ée]but/i, 19], fin: [/^date fin/i, 21],
   resultat: [/^r[ée]sultat/i, 22], ecu: [/^ecu$/i, 26], rdu: [/^rdu$/i, 28], commentType: [/^type commentaire/i, 29],
   auteur: [/^auteur/i, 30], commentDate: [/^date commentaire/i, 31],
@@ -35,7 +35,7 @@ function readCRU(sh) {
     if (!tot) return;
     const get = (k) => r[col[k]];
     const item = {
-      row: i + 2, tot, edim: text(get("edim")), intitule: text(get("intitule")).split(/\r?\n/)[0], ree: text(get("ree")),
+      row: i + 2, tot, edim: text(get("edim")), codeProjet: text(get("codeProjet")), intitule: text(get("intitule")).split(/\r?\n/)[0], ree: text(get("ree")),
       description: text(get("description")), statut: text(get("statut")) || "—",
       debut: parseExcelDate(get("debut")), fin: parseExcelDate(get("fin")),
       resultat: String(get("resultat") ?? "").trim(), ecu: text(get("ecu")) || CRU_NO_ECU, rdu: text(get("rdu")),

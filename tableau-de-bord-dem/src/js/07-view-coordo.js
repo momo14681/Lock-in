@@ -100,6 +100,69 @@ function milestoneCards(ts) {
   }).join("")}</div>`;
 }
 
+// --- BPA / BPD : indicateurs globaux et tableau par tranche (comme la feuille Pilotage) ---
+
+function docKpi(label, ts, key) {
+  const n = ts.length, { done, produced: prod } = milestoneStats(ts, key);
+  return `<div class="kpi docKpi">
+    <span class="kpiLabel">${label}</span>
+    <div class="docKpiFigures"><span><strong class="kpiValue">${pct(prod, n)}</strong><small>produits · ${fmt(prod)}</small></span><span><strong class="kpiValue signedValue">${pct(done, n)}</strong><small>signés · ${fmt(done)}</small></span></div>
+    <span class="docBar" data-tip="${fmt(done)} signés · ${fmt(Math.max(0, prod - done))} à signer · ${fmt(Math.max(0, n - prod))} non produits\nsur ${fmt(n)} TOT" tabindex="0"><span style="flex:${done} 1 0;background:${DOC_COLORS.signed}"></span><span style="flex:${Math.max(0, prod - done)} 1 0;background:${DOC_COLORS.waiting}"></span><span style="flex:${Math.max(0, n - prod)} 1 0;background:${DOC_COLORS.none}"></span></span>
+  </div>`;
+}
+
+// Code projet de chaque feuille, lu dans la feuille « Pilotage » : chaque ligne
+// (B5:B15) pointe vers sa feuille technique via une formule « Préparation!ANxx ».
+function readProjectCodes(pilotage, preparation) {
+  const codes = new Map();
+  if (!pilotage || !preparation) return codes;
+  for (let r = 4; r <= 30; r++) {
+    const code = String(pilotage[`B${r}`]?.v ?? "").trim();
+    const ref = String(pilotage[`C${r}`]?.f || pilotage[`D${r}`]?.f || "").match(/Préparation!\$?([A-Z]+)\$?(\d+)/i);
+    if (!code || /^S\.?O$/i.test(code) || !ref) continue;
+    const sheet = String(preparation[`${ref[1]}${ref[2]}`]?.v ?? "").trim();
+    if (TECHNICAL_SHEETS.includes(sheet)) codes.set(sheet, code);
+  }
+  return codes;
+}
+
+function sheetProjectCodes() {
+  return data.projectCodes || new Map();
+}
+
+function pctTone(v, n) {
+  if (!n) return "";
+  const r = v / n;
+  return r >= 0.8 ? "good" : r >= 0.5 ? "warn" : "bad";
+}
+
+function trancheTable(ts) {
+  const codes = sheetProjectCodes();
+  // Ordre de la feuille Pilotage ; les feuilles sans TOT ne sont pas affichées.
+  const order = ["CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4M", "CS4A", "CS0M", "CS8M", "CS9M"];
+  const sheets = [...order, ...TECHNICAL_SHEETS.filter((s) => !order.includes(s))].filter((s) => data.availableSheets.includes(s) && ts.some((t) => t.sheet === s));
+  const label = (s) => `${s.slice(0, 3)} ${s.endsWith("A") ? "TEA" : "TEM"}`.replace(/^CS([089]) TEM$/, "CS$1");
+  const cell = (v, n) => `<td class="num pctCell tone-${pctTone(v, n)}">${n ? pct(v, n) : "—"}</td>`;
+  const rows = sheets.map((s) => {
+    const sts = ts.filter((t) => t.sheet === s), n = sts.length;
+    const ready = sts.filter((t) => t.totReady).length;
+    const bpa = milestoneStats(sts, "bpaState"), bpd = milestoneStats(sts, "bpdState");
+    return { s, n, ree: dossierCount(sts), ready, bpa, bpd };
+  });
+  const total = (() => {
+    const bpa = milestoneStats(ts, "bpaState"), bpd = milestoneStats(ts, "bpdState");
+    return { n: ts.length, ree: dossierCount(ts), ready: ts.filter((t) => t.totReady).length, bpa, bpd };
+  })();
+  const line = (r, head) => `<tr class="${head ? "totalRow" : ""}"><td>${head || `<button type="button" class="linkbutton" data-sheet-only="${esc(r.s)}">${esc(label(r.s))}</button><small>${esc(codes.get(r.s) || r.s)}</small>`}</td>
+    <td class="num">${fmt(r.ree)}</td><td class="num">${fmt(r.n)}</td>
+    ${cell(r.ready, r.n)}${cell(r.bpa.produced, r.n)}${cell(r.bpa.done, r.n)}${cell(r.bpd.produced, r.n)}${cell(r.bpd.done, r.n)}</tr>`;
+  return `<div class="tableWrap free"><table class="trancheTable">
+    <thead><tr><th rowspan="2">Tranche</th><th rowspan="2" class="num">REE</th><th rowspan="2" class="num">TOT</th><th class="num">EAM</th><th colspan="2" class="groupHead">BPA</th><th colspan="2" class="groupHead">BPD</th></tr>
+    <tr><th class="num">% TOT prête</th><th class="num">% produits</th><th class="num">% signés</th><th class="num">% produits</th><th class="num">% signés</th></tr></thead>
+    <tbody>${rows.map((r) => line(r)).join("")}${line(total, "Total")}</tbody></table></div>
+    ${legend([["≥ 80 %", "var(--good-bg)"], ["50 à 80 %", "var(--warn-bg)"], ["< 50 %", "var(--bad-bg)"]])}`;
+}
+
 // Actions propres aux coordos (valider les « P », affecter les TOT).
 function coordoTodo(ts) {
   const items = [
@@ -123,7 +186,9 @@ function viewOverview() {
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse</h2>
       <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
     <div class="kpis kpis-4">${kpis}</div>
+    <div class="kpis kpis-2">${docKpi("BPA", ts, "bpaState")}${docKpi("BPD", ts, "bpdState")}</div>
     ${coordoTodo(ts)}
+    ${panel("BPA / BPD par tranche", trancheTable(ts), { cls: "tranchePanel" })}
     <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { cls: "chargePanel" })}${signalPanel()}</div>`;
   currentExport = () => downloadMatrix(["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"],
     chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]), "Charge_par_charge.csv");

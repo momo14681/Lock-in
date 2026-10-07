@@ -42,6 +42,9 @@ function reportModel() {
     sections.push({ title: `Charge par chargé — ${CHARGE_MODES.find(([k]) => k === chargeMode)?.[1]} · tri : ${sortLabel}${hiddenOwners.size ? " (masquage appliqué)" : ""}`, headers: ["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"], rows: chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]) });
     sections.push({ title: "Corrections DEM par type", headers: ["Contrôle", "Nombre"], widths: [.8, .2], rows: [...new Set(issues.map((i) => i.kind))].map((k) => [k, issues.filter((i) => i.kind === k).length]).sort((a, b) => b[1] - a[1]) });
     sections.push({ title: "Corrections DEM par chargé", headers: ["Chargé", "Nombre"], widths: [.8, .2], rows: [...new Set(issues.map((i) => i.t.responsable))].map((k) => [k, issues.filter((i) => i.t.responsable === k).length]).sort((a, b) => b[1] - a[1]) });
+    const codes = sheetProjectCodes();
+    sections.push({ title: "BPA / BPD par tranche", headers: ["Tranche", "REE", "TOT", "% TOT prête", "BPA % produits", "BPA % signés", "BPD % produits", "BPD % signés"],
+      rows: [...new Set(ts.map((t) => t.sheet))].sort().map((sh) => { const st = ts.filter((t) => t.sheet === sh), a = milestoneStats(st, "bpaState"), d = milestoneStats(st, "bpdState"); return [`${sh} ${codes.get(sh) || ""}`.trim(), dossierCount(st), st.length, pct(st.filter((t) => t.totReady).length, st.length), pct(a.produced, st.length), pct(a.done, st.length), pct(d.produced, st.length), pct(d.done, st.length)]; }) });
     sections.push({ title: "États du REE", headers: ["État du REE", "Produits", "Part produits", "Signés", "Part signés"], rows: [["BPA", "bpaState"], ["GER/1N", "gerState"], ["BPD", "bpdState"]].map(([label, k]) => { const s = milestoneStats(ts, k); return [label, s.produced, pct(s.produced, n), s.done, pct(s.done, n)]; }) });
   } else if (tab === "team") {
     const m = teamModel();

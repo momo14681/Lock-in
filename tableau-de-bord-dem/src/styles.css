@@ -501,3 +501,19 @@ tr.rowLink:hover > td { background: var(--info-bg); }
 .doneCheck { width: 18px; height: 18px; accent-color: var(--good); cursor: pointer; }
 tr.doneRow > td { color: var(--muted); }
 .inactiveToggle.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* --- BPA / BPD : cartes et tableau par tranche ------------------------------------ */
+.kpis-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.docKpiFigures { display: flex; gap: 32px; align-items: flex-end; margin: 4px 0 8px; }
+.docKpiFigures span { display: flex; flex-direction: column; }
+.docKpiFigures small { margin: 0; }
+.signedValue { color: var(--good-ink); }
+.trancheTable td, .trancheTable th { padding: 8px 12px; }
+.trancheTable th.groupHead { text-align: center; border-bottom: 1px solid var(--line); }
+.pctCell { font-variant-numeric: tabular-nums; }
+.pctCell.tone-good { background: var(--good-bg); color: var(--good-ink); }
+.pctCell.tone-warn { background: var(--warn-bg); color: var(--warn-ink); }
+.pctCell.tone-bad { background: var(--bad-bg); color: var(--bad-ink); }
+tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
+.tranchePanel .legend { margin: 10px 0 0; }
+@media (max-width: 640px) { .kpis-2 { grid-template-columns: minmax(0, 1fr); } }
