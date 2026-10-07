@@ -500,3 +500,4 @@ tr.rowLink:hover > td { background: var(--info-bg); }
 .checkCell { width: 56px; text-align: center; }
 .doneCheck { width: 18px; height: 18px; accent-color: var(--good); cursor: pointer; }
 tr.doneRow > td { color: var(--muted); }
+.inactiveToggle.on { background: var(--primary); border-color: var(--primary); color: #fff; }

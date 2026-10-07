@@ -81,6 +81,21 @@ function setCruDone(tot, done) {
   catch (e) { $("message").innerHTML = `<div class="notice error">Impossible de mémoriser la sélection sur ce PC (stockage du navigateur indisponible).</div>`; }
 }
 
+// TOT non actives d'après le statut CRU : masquables en un clic (choix mémorisé sur le PC).
+const CRU_INACTIVE = new Set(["FINI", "CLOTURE", "SUSPENDU", "FERME"]);
+const CRU_HIDE_INACTIVE_KEY = "dem-essais-cru-masquer-inactives-v1";
+function isInactiveCru(r) {
+  return CRU_INACTIVE.has(status(r.statut));
+}
+function hideInactiveCru() {
+  try { return localStorage.getItem(CRU_HIDE_INACTIVE_KEY) === "1"; } catch (e) { return false; }
+}
+function toggleHideInactiveCru() {
+  try { localStorage.setItem(CRU_HIDE_INACTIVE_KEY, hideInactiveCru() ? "0" : "1"); } catch (e) { /* choix non mémorisé */ }
+  page = 1;
+  render();
+}
+
 function ecuSort(a, b) {
   const na = parseInt(a, 10), nb = parseInt(b, 10);
   if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
@@ -93,7 +108,10 @@ function viewCRU() {
   const cru = data.cru;
   if (!cru || cru.error) { $("view").innerHTML = panel("TOT par ECU", `<p>${esc(cru?.error || "Feuille CRU non lue.")}</p>`); return; }
   const owner = $("owner").value, done = cruDone();
-  const scoped = owner ? cru.rows.filter((r) => r.owner === owner) : cru.rows;
+  const byOwner = owner ? cru.rows.filter((r) => r.owner === owner) : cru.rows;
+  const hideInactive = hideInactiveCru();
+  const inactiveCount = byOwner.filter((r) => isInactiveCru(r) && !done.has(r.tot)).length;
+  const scoped = hideInactive ? byOwner.filter((r) => !isInactiveCru(r)) : byOwner;
   const hiddenCount = scoped.filter((r) => done.has(r.tot)).length;
   if (!hiddenCount) showDoneCru = false;
   const items = scoped.filter((r) => done.has(r.tot) === showDoneCru);
@@ -107,7 +125,7 @@ function viewCRU() {
   }).join("");
   const dt = dataTable({
     key: "cru", items,
-    tools: hiddenCount ? `<button type="button" class="ghost" data-cru-show-done>${showDoneCru ? "‹ Revenir aux TOT à suivre" : `Masquées (${fmt(hiddenCount)})`}</button>` : "",
+    tools: `${showDoneCru ? "" : `<button type="button" class="inactiveToggle${hideInactive ? " on" : ""}" data-cru-hide-inactive aria-pressed="${hideInactive}" title="TOT au statut FINI, CLÔTURÉ, SUSPENDU ou FERMÉ dans la feuille CRU">${hideInactive ? `Afficher les TOT non actives (${fmt(inactiveCount)})` : `Masquer les TOT non actives (${fmt(inactiveCount)})`}</button>`}${hiddenCount ? `<button type="button" class="ghost" data-cru-show-done>${showDoneCru ? "‹ Revenir aux TOT à suivre" : `Cochées (${fmt(hiddenCount)})`}</button>` : ""}`,
     columns: [
       { label: "Traitée", value: () => "" },
       { label: "Affaire / TOT", value: (r) => `${r.edim} ${r.tot} ${r.ree} ${r.intitule}` },
@@ -133,7 +151,7 @@ function viewCRU() {
   currentRows = dt.rows;
   $("view").innerHTML = panel(`${showDoneCru ? "TOT masquées (traitées)" : "TOT par ECU"} · ${fmt(dt.rows.length)}`,
     `<div class="ecuChips" role="group" aria-label="Filtrer par ECU">${chips}</div>${dt.html}`,
-    { sub: `Feuille « ${CRU_SHEET} » · une ligne par TOT (dernier commentaire)${owner ? " · " + esc(owner) : ""}` });
+    { sub: `Feuille « ${CRU_SHEET} » · une ligne par TOT (dernier commentaire)${hideInactive && !showDoneCru ? " · TOT actives uniquement (PRÊT, EN PRÉPA, EN COURS…)" : ""}${owner ? " · " + esc(owner) : ""}` });
   currentExport = () => downloadMatrix(
     ["Référence eDIM", "Intitulé", "TOT", "REE", "Description", "ECU", "Statut", "Chargé (DEM)", "Début", "Fin", "RDU", "Type commentaire", "Auteur", "Date commentaire", "Résultat", "Ligne CRU", "Lien EAM", "Lien eDRT"],
     dt.rows.map((r) => { const ids = totIds(...r.tot.split("-")); return [r.edim, r.intitule, r.tot, r.ree, r.description, r.ecu, r.statut, r.owner, formatDate(r.debut), formatDate(r.fin), r.rdu, r.commentType, r.auteur, formatDate(r.commentDate), r.resultat, r.row, ids ? eamUrl(ids) : "", ids ? edrtUrl(ids) : ""]; }),
