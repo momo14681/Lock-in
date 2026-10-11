@@ -31,7 +31,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 | Synthèse | Qui est chargé, et qui doit corriger la DEM ? 4 chiffres, histogramme de charge, corrections par chargé. |
 | À corriger dans la DEM | Toutes les corrections, filtrables par chargé, priorité et type. |
 | Équipe | Avancement global, retards de préparation, documents. |
-| *Autres listes…* | Répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint, **TOT par ECU** (feuille CRU : une ligne par TOT avec son dernier commentaire, compteurs et filtre par ECU, chargé repris de la DEM quand l'OT / TOT y figure) |
+| *Autres listes…* | Répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint, **Contrôle 1N / TSR** (export EAM IOP319 chargé ou glissé à part : chaque TOT doit avoir un commentaire 1N et un TSR), **TOT par ECU** (feuille CRU : une ligne par TOT avec son dernier commentaire, compteurs et filtre par ECU, chargé repris de la DEM quand l'OT / TOT y figure) |
 
 **Histogramme de charge :** unité *TOT par statut*, *REE TEM / AT* ou *REE* ; tri par
 charge **Total, AT, TEM** ou nom. Avec le tri AT, le segment AT est placé en premier et

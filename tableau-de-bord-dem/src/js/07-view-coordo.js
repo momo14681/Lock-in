@@ -168,6 +168,7 @@ function coordoTodo(ts) {
   const items = [
     { n: documentRows(ts, "P").length, tone: "info", title: "documents à valider (P)", go: "documents:P" },
     { n: ts.filter((t) => t.responsable === UNASSIGNED).length, tone: "warn", title: "TOT sans chargé d’essais", go: "tasks:unassigned" },
+    { n: iopMissingCount(), tone: "bad", title: "TOT sans 1N ou sans TSR (IOP319)", go: "iop:missing" },
   ].filter((i) => i.n);
   if (!items.length) return "";
   return `<div class="todoStrip"><span class="todoStripLabel">À faire</span>${items.map((i) => `<button type="button" data-go="${i.go}" class="todoItem tone-${i.tone}"><span class="todoCount">${fmt(i.n)}</span><span class="todoText">${esc(i.title)}</span><span class="todoGo" aria-hidden="true">›</span></button>`).join("")}</div>`;

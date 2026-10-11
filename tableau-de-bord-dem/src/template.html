@@ -33,13 +33,18 @@
 
 <main>
   <input id="file" type="file" accept=".xlsx,.xlsm" hidden>
+  <input id="iopFile" type="file" accept=".xlsx,.xlsm,.xls" hidden>
   <div id="message" role="status" aria-live="polite"></div>
 
 
   <section id="drop" class="panel drop">
-    <h2>Ouvrez la DEM pour commencer</h2>
-    <p class="muted">Le fichier reste sur ce PC : il est lu, jamais modifié ni envoyé.</p>
-    <button id="choose" class="primary">Choisir le fichier Excel de la DEM</button>
+    <h2 id="dropTitle">Ouvrez la DEM pour commencer</h2>
+    <p id="dropText" class="muted">Le fichier reste sur ce PC : il est lu, jamais modifié ni envoyé.</p>
+    <div class="dropActions">
+      <button id="reopen" class="primary" hidden>Rouvrir la DEM</button>
+      <button id="choose" class="primary">Choisir le fichier Excel de la DEM</button>
+    </div>
+    <p id="dropHint" class="muted dropHint" hidden></p>
   </section>
 
   <section id="workspace" class="hidden">

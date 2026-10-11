@@ -129,6 +129,9 @@ main { max-width: 1640px; margin: auto; padding: 18px 32px 40px; }
 .drop { text-align: center; border: 2px dashed #98b3cc; padding: 56px 24px; }
 .drop h2 { font-size: 24px; margin-bottom: 8px; }
 .drop p { margin-bottom: 20px; }
+.dropActions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.drop .dropHint { margin: 16px auto 0; max-width: 620px; font-size: 13px; }
+#reopen { font-size: 16px; padding: 11px 20px; }
 .drop.over { border-color: var(--primary); background: #E5EDFA; }
 
 .chips { display: flex; gap: 5px; flex-wrap: wrap; }
@@ -517,3 +520,10 @@ tr.doneRow > td { color: var(--muted); }
 tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .tranchePanel .legend { margin: 10px 0 0; }
 @media (max-width: 640px) { .kpis-2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* --- Contrôle 1N / TSR (export IOP319) ------------------------------------------ */
+.kpi.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary) inset, var(--shadow); }
+.iopDrop { margin: 4px 0 0; padding: 40px 20px; border-radius: 12px; }
+.iopDrop h2 { font-size: 20px; }
+.iopFilters { display: flex; flex-wrap: wrap; gap: 4px 32px; margin-bottom: 4px; }
+.iopChipGroup .ecuChips { margin: 4px 0 10px; }

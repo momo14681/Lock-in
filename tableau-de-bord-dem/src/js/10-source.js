@@ -146,10 +146,10 @@ async function activateProfileSource() {
   updateSourceControls();
   try {
     sourcePermission = await sourceHandle.queryPermission({ mode: "read" });
-    sourceStatus = sourcePermission === "granted" ? "Vérification du fichier…" : "Cliquez sur Actualiser pour autoriser la lecture du fichier.";
+    sourceStatus = sourcePermission === "granted" ? "Vérification du fichier…" : "Fichier mémorisé · cliquez sur Rouvrir pour autoriser sa lecture.";
   } catch (e) {
     sourcePermission = "prompt";
-    sourceStatus = "Cliquez sur Actualiser pour autoriser la lecture du fichier.";
+    sourceStatus = "Fichier mémorisé · cliquez sur Rouvrir pour autoriser sa lecture.";
   } finally {
     profileSwitching = false;
     updateSourceControls();
@@ -262,7 +262,25 @@ function updateSourceControls() {
     : sourceHandle ? "Lecture automatique désactivée" : "Lecture automatique : sélectionnez un fichier";
   $("sourceLastCheck").textContent = lastChecked ? `· vérifié le ${sourceTime(lastChecked)}` : "";
   $("sourceDot").className = "sourceDot " + (working ? "busy" : active ? "ok" : data ? "idle" : "off");
-  for (const id of ["import", "choose", "clear"]) $(id).disabled = working;
+  for (const id of ["import", "choose", "clear", "reopen"]) $(id).disabled = working;
+  updateDropPanel(working);
+}
+
+// Écran d'accueil : la DEM mémorisée se rouvre en un clic (le navigateur exige ce clic
+// pour autoriser de nouveau la lecture ; inutile de rechercher le fichier).
+function updateDropPanel(working) {
+  const h = sourceHandle;
+  $("reopen").hidden = !h;
+  if (h) $("reopen").textContent = working ? "Lecture en cours…" : `Rouvrir ${h.name}`;
+  $("choose").className = h ? "" : "primary";
+  $("choose").textContent = h ? "Choisir un autre fichier" : `Choisir le fichier Excel de la DEM ${activeDEM}`;
+  $("dropTitle").textContent = h ? `DEM ${activeDEM} mémorisée sur ce PC` : `Ouvrez la DEM ${activeDEM} pour commencer`;
+  $("dropText").textContent = h
+    ? (sourcePermission === "granted" ? "Le fichier est mémorisé : cliquez pour le relire." : "Le fichier est mémorisé : un clic suffit pour autoriser de nouveau sa lecture, inutile de le rechercher.")
+    : "Le fichier reste sur ce PC : il est lu, jamais modifié ni envoyé. Il sera mémorisé pour les prochaines ouvertures.";
+  const hint = h ? "Si le navigateur propose « Autoriser à chaque visite », choisissez-le : la DEM s’ouvrira alors toute seule." : !persistentPicker ? "Ce navigateur ne permet pas de mémoriser le fichier : utilisez Edge ou Chrome." : "";
+  $("dropHint").textContent = hint;
+  $("dropHint").hidden = !hint;
 }
 
 function stopSchedule() {
@@ -291,7 +309,7 @@ async function readSource({ force = false } = {}) {
   updateSourceControls();
   try {
     sourcePermission = await sourceHandle.queryPermission({ mode: "read" });
-    if (sourcePermission !== "granted") { sourceStatus = "Fichier mémorisé · cliquez sur Actualiser."; return false; }
+    if (sourcePermission !== "granted") { sourceStatus = "Fichier mémorisé · cliquez sur Rouvrir pour autoriser sa lecture."; return false; }
     // Nouvelle copie du fichier à chaque vérification : il a pu changer sur le disque.
     const file = await sourceHandle.getFile();
     checkDEMFile(file);
@@ -329,13 +347,16 @@ async function chooseSource() {
   sourceSelecting = true;
   updateSourceControls();
   try {
-    const [handle] = await window.showOpenFilePicker({ id: "dem-coordos-" + activeDEM, multiple: false, types: [{ description: "Classeur Excel", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"], "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"] } }] });
+    const options = { id: "dem-coordos-" + activeDEM, multiple: false, types: [{ description: "Classeur Excel", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"], "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"] } }] };
+    let handle;
+    try { [handle] = await window.showOpenFilePicker(sourceHandle ? { ...options, startIn: sourceHandle } : options); }
+    catch (e) { if (e.name !== "TypeError" || !sourceHandle) throw e; [handle] = await window.showOpenFilePicker(options); }
     const file = await handle.getFile();
     checkDEMFile(file);
     if (!await load(file)) return;
     sourceEpoch++; currentSessionFile = null; sourceHandle = handle; sourcePermission = "granted"; sourcePaused = false;
     sourceStamp = fileStamp(file); lastChecked = new Date(); lastScheduleSlot = scheduledSlot(lastChecked); $("autoRefresh").checked = true;
-    try { await storedSource("put", handle); await storedSource("put", activeDEM, "activeDEM"); sourceRemembered = true; sourceStatus = "Fichier mémorisé sur ce PC"; }
+    try { await storedSource("put", handle); await storedSource("put", activeDEM, "activeDEM"); sourceRemembered = true; sourceStatus = "Fichier mémorisé sur ce PC"; keepStorage(); }
     catch (e) { sourceRemembered = false; sourceStatus = "Sélection pour cette session · mémorisation indisponible"; }
   } catch (e) {
     if (e.name !== "AbortError") sourceStatus = `Sélection impossible : ${e.message || "autorisation refusée"}.`;
@@ -343,6 +364,11 @@ async function chooseSource() {
     sourceSelecting = false;
     armSchedule();
   }
+}
+
+// Demande au navigateur de ne pas effacer la mémorisation pour libérer de la place.
+function keepStorage() {
+  try { navigator.storage?.persist?.().catch(() => {}); } catch (e) { /* sans conséquence */ }
 }
 
 async function authorizeSource() {
@@ -371,12 +397,26 @@ async function manualImport(file) {
   try { checkDEMFile(file); } catch (e) { $("message").innerHTML = `<div class="notice error">${esc(e.message)}</div>`; return false; }
   sourceEpoch++;
   if (!await load(file)) return false;
+  lastChecked = new Date(); sourcePaused = false;
+  // Le fichier déposé est la DEM mémorisée : on garde la mémorisation et la relecture automatique.
+  if (sourceHandle && sourceHandle.name === file.name) {
+    currentSessionFile = file;
+    sourceStamp = fileStamp(file);
+    try { sourcePermission = await sourceHandle.queryPermission({ mode: "read" }); } catch (e) { sourcePermission = "prompt"; }
+    sourceStatus = sourcePermission === "granted" ? "Fichier mémorisé sur ce PC" : "Fichier mémorisé · cliquez sur Actualiser pour activer la relecture automatique.";
+    lastScheduleSlot = scheduledSlot(lastChecked);
+    armSchedule();
+    return true;
+  }
+  // Autre fichier : lu pour cette session ; la DEM mémorisée reste enregistrée pour les prochaines ouvertures.
+  const remembered = sourceRemembered ? sourceHandle?.name : "";
   currentSessionFile = file;
   stopSchedule();
-  sourceHandle = null; sourceRemembered = false; sourceStamp = null; sourcePermission = "prompt"; sourcePaused = false; lastChecked = new Date();
-  sourceStatus = persistentPicker ? "Import manuel · choisissez le fichier pour mémoriser sa sélection et le relire automatiquement." : "Import manuel · la mémorisation nécessite Edge ou Chrome avec accès aux fichiers autorisé.";
-  try { await storedSource("delete"); await storedSource("put", activeDEM, "activeDEM"); }
-  catch (e) { sourceStatus += " La sélection précédente n’a pas pu être effacée de ce navigateur."; }
+  sourceHandle = null; sourceRemembered = false; sourceStamp = null; sourcePermission = "prompt";
+  sourceStatus = !persistentPicker ? "Import manuel · la mémorisation nécessite Edge ou Chrome avec accès aux fichiers autorisé."
+    : remembered ? `Import manuel pour cette session · la DEM mémorisée (${remembered}) sera rouverte la prochaine fois. Pour mémoriser ce fichier à la place : Fichier › Changer le fichier.`
+    : "Import manuel · choisissez le fichier (Fichier › Changer le fichier) pour le mémoriser et le relire automatiquement.";
+  try { await storedSource("put", activeDEM, "activeDEM"); } catch (e) { /* sans conséquence */ }
   updateSourceControls();
   return true;
 }
@@ -413,7 +453,17 @@ function closeWorkbook() {
   $("drop").classList.remove("hidden");
   $("view").innerHTML = "";
   $("message").innerHTML = "";
-  sourceStatus = sourceHandle ? "Fichier mémorisé · cliquez sur Actualiser pour reprendre." : "Aucun classeur ouvert";
+  sourceStatus = sourceHandle ? "Fichier mémorisé · cliquez sur Rouvrir pour reprendre." : "Aucun classeur ouvert";
   renderChrome();
   updateSourceControls();
+  // Après un import manuel, on repropose la DEM mémorisée sur ce PC.
+  if (!sourceHandle && persistentPicker) {
+    const epoch = sourceEpoch;
+    storedSource("get").then((h) => {
+      if (!h || data || sourceHandle || epoch !== sourceEpoch) return;
+      sourceHandle = h; sourceRemembered = true; sourcePermission = "prompt"; currentSessionFile = null;
+      sourceStatus = "Fichier mémorisé · cliquez sur Rouvrir pour reprendre.";
+      updateSourceControls();
+    }).catch(() => {});
+  }
 }

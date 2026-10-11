@@ -4,7 +4,7 @@
 
 const VIEWS = {
   mine: viewMine, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
-  documents: viewDocuments, cru: viewCRU, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
+  documents: viewDocuments, cru: viewCRU, iop319: viewIOP, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
 };
 
 function renderChrome() {
@@ -119,6 +119,7 @@ function go(spec) {
   if (kind === "issues-owner") { if (mode === "coordo") $("owner").value = arg; issueKind = ""; issueLevel = ""; showIgnored = false; return setTab("issues"); }
   if (kind === "documents") { docCode = arg || "P"; documentType = ""; return setTab("documents"); }
   if (kind === "groups") { tab = tabByMode[mode] = arg; page = 1; return render(); }
+  if (kind === "iop") { iopCheck = arg; tab = tabByMode[mode] = IOP_TAB; page = 1; return render(); }
 }
 
 const SETTABLE = {
@@ -130,6 +131,7 @@ const SETTABLE = {
   docCode: (v) => { docCode = v; },
   documentType: (v) => { documentType = v; },
   teamLateOwner: (v) => { teamLateOwner = v; },
+  iopCheck: (v) => { iopCheck = v; },
 };
 
 function onClick(e) {
@@ -195,6 +197,10 @@ function onClick(e) {
   if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
   if (d.ecu !== undefined) return toggleEcu(d.ecu);
   if (d.sheetOnly !== undefined) { selectedSheets.clear(); selectedSheets.add(d.sheetOnly); page = 1; return render(); }
+  if (d.iopImport !== undefined) return $("iopFile").click();
+  if (d.iopClear !== undefined) { iop = null; tableState.iop = { search: "", open: false, filters: {} }; $("message").innerHTML = ""; page = 1; return render(); }
+  if (d.iopStatut !== undefined) return toggleIopChip("statut", d.iopStatut);
+  if (d.iopEcu !== undefined) return toggleIopChip("ecu", d.iopEcu);
   if (d.cruHideInactive !== undefined) return toggleHideInactiveCru();
   if (d.cruShowDone !== undefined) { showDoneCru = !showDoneCru; page = 1; return render(); }
   if (d.toggleLate !== undefined) { showAllLate = !showAllLate; return render(); }
@@ -264,10 +270,19 @@ function init() {
   $("demSelector").onchange = (e) => switchDEM(e.target.value);
   $("autoRefresh").onchange = () => { lastScheduleSlot = scheduledSlot(); armSchedule(); };
   for (const id of ["choose", "import"]) $(id).onclick = chooseSource;
+  $("reopen").onclick = refreshSource;
   $("file").onchange = (e) => manualImport(e.target.files[0]);
+  $("iopFile").onchange = (e) => importIOP(e.target.files[0]);
   document.addEventListener("dragover", (e) => { e.preventDefault(); $("drop").classList.add("over"); });
   document.addEventListener("dragleave", () => $("drop").classList.remove("over"));
-  document.addEventListener("drop", (e) => { e.preventDefault(); $("drop").classList.remove("over"); manualImport(e.dataTransfer.files[0]); });
+  document.addEventListener("drop", (e) => {
+    e.preventDefault(); $("drop").classList.remove("over");
+    const f = e.dataTransfer.files[0], isIOP = /IOP\s*[-_]?\s*319/i.test(f?.name || "");
+    // Export IOP319 : glissé sur sa vue, ou reconnu à son nom. Il nécessite une DEM ouverte.
+    if (f && data && ((mode === "coordo" && tab === IOP_TAB) || isIOP)) { openIOP(); return importIOP(f); }
+    if (isIOP) { $("message").innerHTML = `<div class="notice">Ouvrez d’abord la DEM, puis déposez l’export IOP319 (profil Coordo essais › Autres listes › Contrôle 1N / TSR).</div>`; return; }
+    manualImport(f);
+  });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkSchedule().finally(armSchedule); });
   window.addEventListener("focus", () => { checkSchedule().finally(armSchedule); });
 

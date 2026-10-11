@@ -72,6 +72,15 @@ function reportModel() {
     title = "TOT par ECU (feuille CRU)";
     sections.push({ title, headers: ["Affaire / TOT", "Description", "ECU", "Statut", "Chargé (DEM)", "Début", "Dernier commentaire"], widths: [.16, .3, .06, .1, .12, .1, .16],
       rows: (currentRows || []).map((r) => [`${r.edim} / ${r.tot}`, r.description || r.intitule, r.ecu, r.statut, r.owner, formatDate(r.debut), [r.commentType, formatDate(r.commentDate === null ? null : r.commentDate), r.resultat].filter((x) => x && x !== "—").join(" · ")]) });
+  } else if (tab === IOP_TAB) {
+    title = "Contrôle 1N / TSR (export IOP319) — " + (IOP_CHECKS.find(([k]) => k === iopCheck)?.[1] || "Toutes");
+    if (iop) {
+      const scope = iopScoped().filter((r) => iopPass(r)), chosen = iopChosen("statut"), ecus = iopChosen("ecu");
+      sections.push(indicatorSection([["Export", iop.fileName], ["États de TOT retenus", chosen.length ? chosen.join(", ") : "Tous"], ["ECU retenus", ecus.length ? ecus.join(", ") : "Tous"], ["TOT", scope.length], ...["ok", "noTSR", "no1N", "none"].map((k) => [IOP_CHECK_LABEL[k], `${scope.filter((r) => r.check === k).length} (${pct(scope.filter((r) => r.check === k).length, scope.length)})`])]));
+      const last = (l) => (l.length ? `${l[l.length - 1].auteur} ${formatDate(l[l.length - 1].date)}` : "MANQUANT");
+      sections.push({ title, headers: ["Affaire / TOT", "Description", "État TOT", "ECU", "Contrôle", "1N", "TSR", "Chargé d’essais (DEM)"], widths: [.15, .24, .07, .05, .12, .13, .13, .11],
+        rows: (currentRows || []).map((r) => [`${r.edim} / ${r.tot}`, r.description || r.intitule, r.statut, r.ecu === IOP_NO_ECU ? "—" : r.ecu, IOP_CHECK_LABEL[r.check], last(r.n1), last(r.tsr), r.owner]) });
+    }
   } else if (tab === "documents") {
     title = (docCode === "P" ? "Documents prêts à valider (P)" : "Documents à reprendre (R)") + (documentType ? " — " + names[documentType] : "");
     sections.push({ title, headers: ["Affaire / REE", "Chargé", "OT / TOT", "Document", "Cellule", "Observations"], widths: [.2, .13, .14, .1, .1, .33],
