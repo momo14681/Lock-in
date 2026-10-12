@@ -59,6 +59,15 @@ avec une barre signés / produits à signer / non produits et les nombres (sign�
 signer, TOT). Ni lignes DEM à compléter ni avancement par J0 ; les pourcentages sont
 calculés sur toutes les TOT de la tranche.
 
+## Rythme de signature (PNG 1920 × 1080)
+
+Bouton « Voir le rythme de signature » (onglets *Avancement équipe* et *Pilotage par
+tranche*) ou Exporter › « Rythme de signature (PNG) ». Courbe du cumul, semaine par
+semaine sur 26 semaines, des dates TOT prête, BPA et BPD renseignées, en % des TOT, avec
+le gain des 4 dernières semaines. Une courbe pour l'équipe, ou une par tranche choisie.
+Les dates sont fiables, pas le J0 : rien ne dépend du J0. Une ligne signée sans date
+n'est pas comptée.
+
 ## Règles de calcul (identiques à la V1.3)
 
 - **Réalisé** : GER/1N signé (PSR ou TSR).

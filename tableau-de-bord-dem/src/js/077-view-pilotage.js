@@ -224,7 +224,7 @@ function viewPilotage() {
   const owner = mode === "coordo" ? $("owner").value : "";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Pilotage par tranche</h2>
       <p class="muted">Indicateurs de la feuille Pilotage, tranche par tranche · ${esc(owner || "Tous les CE")} · ${esc(periodLabel())}</p></div>
-      <div class="panelActions"><button type="button" data-png-preview>Voir l’image télé</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
+      <div class="panelActions"><button type="button" data-png-preview="rythme">Voir le rythme de signature</button><button type="button" data-png-preview>Voir l’image télé</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="ecuChips pilotChips" role="group" aria-label="Tranches affichées">${chips}</div>
     ${row(pilotHead)}${row(pilotChain)}${row(pilotChart)}${row(pilotTodo)}${row(pilotOwners)}`;
   currentExport = () => {

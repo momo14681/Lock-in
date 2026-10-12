@@ -130,6 +130,7 @@ function applyProfile(profile) {
   $("view").innerHTML = "";
   $("pdfExport").disabled = !data;
   $("pngExport").disabled = !data;
+  $("pngRhythm").disabled = !data;
   renderChrome();
   if (data) render();
   updateSourceControls();
@@ -448,6 +449,7 @@ function closeWorkbook() {
   stopSchedule();
   $("pdfExport").disabled = true;
   $("pngExport").disabled = true;
+  $("pngRhythm").disabled = true;
   data = null; issues = []; allIssues = []; visible = [];
   $("workspace").classList.add("hidden");
   $("drop").classList.remove("hidden");

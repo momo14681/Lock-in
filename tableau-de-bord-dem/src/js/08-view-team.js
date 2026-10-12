@@ -195,7 +195,7 @@ function viewTeam() {
   const more = !filtering && up.rows.length > 10
     ? `<button type="button" class="ghost" data-toggle-late>${showAllLate ? "Afficher les 10 prochains" : `Afficher les ${fmt(up.rows.length)} REE à venir`}</button>` : "";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Avancement de l’équipe</h2><p class="muted">${esc(m.period)} · ${esc(m.scope)}</p></div>
-      <div class="panelActions"><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
+      <div class="panelActions"><button type="button" data-png-preview="rythme">Voir le rythme de signature</button><button type="button" data-png-preview>Voir l’écran d’équipe</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="kpis kpis-4 hero">${kpis}</div>
     <div class="split even">
       ${panel("Avancement par mois de J0", `${legend(TEAM_ORDER.map((s) => [s, TEAM_COLORS[s]]))}${timelineSvg(m.timeline)}`, { cls: "timelinePanel" })}
@@ -365,8 +365,80 @@ function drawPNG(canvas, m) {
   return canvas;
 }
 
+// --- Image « rythme de signature » (1920 × 1080) -----------------------------------------
+// Cumul, semaine par semaine, des TOT prêtes, BPA et BPD signés d'après leurs dates (fiables,
+// contrairement au J0), en % des TOT. Une ligne signée sans date n'est pas comptée.
+
+const RHYTHM_WEEKS = 26;
+const RHYTHM_SERIES = [["totPrete", "TOT prêtes", "#1057C8"], ["bpa", "BPA signés", "#FE5815"], ["bpd", "BPD signés", "#4E9A2E"]];
+
+function rhythmSeries(ts, today) {
+  const start = mondayOf(addDays(today, -7 * (RHYTHM_WEEKS - 1)));
+  return {
+    start,
+    series: RHYTHM_SERIES.map(([key, label, color]) => {
+      const dates = ts.map((t) => parseExcelDate(t.cells?.[key]?.v)).filter((d) => d && d <= today);
+      const points = Array.from({ length: RHYTHM_WEEKS }, (_, w) => { const end = addDays(start, 7 * w + 7); return dates.filter((d) => d < end).length; });
+      return { key, label, color, points, last: points[RHYTHM_WEEKS - 1], gain: points[RHYTHM_WEEKS - 1] - points[RHYTHM_WEEKS - 5] };
+    }),
+  };
+}
+
+// groups : [{ label, ts, color }], 3 au plus côte à côte.
+function drawRhythmPNG(canvas, title, sub, groups) {
+  canvas.width = 1920;
+  canvas.height = 1080;
+  const c = canvas.getContext("2d");
+  if (!c) throw Error("Votre navigateur ne permet pas de créer cette image.");
+  const k = pngKit(c), { roundRect, text } = k;
+  drawPNGHeader(k, title, sub, formatFrenchDateTime(data.analyzedAt));
+  const n = groups.length, gap = 28, left = 56, colW = (1920 - 2 * left - (n - 1) * gap) / n, y = 156, h = 1000 - y;
+  groups.forEach((g, i) => {
+    const x = left + i * (colW + gap), total = g.ts.length, { start, series } = rhythmSeries(g.ts, data.today);
+    roundRect(x, y, colW, h, 18, PNG.card);
+    const tw = text(g.label, x + 30, y + 24, { size: 44, weight: 400, color: g.color, width: colW - 220, min: 26 });
+    text(`${fmt(total)} TOT`, x + 30 + tw + 20, y + 40, { size: 24, color: PNG.muted });
+    series.forEach((s, j) => {
+      const ly = y + 100 + j * 40;
+      roundRect(x + 30, ly + 5, 20, 20, 5, s.color);
+      const lw = text(`${s.label}  ${pct(s.last, total)}`, x + 62, ly, { size: 25, color: PNG.ink, width: colW - 260 });
+      text(s.gain > 0 ? `+${fmt(s.gain)} en 4 semaines` : "stable sur 4 semaines", x + 62 + lw + 22, ly + 3, { size: 21, color: PNG.muted, width: colW - lw - 110, min: 13 });
+    });
+    const px = x + 96, pw = colW - 136, py = y + 250, ph = h - 320;
+    for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+      const gy = py + ph - f * ph;
+      c.fillStyle = f ? "#e9eef3" : "#c9d4df"; c.fillRect(px, gy, pw, f ? 1 : 2);
+      text(`${Math.round(f * 100)} %`, px - 14, gy - 11, { size: 19, color: PNG.muted, align: "right" });
+    }
+    for (let w = 0; w < RHYTHM_WEEKS; w += n > 2 ? 5 : 4) text(`S${isoWeek(addDays(start, 7 * w)).week}`, px + w / (RHYTHM_WEEKS - 1) * pw, py + ph + 14, { size: 19, color: PNG.muted, align: "center" });
+    for (const s of series) {
+      const X = (w) => px + w / (RHYTHM_WEEKS - 1) * pw, Y = (v) => py + ph - (total ? v / total : 0) * ph;
+      c.strokeStyle = s.color; c.lineWidth = 4; c.lineJoin = "round"; c.lineCap = "round";
+      c.beginPath(); s.points.forEach((v, w) => (w ? c.lineTo(X(w), Y(v)) : c.moveTo(X(w), Y(v)))); c.stroke();
+      c.fillStyle = s.color; c.beginPath(); c.arc(X(RHYTHM_WEEKS - 1), Y(s.last), 8, 0, 2 * Math.PI); c.fill();
+    }
+  });
+  text("Cumul des dates TOT prête, BPA et BPD renseignées dans la DEM, en % des TOT.", left, 1030, { size: 21, color: PNG.muted, width: 1808 });
+  return canvas;
+}
+
+function rhythmTarget() {
+  if (tab === PILOT_TAB) {
+    const sheets = pilotSelection().slice(0, PILOT_PNG_MAX);
+    return { draw: () => drawRhythmPNG(document.createElement("canvas"), `Rythme de signature · ${sheets.map(trancheLabel).join(" · ")}`,
+        `DEM ${activeDEM}  ·  ${(mode === "coordo" && $("owner").value) || "Tous les CE"}  ·  ${RHYTHM_WEEKS} dernières semaines`,
+        sheets.map((sh) => ({ label: trancheLabel(sh), ts: pilotTasks(sh), color: sh.endsWith("A") ? "#C2410C" : "#0C46A3" }))),
+      name: `Rythme_${sheets.join("_")}`, title: "Aperçu du rythme de signature par tranche (1920 × 1080)", note: "Mêmes tranches et même chargé que la vue « Pilotage par tranche »." };
+  }
+  const m = teamModel();
+  return { draw: () => drawRhythmPNG(document.createElement("canvas"), "Rythme de signature", `DEM ${activeDEM}  ·  ${m.scope}  ·  ${RHYTHM_WEEKS} dernières semaines`, [{ label: "Équipe", ts: m.ts, color: "#0C46A3" }]),
+    name: "Rythme_equipe", title: "Aperçu du rythme de signature de l’équipe (1920 × 1080)", note: "Même périmètre que la vue « Avancement équipe »." };
+}
+
 // L'onglet « Pilotage par tranche » exporte sa propre image ; sinon, l'écran d'équipe.
-function pngTarget() {
+// kind « rythme » : courbe du rythme de signature, sur le même périmètre.
+function pngTarget(kind = "") {
+  if (kind === "rythme") return rhythmTarget();
   return tab === PILOT_TAB
     ? { draw: () => drawPilotPNG(document.createElement("canvas")), name: `Pilotage_${pilotSelection().slice(0, PILOT_PNG_MAX).join("_")}`, title: "Aperçu de l’image du pilotage par tranche (1920 × 1080)", note: "Mêmes tranches et même chargé que la vue « Pilotage par tranche »." }
     : { draw: () => drawPNG(document.createElement("canvas"), teamModel()), name: "Ecran_equipe_essais", title: "Aperçu de l’écran d’équipe (1920 × 1080)", note: "Même périmètre que la vue « Avancement équipe »." };
@@ -376,35 +448,35 @@ function pngMenuLabel() {
   return tab === PILOT_TAB ? "Image du pilotage pour la télé (PNG)" : "Image pour l’écran d’équipe (PNG)";
 }
 
-async function renderPNG() {
+async function renderPNG(kind = "") {
   if (document.fonts) { await Promise.all(['300 50px "EDF 2020"', '400 50px "EDF 2020"', '400 50px "Work Sans"'].map((f) => document.fonts.load(f).catch(() => null))); await document.fonts.ready; }
-  return pngTarget().draw();
+  return pngTarget(kind).draw();
 }
 
-async function exportPNG() {
+async function exportPNG(kind = "") {
   if (!data) return;
-  const button = $("pngExport");
+  const button = kind === "rythme" ? $("pngRhythm") : $("pngExport"), label = button.textContent;
   button.disabled = true;
   button.textContent = "Création du PNG…";
   try {
-    const canvas = await renderPNG();
+    const canvas = await renderPNG(kind);
     const blob = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(Error("Image PNG non créée.")), "image/png"));
-    downloadBytes(blob, "image/png", `${pngTarget().name}_DEM${activeDEM}_${new Date().toISOString().slice(0, 10)}.png`);
+    downloadBytes(blob, "image/png", `${pngTarget(kind).name}_DEM${activeDEM}_${new Date().toISOString().slice(0, 10)}.png`);
   } catch (e) {
     $("message").innerHTML = `<div class="notice error">Export PNG impossible : ${esc(e.message)}</div>`;
   } finally {
     button.disabled = !data;
-    button.textContent = pngMenuLabel();
+    button.textContent = kind === "rythme" ? label : pngMenuLabel();
   }
 }
 
-async function previewPNG() {
+async function previewPNG(kind = "") {
   if (!data) return;
   try {
-    const canvas = await renderPNG();
-    const target = pngTarget();
+    const canvas = await renderPNG(kind);
+    const target = pngTarget(kind);
     $("detailTitle").textContent = target.title;
-    $("detailBody").innerHTML = `<img class="pngPreview" alt="${esc(target.title)}" src="${canvas.toDataURL("image/png")}"><p class="muted">${esc(target.note)} <button type="button" class="accent" data-png>Télécharger le PNG</button></p>`;
+    $("detailBody").innerHTML = `<img class="pngPreview" alt="${esc(target.title)}" src="${canvas.toDataURL("image/png")}"><p class="muted">${esc(target.note)} <button type="button" class="accent" data-png="${kind}">Télécharger le PNG</button></p>`;
     $("detail").classList.add("wideDialog");
     if (!$("detail").open) $("detail").showModal();
   } catch (e) {

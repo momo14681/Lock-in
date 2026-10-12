@@ -52,6 +52,7 @@ function render() {
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
   $("pngExport").disabled = false;
+  $("pngRhythm").disabled = false;
   $("pngExport").textContent = pngMenuLabel();
   $("csvExport").disabled = !currentExport;
   $("view").insertAdjacentHTML("afterbegin", backBar());
@@ -192,8 +193,8 @@ function onClick(e) {
     return render();
   }
   if (d.export !== undefined) return currentExport?.();
-  if (d.png !== undefined) return exportPNG();
-  if (d.pngPreview !== undefined) return previewPNG();
+  if (d.png !== undefined) return exportPNG(d.png);
+  if (d.pngPreview !== undefined) return previewPNG(d.pngPreview);
   if (d.me !== undefined) return setMe(d.me);
   if (d.owner !== undefined) { $("owner").value = d.owner; page = 1; return render(); }
   if (d.ownerTasks !== undefined) { pushNav(); $("owner").value = d.ownerTasks; return openTasks(""); }
@@ -282,7 +283,8 @@ function init() {
   $("closeDetail").onclick = () => $("detail").close();
   $("detail").addEventListener("close", () => { delete $("detail").dataset.task; });
   $("pdfExport").onclick = exportPDF;
-  $("pngExport").onclick = exportPNG;
+  $("pngExport").onclick = () => exportPNG();
+  $("pngRhythm").onclick = () => exportPNG("rythme");
 
   $("sourceChange").onclick = chooseSource;
   $("sourceRefresh").onclick = refreshSource;
