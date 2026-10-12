@@ -252,7 +252,7 @@ function pngKit(c) {
 }
 
 // Bandeau commun des images : titre, périmètre, date des données.
-function drawPNGHeader(k, title, sub, todayLabel, importDate) {
+function drawPNGHeader(k, title, sub, importDate) {
   const { c, text } = k;
   c.fillStyle = PNG.bg; c.fillRect(0, 0, 1920, 1080);
   const grad = c.createLinearGradient(0, 0, 1920, 0);
@@ -261,8 +261,7 @@ function drawPNGHeader(k, title, sub, todayLabel, importDate) {
   c.fillStyle = "#FE5815"; c.fillRect(0, 0, 12, 132);
   text(title, 56, 24, { size: 50, weight: 700, color: "#ffffff", width: 1180 });
   text(sub, 58, 88, { size: 24, color: "#C7D2EE", width: 1180 });
-  text(`Données au ${todayLabel}`, 1864, 28, { size: 32, weight: 700, color: "#ffffff", width: 600, align: "right" });
-  text(`Import du ${importDate}`, 1864, 78, { size: 21, color: "#A9B6DA", width: 600, align: "right" });
+  text(`Import du ${importDate}`, 1864, 52, { size: 22, color: "#A9B6DA", width: 600, align: "right" });
 }
 
 // Barres empilées d'avancement par période de J0 (mois ou semaines).
@@ -300,7 +299,7 @@ function drawPNG(canvas, m) {
 
   const { roundRect, text, bar } = pngKit(c);
 
-  drawPNGHeader({ c, text }, "Avancement des essais", `DEM ${m.dem}  ·  ${m.period}  ·  ${m.scope}`, m.todayLabel, m.importDate);
+  drawPNGHeader({ c, text }, "Avancement des essais", `DEM ${m.dem}  ·  ${m.scope}`, m.importDate);
 
   // Rangée 1 : indicateurs
   const y1 = 156, h1 = 196;

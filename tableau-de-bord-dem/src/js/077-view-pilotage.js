@@ -277,8 +277,8 @@ function drawPilotPNG(canvas) {
   const chosen = pilotSelection(), models = chosen.slice(0, PILOT_PNG_MAX).map(pilotModel);
   const owner = mode === "coordo" ? $("owner").value : "";
   drawPNGHeader(k, `Pilotage des essais · ${models.map((m) => m.label).join(" · ")}`,
-    `DEM ${activeDEM}  ·  ${periodLabel()}  ·  ${owner || "Tous les CE"}${chosen.length > models.length ? `  ·  ${models.length} premières tranches sur ${chosen.length}` : ""}`,
-    formatDate(data.today), formatFrenchDateTime(data.analyzedAt));
+    `DEM ${activeDEM}  ·  ${owner || "Tous les CE"}${chosen.length > models.length ? `  ·  ${models.length} premières tranches sur ${chosen.length}` : ""}`,
+    formatFrenchDateTime(data.analyzedAt));
 
   const n = models.length, gap = 28, left = 56, colW = (1920 - 2 * left - (n - 1) * gap) / n, narrow = colW < 800;
   const yTitle = 150, yKpi = 236, kpiH = 168, yCard = yKpi + kpiH + 20, yEnd = 1000, rowTop = yCard + 66, rowH = (yEnd - 16 - rowTop) / PILOT_PNG_DOCS.length;
