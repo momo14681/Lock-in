@@ -11,6 +11,7 @@ const TASK_FOCUS = [
   ["noJ0", "J0 absent", (t) => !t.j0],
   ["prepared", "Prépa terminée", (t) => t.prepComplete],
   ["realized", "Réalisées", isRealized],
+  ["bpdPending", "BPD à signer", (t) => isRealized(t) && t.bpdState !== "done"],
   ["unassigned", "Non affectées", (t) => t.responsable === UNASSIGNED],
 ];
 

@@ -189,7 +189,7 @@ function viewOverview() {
     <div class="kpis kpis-4">${kpis}</div>
     <div class="kpis kpis-2">${docKpi("BPA", ts, "bpaState")}${docKpi("BPD", ts, "bpdState")}</div>
     ${coordoTodo(ts)}
-    ${panel("BPA / BPD par tranche", trancheTable(ts), { cls: "tranchePanel" })}
+    ${panel("BPA / BPD par tranche", trancheTable(ts), { cls: "tranchePanel", actions: `<button type="button" data-go="tab:pilotage">Pilotage par tranche ›</button>` })}
     <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { cls: "chargePanel" })}${signalPanel()}</div>`;
   currentExport = () => downloadMatrix(["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"],
     chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]), "Charge_par_charge.csv");

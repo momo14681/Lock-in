@@ -9,7 +9,7 @@ automatiquement toutes les 30 minutes de 7 h à 20 h (comme en V1.3).
 
 ## Deux profils (bouton en haut de page)
 
-Chaque profil a **3 onglets**, chacun répond à une question. Les listes détaillées
+Chaque profil a **3 onglets** (4 pour les coordos), chacun répond à une question. Les listes détaillées
 sont dans le menu déroulant à droite des onglets. Les filtres (feuilles, période)
 sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel et sa dernière vérification sont en petit en bas de page (menu **Fichier**), le bouton **Actualiser** dans le bandeau.
 
@@ -29,6 +29,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 | Onglet | Question |
 |---|---|
 | Synthèse | Qui est chargé, et qui doit corriger la DEM ? 4 chiffres, histogramme de charge, corrections par chargé. |
+| Pilotage par tranche | Où en sont les tranches suivies (CS2M et CS4A par défaut, puces pour en ajouter) ? Côte à côte : préparation, réalisés, BPD signés, lignes DEM incomplètes ; documents EAM / BPA / GER / BPD (P, R, % produits, % signés, comme la feuille Pilotage) ; avancement par semaine de J0 (par mois si la tranche dépasse 20 semaines) ; points à traiter et charge par chargé. Chaque nombre ouvre la liste limitée à la tranche. |
 | À corriger dans la DEM | Toutes les corrections, filtrables par chargé, priorité et type. |
 | Équipe | Avancement global, retards de préparation, documents. |
 | *Autres listes…* | Répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint, **Contrôle 1N / TSR** (export EAM IOP319 chargé ou glissé à part : chaque TOT doit avoir un commentaire 1N et un TSR), **TOT par ECU** (feuille CRU : une ligne par TOT avec son dernier commentaire, compteurs et filtre par ECU, chargé repris de la DEM quand l'OT / TOT y figure) |
@@ -89,6 +90,8 @@ node build.mjs     # Node 18+ ; produit Tableau_de_bord_DEM.html
 | `src/js/05-view-ce.js` | Vue « Mes affaires » |
 | `src/js/06-view-lists.js` | Listes : TOT, corrections, documents, regroupements |
 | `src/js/07-view-coordo.js` | Synthèse, histogramme de charge, répartition, affectations IPE |
+| `src/js/076-view-iop319.js` | Contrôle 1N / TSR (export EAM IOP319) |
+| `src/js/077-view-pilotage.js` | Pilotage par tranche |
 | `src/js/08-view-team.js` | Avancement équipe et image PNG |
 | `src/js/09-exports.js` | Exports CSV et PDF |
 | `src/js/10-source.js` | Chargement, fichier mémorisé, DEM 2026 / 2027 |

@@ -527,3 +527,21 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .iopDrop h2 { font-size: 20px; }
 .iopFilters { display: flex; flex-wrap: wrap; gap: 4px 32px; margin-bottom: 4px; }
 .iopChipGroup .ecuChips { margin: 4px 0 10px; }
+
+/* --- Pilotage par tranche -------------------------------------------------------- */
+.pilotRow { display: grid; grid-template-columns: repeat(var(--pilot-cols, 2), minmax(0, 1fr)); gap: 18px; }
+.pilotCell { display: flex; flex-direction: column; min-width: 0; }
+.pilotCell > .panel { flex: 1; }
+.pilotTag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 400; background: var(--info-bg); color: var(--info-ink); white-space: nowrap; }
+.pilotTag.phase-AT { background: #FFEDE5; color: #C2410C; }
+.pilotTitle .pilotTag { font-size: 20px; padding: 4px 16px; }
+.pilotKpis { margin-bottom: 0; }
+.pilotChain th[scope="row"] { font-weight: 400; white-space: nowrap; text-align: left; }
+.pilotChain .barCell { width: 34%; min-width: 120px; }
+.pilotCount { border: 0; padding: 3px 10px; border-radius: 8px; font-variant-numeric: tabular-nums; min-width: 40px; }
+.pilotCount.tone-info { background: var(--info-bg); color: var(--info-ink); }
+.pilotCount.tone-warn { background: var(--warn-bg); color: var(--warn-ink); }
+.pilotCount:hover { filter: brightness(0.95); }
+.pilotPanel .legend { margin: 10px 0 0; }
+.pilotPanel .timeline { margin-top: 4px; }
+@media (max-width: 1100px) { .pilotRow { grid-template-columns: minmax(0, 1fr); gap: 0; } }

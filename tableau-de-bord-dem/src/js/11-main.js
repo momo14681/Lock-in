@@ -4,7 +4,7 @@
 
 const VIEWS = {
   mine: viewMine, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
-  documents: viewDocuments, cru: viewCRU, iop319: viewIOP, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
+  documents: viewDocuments, cru: viewCRU, pilotage: viewPilotage, iop319: viewIOP, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
 };
 
 function renderChrome() {
@@ -89,7 +89,7 @@ function viewLabel() {
 }
 
 function pushNav() {
-  navStack.push({ mode, tab, taskFocus, taskScope, docCode, page, owner: $("owner").value, tables: JSON.stringify(tableState), label: viewLabel(), scroll: window.scrollY });
+  navStack.push({ mode, tab, taskFocus, taskScope, docCode, page, owner: $("owner").value, sheets: [...selectedSheets], tables: JSON.stringify(tableState), label: viewLabel(), scroll: window.scrollY });
   if (navStack.length > 30) navStack.shift();
 }
 
@@ -98,6 +98,8 @@ function goBack() {
   if (!s) return;
   mode = s.mode; tab = tabByMode[mode] = s.tab; taskFocus = s.taskFocus; taskScope = s.taskScope; docCode = s.docCode; page = s.page;
   $("owner").value = s.owner;
+  selectedSheets.clear();
+  (s.sheets || []).forEach((x) => selectedSheets.add(x));
   for (const k of Object.keys(tableState)) delete tableState[k];
   Object.assign(tableState, JSON.parse(s.tables));
   render();
@@ -119,6 +121,21 @@ function go(spec) {
   if (kind === "issues-owner") { if (mode === "coordo") $("owner").value = arg; issueKind = ""; issueLevel = ""; showIgnored = false; return setTab("issues"); }
   if (kind === "documents") { docCode = arg || "P"; documentType = ""; return setTab("documents"); }
   if (kind === "groups") { tab = tabByMode[mode] = arg; page = 1; return render(); }
+  if (kind === "in") {
+    // Depuis le pilotage par tranche : la liste ouverte est limitée à cette feuille.
+    const sep = arg.indexOf(":");
+    selectedSheets.clear();
+    selectedSheets.add(arg.slice(0, sep));
+    return go(arg.slice(sep + 1));
+  }
+  if (kind === "docs") {
+    const [code, key] = arg.split("|");
+    docCode = code || "P"; documentType = "";
+    const docCol = showOwnerColumn() ? 2 : 1;
+    tableState["documents-" + docCode] = { search: "", open: false, filters: key ? { [docCol]: [names[key]] } : {} };
+    return setTab("documents");
+  }
+  if (kind === "owner-tasks") { $("owner").value = arg; return openTasks(""); }
   if (kind === "iop") { iopCheck = arg; tab = tabByMode[mode] = IOP_TAB; page = 1; return render(); }
 }
 
@@ -196,6 +213,7 @@ function onClick(e) {
   }
   if (d.tableReset !== undefined) { tableState[d.tableReset] = { search: "", open: false, filters: {} }; tableFocus = null; page = 1; return render(); }
   if (d.ecu !== undefined) return toggleEcu(d.ecu);
+  if (d.pilotSheet !== undefined) return togglePilotSheet(d.pilotSheet);
   if (d.sheetOnly !== undefined) { selectedSheets.clear(); selectedSheets.add(d.sheetOnly); page = 1; return render(); }
   if (d.iopImport !== undefined) return $("iopFile").click();
   if (d.iopClear !== undefined) { iop = null; tableState.iop = { search: "", open: false, filters: {} }; $("message").innerHTML = ""; page = 1; return render(); }

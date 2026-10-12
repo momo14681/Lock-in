@@ -53,6 +53,9 @@ function reportModel() {
     sections.push({ title: `Avancement par mois de J0 — ${m.timeline.title}`, headers: ["Période", "TOT", ...TEAM_ORDER, "% réalisés"], rows: m.timeline.columns.map((c) => [c.long, c.total, ...TEAM_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized], c.total)]) });
     sections.push({ title: "À venir : J0 des 60 prochains jours", headers: ["Affaire / REE", "Chargé", "J0", "Dans", "TOT", "Préparation"], widths: [.28, .2, .14, .12, .08, .18], rows: m.upcoming.map((g) => [`${g.affaire} / ${g.ree} (${g.phase})`, g.owners.join(", "), formatDate(g.j0), `${g.inDays} j`, g.ts.length, g.status]) });
     sections.push({ title: "Avancement par chargé", headers: ["Chargé", "TOT", "Réalisés", "Prépa terminée", "Lignes DEM incomplètes", "Échéances < 30 j"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, `${o.prepared} (${pct(o.prepared, o.n)})`, o.overdue, o.dueSoon]) });
+  } else if (tab === PILOT_TAB) {
+    title = "Pilotage par tranche — " + pilotSelection().map(trancheLabel).join(", ");
+    sections.push(...pilotReportSections());
   } else if (tab === "owners") {
     sections.push({ title, headers: ["Chargé", "Affaires", "REE", "TOT", "Prépa terminée", "Réalisés", "Retards", "Infos manq.", "Corrections"], rows: ownerStats().map((s) => [s.name, s.affaires, s.ree, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues]) });
   } else if (tab === "assignments") {
@@ -94,7 +97,7 @@ function reportModel() {
     title, sections,
     source: data?.fileName || "",
     date: formatFrenchDateTime(data?.analyzedAt),
-    filters: [`DEM ${activeDEM}`, tab === "assignments" ? "IPE : toutes les feuilles, tous les CE" : tab === "team" ? teamModel().scope : scopeLabel(), periodLabel()].join(" · "),
+    filters: [`DEM ${activeDEM}`, tab === "assignments" ? "IPE : toutes les feuilles, tous les CE" : tab === "team" ? teamModel().scope : tab === PILOT_TAB ? [...pilotSelection(), $("owner").value || "Tous les CE"].join(" · ") : scopeLabel(), periodLabel()].join(" · "),
     ignored: allIssues.filter((i) => ignoredIssues.has(issueId(i))).length,
   };
 }

@@ -28,6 +28,7 @@ const TABS = {
   ],
   coordo: [
     { id: "overview", label: "Synthèse" },
+    { id: "pilotage", label: "Pilotage par tranche" },
     { id: "issues", label: "À corriger dans la DEM", count: () => activeIssueCount($("owner").value) },
     { id: "team", label: "Équipe" },
   ],
