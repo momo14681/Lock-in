@@ -71,7 +71,7 @@ n'est pas comptée.
 ## Règles de calcul (identiques à la V1.3)
 
 - **Réalisé** : GER/1N signé (PSR ou TSR).
-- **Préparation terminée** : MC, OT, TOT, RDU renseignés et « TOT prête » (date ou P).
+- **Préparation terminée** : « TOT prête » renseignée (date ou P), donc égale au % de TOT prête produites. MC, OT, TOT ou RDU manquants restent signalés en informations à compléter.
 - **TOT prête mais MC, OT, TOT ou RDU manquant** : jamais « en retard », compté en « infos manquantes » (à compléter).
 - **Documents P** : à valider par les coordos (onglet coordo) ; **R** : à reprendre par le chargé d'essais.
 - **Échéance de préparation** : J0 − 30 jours ; **en retard** si dépassée sans préparation terminée.

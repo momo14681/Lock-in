@@ -944,7 +944,9 @@ function buildTask(sheet, rowNumber, row, today) {
   const prepDue = j0Date ? addDays(j0Date, -30) : null;
   const totReady = Boolean(parseExcelDate(values.totPrete)) || status(values.totPrete) === "P";
   const missingPrerequisites = ["mc", "ot", "tot", "rdu"].filter((key) => !isNonBlank(values[key]));
-  const prepComplete = missingPrerequisites.length === 0 && totReady;
+  // Préparation terminée = TOT prête (date ou P), comme l'indicateur « TOT prête produits ».
+  // MC, OT, TOT et RDU manquants restent signalés comme informations à compléter.
+  const prepComplete = totReady;
   const bpaState = classifyMilestone(values.bpa);
   const gerState = classifyMilestone(values.ger, GER_SIGNED_CODES, false, GER_PRODUCED_CODES);
   const bpdState = classifyMilestone(values.bpd);
@@ -1052,7 +1054,7 @@ function applyMissingInfo(t) {
     for (const [k, c] of Object.entries(t.cells || {})) if (c?.t === "e" && !["regime", "observations"].includes(k)) t.missingInfoKeys.push(k);
     t.missingInfoKeys = [...new Set(t.missingInfoKeys)];
   }
-  t.infoMissing = !t.cancelled && (t.bpdSigned ? t.missingInfoKeys.length > 0 : !t.prepComplete && (t.totReady || String(t.ger || "").trim() !== ""));
+  t.infoMissing = !t.cancelled && (t.bpdSigned ? t.missingInfoKeys.length > 0 : t.missingInfoKeys.length > 0 && (t.totReady || String(t.ger || "").trim() !== ""));
   if (t.bpdSigned || t.infoMissing) {
     t.overdue = false;
     t.dueSoon = false;
@@ -1913,7 +1915,7 @@ function viewTasks() {
       ${owner ? `<td>${esc(t.responsable)}</td>` : ""}
       <td>${esc(t.sheet)}</td>
       <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
-      <td>${stateBadge(t)}${t.missingInfoKeys.length && !t.prepComplete && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
+      <td>${stateBadge(t)}${t.missingInfoKeys.length && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${toolLinks(t.ot, t.tot)}</td></tr>`,
   });

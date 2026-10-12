@@ -66,7 +66,7 @@ function viewTasks() {
       ${owner ? `<td>${esc(t.responsable)}</td>` : ""}
       <td>${esc(t.sheet)}</td>
       <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
-      <td>${stateBadge(t)}${t.missingInfoKeys.length && !t.prepComplete && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
+      <td>${stateBadge(t)}${t.missingInfoKeys.length && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${toolLinks(t.ot, t.tot)}</td></tr>`,
   });
