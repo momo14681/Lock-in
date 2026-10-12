@@ -3072,9 +3072,10 @@ function pilotReportSections() {
 }
 
 // --- Image 16:9 pour la télé (1920 × 1080) ----------------------------------------------
-// Pour la réunion de cadres : % produits et % signés de TOT prête, BPA et BPD par tranche,
-// comme l'équipe les présente d'habitude. Ni lignes DEM à compléter ni avancement par J0 ;
-// les pourcentages restent calculés sur toutes les TOT de la tranche.
+// Pour la réunion de cadres, par tranche : prépa terminée, essais réalisés, BPD signés, puis
+// % produits et % signés de TOT prête, BPA et BPD, comme l'équipe les présente d'habitude.
+// Ni lignes DEM à compléter ni avancement par J0 ; les pourcentages restent calculés sur
+// toutes les TOT de la tranche.
 
 const PILOT_PNG_MAX = 3;
 const PILOT_PNG_DOCS = [["totPrete", "TOT prête", "signées"], ["bpa", "BPA", "signés"], ["bpd", "BPD", "signés"]];
@@ -3092,31 +3093,44 @@ function drawPilotPNG(canvas) {
     formatDate(data.today), formatFrenchDateTime(data.analyzedAt));
 
   const n = models.length, gap = 28, left = 56, colW = (1920 - 2 * left - (n - 1) * gap) / n, narrow = colW < 800;
-  const yTitle = 156, yCard = 252, yEnd = 1000, rowTop = yCard + 84, rowH = (yEnd - 20 - rowTop) / PILOT_PNG_DOCS.length;
-  const figSize = narrow ? 62 : 96, figW = narrow ? 150 : 240, figGap = narrow ? 40 : 64, labelSize = narrow ? 34 : 46, barH = narrow ? 20 : 26;
+  const yTitle = 150, yKpi = 236, kpiH = 168, yCard = yKpi + kpiH + 20, yEnd = 1000, rowTop = yCard + 66, rowH = (yEnd - 16 - rowTop) / PILOT_PNG_DOCS.length;
+  const figSize = narrow ? 58 : 84, figW = narrow ? 140 : 214, figGap = narrow ? 40 : 64, labelSize = narrow ? 32 : 42, barH = narrow ? 18 : 24;
   const signedInk = "#3D7F22";
 
   models.forEach((m, i) => {
     const x = left + i * (colW + gap), at = m.sheet.endsWith("A"), inner = colW - 56;
 
     // Titre de la tranche
-    const titleW = 24 + text(m.label, x + 4, yTitle, { size: 54, weight: 400, color: at ? "#C2410C" : "#0C46A3", width: 420, min: 30 });
-    text(`${[m.sheet, m.code].filter(Boolean).join(" · ")}  ·  ${fmt(m.ree)} REE  ·  ${fmt(m.n)} TOT`, x + 4 + titleW, yTitle + 24, { size: 24, color: PNG.muted, width: colW - titleW - 8, min: 14 });
-    roundRect(x, yTitle + 72, colW, 5, 2.5, at ? "#FE5815" : "#1057C8");
+    const titleW = 24 + text(m.label, x + 4, yTitle, { size: 50, weight: 400, color: at ? "#C2410C" : "#0C46A3", width: 420, min: 30 });
+    text(`${[m.sheet, m.code].filter(Boolean).join(" · ")}  ·  ${fmt(m.ree)} REE  ·  ${fmt(m.n)} TOT`, x + 4 + titleW, yTitle + 22, { size: 24, color: PNG.muted, width: colW - titleW - 8, min: 14 });
+    roundRect(x, yTitle + 64, colW, 5, 2.5, at ? "#FE5815" : "#1057C8");
+
+    // Cartes : prépa terminée, essais réalisés, BPD signés
+    const kGap = narrow ? 14 : 20, kW = (colW - 2 * kGap) / 3, bpd = m.chain.find((d) => d.key === "bpd");
+    [["Prépa terminée", m.prepared, STATE_COLORS[STATE.ready]], ["Essais réalisés", m.realized, STATE_COLORS[STATE.realized]], ["BPD signés", bpd.done, DOC_COLORS.signed]]
+      .forEach(([label, v, accent], j) => {
+        const kx = x + j * (kW + kGap), pad = narrow ? 22 : 30;
+        roundRect(kx, yKpi, kW, kpiH, 16, PNG.card);
+        roundRect(kx, yKpi, 7, kpiH, 3.5, accent);
+        text(label, kx + pad, yKpi + 18, { size: narrow ? 21 : 25, color: PNG.ink2, width: kW - pad - 14, min: 14 });
+        text(pct(v, m.n), kx + pad, yKpi + 50, { size: narrow ? 54 : 66, weight: 300, width: kW - pad - 14, min: 30 });
+        text(`${fmt(v)} / ${fmt(m.n)} TOT`, kx + pad, yKpi + (narrow ? 112 : 120), { size: narrow ? 18 : 21, color: PNG.muted, width: kW - pad - 14, min: 12 });
+        bar(kx + pad, yKpi + kpiH - 20, kW - pad - 22, 8, [[ratio(v, m.n), accent]]);
+      });
 
     // % produits et % signés : TOT prête, BPA, BPD
     roundRect(x, yCard, colW, yEnd - yCard, 18, PNG.card);
     const figX2 = x + colW - 28, figX1 = figX2 - figW - figGap;
-    text("% produits", figX1, yCard + 30, { size: narrow ? 21 : 24, color: PNG.muted, align: "right", width: figW });
-    text("% signés", figX2, yCard + 30, { size: narrow ? 21 : 24, color: signedInk, align: "right", width: figW });
+    text("% produits", figX1, yCard + 22, { size: narrow ? 20 : 23, color: PNG.muted, align: "right", width: figW });
+    text("% signés", figX2, yCard + 22, { size: narrow ? 20 : 23, color: signedInk, align: "right", width: figW });
     PILOT_PNG_DOCS.forEach(([key, label, signedWord], j) => {
       const d = m.chain.find((x2) => x2.key === key), y = rowTop + j * rowH, waiting = Math.max(0, d.prod - d.done);
       text(label, x + 28, y + (figSize - labelSize) / 2 + 6, { size: labelSize, weight: 400, width: figX1 - figW - x - 40, min: 22 });
       text(pct(d.prod, d.n), figX1, y, { size: figSize, weight: 300, color: PNG.ink, align: "right", width: figW, min: 40 });
       text(pct(d.done, d.n), figX2, y, { size: figSize, weight: 300, color: signedInk, align: "right", width: figW, min: 40 });
-      const yBar = y + figSize + 18;
+      const yBar = y + figSize + 14;
       bar(x + 28, yBar, inner, barH, [[ratio(d.done, d.n), DOC_COLORS.signed], [ratio(waiting, d.n), DOC_COLORS.waiting]]);
-      text(`${fmt(d.done)} ${signedWord}  ·  ${fmt(waiting)} à signer  ·  ${fmt(d.n)} TOT`, x + 28, yBar + barH + 12, { size: narrow ? 20 : 23, color: PNG.muted, width: inner, min: 13 });
+      text(`${fmt(d.done)} ${signedWord}  ·  ${fmt(waiting)} à signer  ·  ${fmt(d.n)} TOT`, x + 28, yBar + barH + 10, { size: narrow ? 19 : 21, color: PNG.muted, width: inner, min: 13 });
     });
   });
 

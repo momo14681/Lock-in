@@ -53,7 +53,8 @@ seul le filtre « Chargé d'essais » la restreint) :
 
 Dans l'onglet *Pilotage par tranche* : « Télécharger l'image (PNG) » ou « Voir l'image
 télé » (aussi dans Exporter). Pensée pour la réunion de cadres : pour chaque tranche
-choisie (3 au plus, côte à côte), **% produits et % signés de TOT prête, BPA et BPD**,
+choisie (3 au plus, côte à côte), trois cartes (prépa terminée, essais réalisés, BPD
+signés) puis **% produits et % signés de TOT prête, BPA et BPD**,
 avec une barre signés / produits à signer / non produits et les nombres (signés, à
 signer, TOT). Ni lignes DEM à compléter ni avancement par J0 ; les pourcentages sont
 calculés sur toutes les TOT de la tranche.
