@@ -85,7 +85,12 @@ function pilotTimeline(ts, today) {
   if (!dated.length) return buildTimeline(ts, period, today);
   const first = mondayOf(new Date(Math.min(...dated.map((t) => t.j0)))), last = mondayOf(new Date(Math.max(...dated.map((t) => t.j0))));
   const weeks = Math.round((last - first) / (7 * DAY_MS)) + 1;
-  if (weeks > PILOT_MAX_WEEKS) return buildTimeline(ts, period, today);
+  if (weeks > PILOT_MAX_WEEKS) {
+    // Par mois : on retire les premiers mois sans J0 (avant le début de la tranche).
+    const tl = buildTimeline(ts, period, today), cols = tl.columns.slice();
+    while (cols.length > 1 && !cols[0].extra && !cols[0].total && !cols[0].current) cols.shift();
+    return { ...tl, columns: cols };
+  }
   const empty = () => Object.fromEntries(TEAM_ORDER.map((s) => [s, 0]));
   const thisWeek = mondayOf(today).getTime();
   const buckets = [];
@@ -218,7 +223,8 @@ function viewPilotage() {
   const row = (fn) => `<div class="pilotRow" style="--pilot-cols:${cols}">${models.map((m) => `<div class="pilotCell">${fn(m, cols)}</div>`).join("")}</div>`;
   const owner = mode === "coordo" ? $("owner").value : "";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Pilotage par tranche</h2>
-      <p class="muted">Indicateurs de la feuille Pilotage, tranche par tranche · ${esc(owner || "Tous les CE")} · ${esc(periodLabel())}</p></div></div>
+      <p class="muted">Indicateurs de la feuille Pilotage, tranche par tranche · ${esc(owner || "Tous les CE")} · ${esc(periodLabel())}</p></div>
+      <div class="panelActions"><button type="button" data-png-preview>Voir l’image télé</button><button type="button" class="accent" data-png>Télécharger l’image (PNG)</button></div></div>
     <div class="ecuChips pilotChips" role="group" aria-label="Tranches affichées">${chips}</div>
     ${row(pilotHead)}${row(pilotChain)}${row(pilotChart)}${row(pilotTodo)}${row(pilotOwners)}`;
   currentExport = () => {
@@ -251,4 +257,64 @@ function pilotReportSections() {
     sections.push({ title: `${m.label} — par chargé d’essais`, headers: ["Chargé", "TOT", "Réalisées", "DEM incomplète"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, o.overdue]) });
   }
   return sections;
+}
+
+// --- Image 16:9 pour la télé (1920 × 1080) ----------------------------------------------
+// Pour la réunion de cadres : % produits et % signés de TOT prête, BPA et BPD par tranche,
+// comme l'équipe les présente d'habitude. Ni lignes DEM à compléter ni avancement par J0 ;
+// les pourcentages restent calculés sur toutes les TOT de la tranche.
+
+const PILOT_PNG_MAX = 3;
+const PILOT_PNG_DOCS = [["totPrete", "TOT prête", "signées"], ["bpa", "BPA", "signés"], ["bpd", "BPD", "signés"]];
+
+function drawPilotPNG(canvas) {
+  canvas.width = 1920;
+  canvas.height = 1080;
+  const c = canvas.getContext("2d");
+  if (!c) throw Error("Votre navigateur ne permet pas de créer cette image.");
+  const k = pngKit(c), { roundRect, text, bar } = k;
+  const chosen = pilotSelection(), models = chosen.slice(0, PILOT_PNG_MAX).map(pilotModel);
+  const owner = mode === "coordo" ? $("owner").value : "";
+  drawPNGHeader(k, `Pilotage des essais · ${models.map((m) => m.label).join(" · ")}`,
+    `DEM ${activeDEM}  ·  ${periodLabel()}  ·  ${owner || "Tous les CE"}${chosen.length > models.length ? `  ·  ${models.length} premières tranches sur ${chosen.length}` : ""}`,
+    formatDate(data.today), formatFrenchDateTime(data.analyzedAt));
+
+  const n = models.length, gap = 28, left = 56, colW = (1920 - 2 * left - (n - 1) * gap) / n, narrow = colW < 800;
+  const yTitle = 156, yCard = 252, yEnd = 1000, rowTop = yCard + 84, rowH = (yEnd - 20 - rowTop) / PILOT_PNG_DOCS.length;
+  const figSize = narrow ? 62 : 96, figW = narrow ? 150 : 240, figGap = narrow ? 40 : 64, labelSize = narrow ? 34 : 46, barH = narrow ? 20 : 26;
+  const signedInk = "#3D7F22";
+
+  models.forEach((m, i) => {
+    const x = left + i * (colW + gap), at = m.sheet.endsWith("A"), inner = colW - 56;
+
+    // Titre de la tranche
+    const titleW = 24 + text(m.label, x + 4, yTitle, { size: 54, weight: 400, color: at ? "#C2410C" : "#0C46A3", width: 420, min: 30 });
+    text(`${[m.sheet, m.code].filter(Boolean).join(" · ")}  ·  ${fmt(m.ree)} REE  ·  ${fmt(m.n)} TOT`, x + 4 + titleW, yTitle + 24, { size: 24, color: PNG.muted, width: colW - titleW - 8, min: 14 });
+    roundRect(x, yTitle + 72, colW, 5, 2.5, at ? "#FE5815" : "#1057C8");
+
+    // % produits et % signés : TOT prête, BPA, BPD
+    roundRect(x, yCard, colW, yEnd - yCard, 18, PNG.card);
+    const figX2 = x + colW - 28, figX1 = figX2 - figW - figGap;
+    text("% produits", figX1, yCard + 30, { size: narrow ? 21 : 24, color: PNG.muted, align: "right", width: figW });
+    text("% signés", figX2, yCard + 30, { size: narrow ? 21 : 24, color: signedInk, align: "right", width: figW });
+    PILOT_PNG_DOCS.forEach(([key, label, signedWord], j) => {
+      const d = m.chain.find((x2) => x2.key === key), y = rowTop + j * rowH, waiting = Math.max(0, d.prod - d.done);
+      text(label, x + 28, y + (figSize - labelSize) / 2 + 6, { size: labelSize, weight: 400, width: figX1 - figW - x - 40, min: 22 });
+      text(pct(d.prod, d.n), figX1, y, { size: figSize, weight: 300, color: PNG.ink, align: "right", width: figW, min: 40 });
+      text(pct(d.done, d.n), figX2, y, { size: figSize, weight: 300, color: signedInk, align: "right", width: figW, min: 40 });
+      const yBar = y + figSize + 18;
+      bar(x + 28, yBar, inner, barH, [[ratio(d.done, d.n), DOC_COLORS.signed], [ratio(waiting, d.n), DOC_COLORS.waiting]]);
+      text(`${fmt(d.done)} ${signedWord}  ·  ${fmt(waiting)} à signer  ·  ${fmt(d.n)} TOT`, x + 28, yBar + barH + 12, { size: narrow ? 20 : 23, color: PNG.muted, width: inner, min: 13 });
+    });
+  });
+
+  // Légende des barres
+  let lx = left;
+  const ly = 1032;
+  for (const [label, color] of [["signés", DOC_COLORS.signed], ["produits, à signer", DOC_COLORS.waiting], ["non produits", null]]) {
+    if (color) roundRect(lx, ly + 4, 18, 18, 5, color);
+    else { roundRect(lx, ly + 4, 18, 18, 5, "#c9d4df"); roundRect(lx + 1.5, ly + 5.5, 15, 15, 4, PNG.track); }
+    lx += 28 + text(label, lx + 28, ly, { size: 22, color: PNG.ink2 }) + 36;
+  }
+  return canvas;
 }

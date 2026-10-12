@@ -215,12 +215,8 @@ const PNG = {
   font: (weight, size) => `${weight >= 600 ? 400 : weight === 500 ? 400 : weight} ${size}px "EDF 2020", "Work Sans", Arial, sans-serif`,
 };
 
-function drawPNG(canvas, m) {
-  canvas.width = 1920;
-  canvas.height = 1080;
-  const c = canvas.getContext("2d");
-  if (!c) throw Error("Votre navigateur ne permet pas de créer cette image.");
-
+// Outils de dessin partagés par les images 16:9 (écran d'équipe, pilotage par tranche).
+function pngKit(c) {
   function roundRect(x, y, w, h, r, color) {
     r = Math.max(0, Math.min(r, w / 2, h / 2));
     c.fillStyle = color;
@@ -252,17 +248,59 @@ function drawPNG(canvas, m) {
       if (pw > 0.5) { roundRect(cx, y, pw, h, Math.min(h / 2, pw / 2), color); cx += pw; }
     }
   }
+  return { c, roundRect, text, bar };
+}
 
-  // Fond et bandeau
+// Bandeau commun des images : titre, périmètre, date des données.
+function drawPNGHeader(k, title, sub, todayLabel, importDate) {
+  const { c, text } = k;
   c.fillStyle = PNG.bg; c.fillRect(0, 0, 1920, 1080);
   const grad = c.createLinearGradient(0, 0, 1920, 0);
   grad.addColorStop(0, "#001A70"); grad.addColorStop(1, "#0B2A8C");
   c.fillStyle = grad; c.fillRect(0, 0, 1920, 132);
   c.fillStyle = "#FE5815"; c.fillRect(0, 0, 12, 132);
-  text("Avancement des essais", 56, 24, { size: 50, weight: 700, color: "#ffffff", width: 1000 });
-  text(`DEM ${m.dem}  ·  ${m.period}  ·  ${m.scope}`, 58, 88, { size: 24, color: "#C7D2EE", width: 1180 });
-  text(`Données au ${m.todayLabel}`, 1864, 28, { size: 32, weight: 700, color: "#ffffff", width: 600, align: "right" });
-  text(`Import du ${m.importDate}`, 1864, 78, { size: 21, color: "#A9B6DA", width: 600, align: "right" });
+  text(title, 56, 24, { size: 50, weight: 700, color: "#ffffff", width: 1180 });
+  text(sub, 58, 88, { size: 24, color: "#C7D2EE", width: 1180 });
+  text(`Données au ${todayLabel}`, 1864, 28, { size: 32, weight: 700, color: "#ffffff", width: 600, align: "right" });
+  text(`Import du ${importDate}`, 1864, 78, { size: 21, color: "#A9B6DA", width: 600, align: "right" });
+}
+
+// Barres empilées d'avancement par période de J0 (mois ou semaines).
+function drawPNGTimeline(k, tl, left, width, plotTop, plotH) {
+  const { c, roundRect, text } = k;
+  const cols = tl.columns, slot = width / cols.length, barW = Math.min(52, slot * 0.68);
+  cols.forEach((col, i) => {
+    const x = left + i * slot + (slot - barW) / 2, cx = x + barW / 2;
+    if (col.current) roundRect(left + i * slot + 2, plotTop - 40, slot - 4, plotH + 104, 10, "#e8f0f8");
+    roundRect(x, plotTop, barW, plotH, 5, "#edf1f5");
+    let y = plotTop + plotH;
+    const segs = TEAM_ORDER.filter((s) => col.counts[s] > 0);
+    segs.forEach((s, k2) => {
+      const h = col.counts[s] / col.total * plotH, gap = k2 < segs.length - 1 ? 2 : 0;
+      y -= h;
+      const isTop = k2 === segs.length - 1;
+      c.fillStyle = TEAM_COLORS[s];
+      if (isTop) roundRect(x, y, barW, Math.max(1, h - gap), Math.min(5, h / 2), TEAM_COLORS[s]);
+      else c.fillRect(x, y + gap, barW, Math.max(0.5, h - gap));
+    });
+    const done = col.counts[STATE.realized], doneH = col.total ? done / col.total * plotH : 0;
+    if (doneH >= 30) text(`${Math.round(done / col.total * 100)}%`, cx, plotTop + plotH - doneH / 2 - 11, { size: 19, weight: 700, color: "#ffffff", align: "center", width: barW + 6, min: 13 });
+    text(col.total ? fmt(col.total) : "–", cx, plotTop - 32, { size: 21, weight: 600, color: PNG.ink2, align: "center", width: slot - 4, min: 13 });
+    text(col.label, cx, plotTop + plotH + 12, { size: 21, weight: col.current ? 700 : 500, color: col.current ? PNG.ink : PNG.muted, align: "center", width: slot - 2, min: 12 });
+    if (col.current) text("aujourd’hui", cx, plotTop + plotH + 40, { size: 16, weight: 600, color: "#1057C8", align: "center", width: slot + 20, min: 11 });
+    else if (tl.monthly && col.month === 0 && cols.filter((x2) => x2.month === 0).length > 1) text(String(col.year), cx, plotTop + plotH + 40, { size: 17, color: PNG.muted, align: "center", width: slot });
+  });
+}
+
+function drawPNG(canvas, m) {
+  canvas.width = 1920;
+  canvas.height = 1080;
+  const c = canvas.getContext("2d");
+  if (!c) throw Error("Votre navigateur ne permet pas de créer cette image.");
+
+  const { roundRect, text, bar } = pngKit(c);
+
+  drawPNGHeader({ c, text }, "Avancement des essais", `DEM ${m.dem}  ·  ${m.period}  ·  ${m.scope}`, m.todayLabel, m.importDate);
 
   // Rangée 1 : indicateurs
   const y1 = 156, h1 = 196;
@@ -289,28 +327,7 @@ function drawPNG(canvas, m) {
     roundRect(lx, y2 + 76, 18, 18, 4, TEAM_COLORS[s]);
     lx += 26 + text(s, lx + 26, y2 + 73, { size: 21, color: PNG.ink2 }) + 30;
   }
-  const cols = m.timeline.columns, plotTop = y2 + 152, plotH = 218, slot = (tw - 64) / cols.length, barW = Math.min(52, slot * 0.68);
-  cols.forEach((col, i) => {
-    const x = tx + 32 + i * slot + (slot - barW) / 2, cx = x + barW / 2;
-    if (col.current) roundRect(tx + 32 + i * slot + 2, plotTop - 40, slot - 4, plotH + 104, 10, "#e8f0f8");
-    roundRect(x, plotTop, barW, plotH, 5, "#edf1f5");
-    let y = plotTop + plotH;
-    const segs = TEAM_ORDER.filter((s) => col.counts[s] > 0);
-    segs.forEach((s, k) => {
-      const h = col.counts[s] / col.total * plotH, gap = k < segs.length - 1 ? 2 : 0;
-      y -= h;
-      const isTop = k === segs.length - 1;
-      c.fillStyle = TEAM_COLORS[s];
-      if (isTop) roundRect(x, y, barW, Math.max(1, h - gap), Math.min(5, h / 2), TEAM_COLORS[s]);
-      else c.fillRect(x, y + gap, barW, Math.max(0.5, h - gap));
-    });
-    const done = col.counts[STATE.realized], doneH = col.total ? done / col.total * plotH : 0;
-    if (doneH >= 30) text(`${Math.round(done / col.total * 100)}%`, cx, plotTop + plotH - doneH / 2 - 11, { size: 19, weight: 700, color: "#ffffff", align: "center", width: barW + 6, min: 13 });
-    text(col.total ? fmt(col.total) : "–", cx, plotTop - 32, { size: 21, weight: 600, color: PNG.ink2, align: "center", width: slot - 4, min: 13 });
-    text(col.label, cx, plotTop + plotH + 12, { size: 21, weight: col.current ? 700 : 500, color: col.current ? PNG.ink : PNG.muted, align: "center", width: slot - 2, min: 12 });
-    if (col.current) text("aujourd’hui", cx, plotTop + plotH + 40, { size: 16, weight: 600, color: "#1057C8", align: "center", width: slot + 20, min: 11 });
-    else if (m.timeline.monthly && col.month === 0 && cols.filter((x2) => x2.month === 0).length > 1) text(String(col.year), cx, plotTop + plotH + 40, { size: 17, color: PNG.muted, align: "center", width: slot });
-  });
+  drawPNGTimeline({ c, roundRect, text }, m.timeline, tx + 32, tw - 64, y2 + 152, 218);
 
   // Rangée 2 droite : à venir (J0 des 60 prochains jours)
   const rx = 1200, rw = 664;
@@ -349,9 +366,20 @@ function drawPNG(canvas, m) {
   return canvas;
 }
 
+// L'onglet « Pilotage par tranche » exporte sa propre image ; sinon, l'écran d'équipe.
+function pngTarget() {
+  return tab === PILOT_TAB
+    ? { draw: () => drawPilotPNG(document.createElement("canvas")), name: `Pilotage_${pilotSelection().slice(0, PILOT_PNG_MAX).join("_")}`, title: "Aperçu de l’image du pilotage par tranche (1920 × 1080)", note: "Mêmes tranches et même chargé que la vue « Pilotage par tranche »." }
+    : { draw: () => drawPNG(document.createElement("canvas"), teamModel()), name: "Ecran_equipe_essais", title: "Aperçu de l’écran d’équipe (1920 × 1080)", note: "Même périmètre que la vue « Avancement équipe »." };
+}
+
+function pngMenuLabel() {
+  return tab === PILOT_TAB ? "Image du pilotage pour la télé (PNG)" : "Image pour l’écran d’équipe (PNG)";
+}
+
 async function renderPNG() {
   if (document.fonts) { await Promise.all(['300 50px "EDF 2020"', '400 50px "EDF 2020"', '400 50px "Work Sans"'].map((f) => document.fonts.load(f).catch(() => null))); await document.fonts.ready; }
-  return drawPNG(document.createElement("canvas"), teamModel());
+  return pngTarget().draw();
 }
 
 async function exportPNG() {
@@ -362,12 +390,12 @@ async function exportPNG() {
   try {
     const canvas = await renderPNG();
     const blob = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(Error("Image PNG non créée.")), "image/png"));
-    downloadBytes(blob, "image/png", `Ecran_equipe_essais_DEM${activeDEM}_${new Date().toISOString().slice(0, 10)}.png`);
+    downloadBytes(blob, "image/png", `${pngTarget().name}_DEM${activeDEM}_${new Date().toISOString().slice(0, 10)}.png`);
   } catch (e) {
     $("message").innerHTML = `<div class="notice error">Export PNG impossible : ${esc(e.message)}</div>`;
   } finally {
     button.disabled = !data;
-    button.textContent = "Image pour l’écran d’équipe (PNG)";
+    button.textContent = pngMenuLabel();
   }
 }
 
@@ -375,8 +403,9 @@ async function previewPNG() {
   if (!data) return;
   try {
     const canvas = await renderPNG();
-    $("detailTitle").textContent = "Aperçu de l’écran d’équipe (1920 × 1080)";
-    $("detailBody").innerHTML = `<img class="pngPreview" alt="Aperçu de l’image exportée pour l’écran de l’équipe" src="${canvas.toDataURL("image/png")}"><p class="muted">Même périmètre que la vue « Avancement équipe ». <button type="button" class="accent" data-png>Télécharger le PNG</button></p>`;
+    const target = pngTarget();
+    $("detailTitle").textContent = target.title;
+    $("detailBody").innerHTML = `<img class="pngPreview" alt="${esc(target.title)}" src="${canvas.toDataURL("image/png")}"><p class="muted">${esc(target.note)} <button type="button" class="accent" data-png>Télécharger le PNG</button></p>`;
     $("detail").classList.add("wideDialog");
     if (!$("detail").open) $("detail").showModal();
   } catch (e) {

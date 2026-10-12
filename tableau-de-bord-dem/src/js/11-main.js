@@ -52,6 +52,7 @@ function render() {
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
   $("pngExport").disabled = false;
+  $("pngExport").textContent = pngMenuLabel();
   $("csvExport").disabled = !currentExport;
   $("view").insertAdjacentHTML("afterbegin", backBar());
   $("view").querySelectorAll("tbody tr:not(.subRow)").forEach((tr) => {
