@@ -142,7 +142,9 @@ function buildTask(sheet, rowNumber, row, today) {
 
   if (!rowHasBusinessData(values) || ![values.affaire, values.ree, values.ot, values.tot].some(isNonBlank)) return null;
 
-  const responsable = text(values.responsable) || UNASSIGNED;
+  // « Non renseigné dans SharePoint » (recopié depuis SharePoint) vaut « Non affecté ».
+  const ownerText = text(values.responsable);
+  const responsable = !ownerText || /non renseign/i.test(ownerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ? UNASSIGNED : ownerText;
   const j0Date = parseExcelDate(values.j0);
   const prepDue = j0Date ? addDays(j0Date, -30) : null;
   const totReady = Boolean(parseExcelDate(values.totPrete)) || status(values.totPrete) === "P";

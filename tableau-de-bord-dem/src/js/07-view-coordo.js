@@ -256,9 +256,11 @@ function normalizedIPE(v) {
   return String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’]/g, "'").trim().toLowerCase();
 }
 
+// Vide, « Non affecté », « À affecter », « En attente d'affectation » ou « Non renseigné dans
+// SharePoint » : sans chargé.
 function assignmentState(v) {
   const s = normalizedIPE(v);
-  return !s || /^(?:-|—|n\/a|na|non affecte[e]?|a affecter)$/.test(s) || s.includes("en attente d'affectation") ? "missing" : s.includes("pas besoin") ? "exempt" : "assigned";
+  return !s || /^(?:-|—|n\/a|na|non affecte[e]?|a affecter)$/.test(s) || s.includes("en attente d'affectation") || s.includes("non renseigne") ? "missing" : s.includes("pas besoin") ? "exempt" : "assigned";
 }
 
 function readAssignments(sh) {
