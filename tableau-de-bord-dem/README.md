@@ -15,7 +15,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 
 **Tableaux :** l'icône loupe ouvre une recherche propre au tableau ; les colonnes marquées d'une liste déroulante (statut, chargé, priorité, feuille, type…) se filtrent comme dans Excel, avec plusieurs choix cochables. Recherche et filtres portent sur toutes les lignes et sont repris dans les exports CSV et PDF.
 
-**Chargé d'essais** (le nom choisi est mémorisé sur le PC)
+**Chargé d'essais** (lu en colonne M « Chargé d’essai SP », sans distinction prestataire / interne ; le nom choisi est mémorisé sur le PC)
 
 | Onglet | Question |
 |---|---|

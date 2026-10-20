@@ -205,7 +205,6 @@ function ownerStats() {
     const ts = visible.filter((t) => t.responsable === name);
     return {
       name, ts, n: ts.length,
-      type: name === UNASSIGNED ? UNASSIGNED : PROVIDER_NAMES.has(status(name)) ? "Prestataire" : "Interne",
       affaires: countUnique(ts, (t) => t.affaire),
       ree: dossierCount(ts), reeTEM: dossierCount(ts.filter((t) => dossierPhase(t) === "TEM")), reeAT: dossierCount(ts.filter((t) => dossierPhase(t) === "AT")),
       prep: ts.filter((t) => t.prepComplete).length, realized: ts.filter(isRealized).length,
@@ -222,8 +221,7 @@ function viewOwners() {
   const dt = dataTable({
     key: "owners", items: stats, paged: false,
     columns: [
-      { label: "Chargé / entreprise", value: (s) => s.name },
-      { label: "Type", value: (s) => s.type, filter: true },
+      { label: "Chargé d’essais", value: (s) => s.name },
       { label: "Affaires", cls: "num", value: (s) => s.affaires },
       { label: "REE", cls: "num", value: (s) => s.ree },
       { label: "TOT", cls: "num", value: (s) => s.n },
@@ -234,7 +232,6 @@ function viewOwners() {
     ],
     row: (s) => `<tr>
       <td><button type="button" class="linkbutton" data-owner-tasks="${esc(s.name)}">${esc(s.name)}</button></td>
-      <td>${esc(s.type)}</td>
       <td class="num">${fmt(s.affaires)}</td>
       <td class="num">${fmt(s.ree)}<small>TEM ${fmt(s.reeTEM)} · AT ${fmt(s.reeAT)}</small></td>
       <td class="num">${fmt(s.n)}</td>
@@ -245,8 +242,8 @@ function viewOwners() {
   });
   $("view").innerHTML = panel("Répartition par chargé d’essais", dt.html, {});
   currentExport = () => downloadMatrix(
-    ["Chargé", "Type", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
-    dt.rows.map((s) => [s.name, s.type, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
+    ["Chargé", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
+    dt.rows.map((s) => [s.name, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
     "Repartition_par_charge.csv");
 }
 

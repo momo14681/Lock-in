@@ -114,12 +114,9 @@ function attentionLabel(g) {
 
 function chooseMePanel() {
   const owners = ownersList().filter((n) => n !== UNASSIGNED);
-  const internal = owners.filter((n) => !PROVIDER_NAMES.has(status(n)));
-  const providers = owners.filter((n) => PROVIDER_NAMES.has(status(n)));
   return `<section class="panel chooseMe"><h2>Qui êtes-vous ?</h2>
-    <p class="muted">Choisissez votre nom tel qu’il apparaît dans la colonne « Chargé d’essais » de la DEM. Ce choix est mémorisé sur ce PC.</p>
-    <div class="nameGrid">${internal.map((n) => `<button type="button" data-me="${esc(n)}">${esc(n)}</button>`).join("")}</div>
-    ${providers.length ? `<p class="muted">Prestataires</p><div class="nameGrid">${providers.map((n) => `<button type="button" data-me="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}
+    <p class="muted">Choisissez votre nom tel qu’il apparaît dans la colonne « Chargé d’essai SP » de la DEM. Ce choix est mémorisé sur ce PC.</p>
+    <div class="nameGrid">${owners.map((n) => `<button type="button" data-me="${esc(n)}">${esc(n)}</button>`).join("")}</div>
   </section>`;
 }
 

@@ -819,15 +819,14 @@ const PDF_REGULAR="AAEAAAAQAQAABAAAR0RFRl13W2UAAX0AAAAAzkdQT1OjCWUNAAF90AABSOhHU
 
 const TECHNICAL_SHEETS = ["CS0M", "CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4A", "CS4M", "CS8M", "CS9M"];
 const IPE_SHEET = "Suivi modification IPE";
-const PROVIDER_NAMES = new Set(["EKIUM", "SOM"]);
 const GER_PRODUCED_CODES = ["P", "PS", "TS"];
 const GER_SIGNED_CODES = ["PSR", "TSR", "TAR"]; // TAR : total avec réserve
 const DAY_MS = 86_400_000;
 const UNASSIGNED = "Non affecté";
 
 // Colonnes de la DEM (lettre Excel) et libellés métier.
-const fields = { affaire: "A", ree: "D", responsable: "G", mc: "I", ot: "J", tot: "K", rdu: "L", totPrete: "N", j0: "O", regime: "P", bpa: "Q", ger: "R", bpd: "S", observations: "V" };
-const names = { affaire: "Affaire eDIM", ree: "REE", responsable: "Chargé d’essais", mc: "MC", ot: "OT", tot: "TOT", rdu: "RDU", totPrete: "TOT prête", j0: "J0", regime: "Régime", bpa: "BPA", ger: "GER/1N", bpd: "BPD", observations: "Observations" };
+const fields = { affaire: "A", ree: "D", responsable: "M", mc: "I", ot: "J", tot: "K", rdu: "L", totPrete: "N", j0: "O", regime: "P", bpa: "Q", ger: "R", bpd: "S", observations: "V" };
+const names = { affaire: "Affaire eDIM", ree: "REE", responsable: "Chargé d’essais SP", mc: "MC", ot: "OT", tot: "TOT", rdu: "RDU", totPrete: "TOT prête", j0: "J0", regime: "Régime", bpa: "BPA", ger: "GER/1N", bpd: "BPD", observations: "Observations" };
 
 // Formateurs créés une seule fois : en créer un par appel (toLocaleDateString, new Intl…)
 // coûte cher et figeait la page sur une grosse DEM.
@@ -977,7 +976,8 @@ function buildTask(sheet, rowNumber, row, today) {
   if (!rowHasBusinessData(values) || ![values.affaire, values.ree, values.ot, values.tot].some(isNonBlank)) return null;
 
   // « Non renseigné dans SharePoint » (recopié depuis SharePoint) vaut « Non affecté ».
-  const ownerText = text(values.responsable);
+  // Chargé d’essais lu en colonne M (« Chargé d’essai SP »), sans distinguer prestataires et internes.
+  const ownerText = text(values.responsableSharePoint);
   const responsable = !ownerText || /non renseign/i.test(ownerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ? UNASSIGNED : ownerText;
   const j0Date = parseExcelDate(values.j0);
   // « Non renseigné » : J0 inconnu assumé, ni à compléter ni à corriger.
@@ -1015,7 +1015,6 @@ function buildTask(sheet, rowNumber, row, today) {
     reeLibelle: text(values.reeLibelle),
     entreprise: text(values.entreprise),
     responsable,
-    responsableType: responsable === UNASSIGNED ? UNASSIGNED : PROVIDER_NAMES.has(status(responsable)) ? "Prestataire" : "Interne",
     chargeAffaires: text(values.chargeAffaires),
     mc: text(values.mc),
     ot: text(values.ot),
@@ -1818,12 +1817,9 @@ function attentionLabel(g) {
 
 function chooseMePanel() {
   const owners = ownersList().filter((n) => n !== UNASSIGNED);
-  const internal = owners.filter((n) => !PROVIDER_NAMES.has(status(n)));
-  const providers = owners.filter((n) => PROVIDER_NAMES.has(status(n)));
   return `<section class="panel chooseMe"><h2>Qui êtes-vous ?</h2>
-    <p class="muted">Choisissez votre nom tel qu’il apparaît dans la colonne « Chargé d’essais » de la DEM. Ce choix est mémorisé sur ce PC.</p>
-    <div class="nameGrid">${internal.map((n) => `<button type="button" data-me="${esc(n)}">${esc(n)}</button>`).join("")}</div>
-    ${providers.length ? `<p class="muted">Prestataires</p><div class="nameGrid">${providers.map((n) => `<button type="button" data-me="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}
+    <p class="muted">Choisissez votre nom tel qu’il apparaît dans la colonne « Chargé d’essai SP » de la DEM. Ce choix est mémorisé sur ce PC.</p>
+    <div class="nameGrid">${owners.map((n) => `<button type="button" data-me="${esc(n)}">${esc(n)}</button>`).join("")}</div>
   </section>`;
 }
 
@@ -2314,7 +2310,6 @@ function ownerStats() {
     const ts = visible.filter((t) => t.responsable === name);
     return {
       name, ts, n: ts.length,
-      type: name === UNASSIGNED ? UNASSIGNED : PROVIDER_NAMES.has(status(name)) ? "Prestataire" : "Interne",
       affaires: countUnique(ts, (t) => t.affaire),
       ree: dossierCount(ts), reeTEM: dossierCount(ts.filter((t) => dossierPhase(t) === "TEM")), reeAT: dossierCount(ts.filter((t) => dossierPhase(t) === "AT")),
       prep: ts.filter((t) => t.prepComplete).length, realized: ts.filter(isRealized).length,
@@ -2331,8 +2326,7 @@ function viewOwners() {
   const dt = dataTable({
     key: "owners", items: stats, paged: false,
     columns: [
-      { label: "Chargé / entreprise", value: (s) => s.name },
-      { label: "Type", value: (s) => s.type, filter: true },
+      { label: "Chargé d’essais", value: (s) => s.name },
       { label: "Affaires", cls: "num", value: (s) => s.affaires },
       { label: "REE", cls: "num", value: (s) => s.ree },
       { label: "TOT", cls: "num", value: (s) => s.n },
@@ -2343,7 +2337,6 @@ function viewOwners() {
     ],
     row: (s) => `<tr>
       <td><button type="button" class="linkbutton" data-owner-tasks="${esc(s.name)}">${esc(s.name)}</button></td>
-      <td>${esc(s.type)}</td>
       <td class="num">${fmt(s.affaires)}</td>
       <td class="num">${fmt(s.ree)}<small>TEM ${fmt(s.reeTEM)} · AT ${fmt(s.reeAT)}</small></td>
       <td class="num">${fmt(s.n)}</td>
@@ -2354,8 +2347,8 @@ function viewOwners() {
   });
   $("view").innerHTML = panel("Répartition par chargé d’essais", dt.html, {});
   currentExport = () => downloadMatrix(
-    ["Chargé", "Type", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
-    dt.rows.map((s) => [s.name, s.type, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
+    ["Chargé", "Affaires", "REE", "REE TEM", "REE AT", "TOT", "Prépa terminée", "Réalisés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "BPA signés", "BPA produits", "GER/1N signés", "GER/1N produits", "BPD signés", "BPD produits"],
+    dt.rows.map((s) => [s.name, s.affaires, s.ree, s.reeTEM, s.reeAT, s.n, s.prep, s.realized, s.overdue, s.missing, s.issues, s.bpa.done, s.bpa.produced, s.ger.done, s.ger.produced, s.bpd.done, s.bpd.produced]),
     "Repartition_par_charge.csv");
 }
 

@@ -6,15 +6,14 @@
 
 const TECHNICAL_SHEETS = ["CS0M", "CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4A", "CS4M", "CS8M", "CS9M"];
 const IPE_SHEET = "Suivi modification IPE";
-const PROVIDER_NAMES = new Set(["EKIUM", "SOM"]);
 const GER_PRODUCED_CODES = ["P", "PS", "TS"];
 const GER_SIGNED_CODES = ["PSR", "TSR", "TAR"]; // TAR : total avec réserve
 const DAY_MS = 86_400_000;
 const UNASSIGNED = "Non affecté";
 
 // Colonnes de la DEM (lettre Excel) et libellés métier.
-const fields = { affaire: "A", ree: "D", responsable: "G", mc: "I", ot: "J", tot: "K", rdu: "L", totPrete: "N", j0: "O", regime: "P", bpa: "Q", ger: "R", bpd: "S", observations: "V" };
-const names = { affaire: "Affaire eDIM", ree: "REE", responsable: "Chargé d’essais", mc: "MC", ot: "OT", tot: "TOT", rdu: "RDU", totPrete: "TOT prête", j0: "J0", regime: "Régime", bpa: "BPA", ger: "GER/1N", bpd: "BPD", observations: "Observations" };
+const fields = { affaire: "A", ree: "D", responsable: "M", mc: "I", ot: "J", tot: "K", rdu: "L", totPrete: "N", j0: "O", regime: "P", bpa: "Q", ger: "R", bpd: "S", observations: "V" };
+const names = { affaire: "Affaire eDIM", ree: "REE", responsable: "Chargé d’essais SP", mc: "MC", ot: "OT", tot: "TOT", rdu: "RDU", totPrete: "TOT prête", j0: "J0", regime: "Régime", bpa: "BPA", ger: "GER/1N", bpd: "BPD", observations: "Observations" };
 
 // Formateurs créés une seule fois : en créer un par appel (toLocaleDateString, new Intl…)
 // coûte cher et figeait la page sur une grosse DEM.
@@ -164,7 +163,8 @@ function buildTask(sheet, rowNumber, row, today) {
   if (!rowHasBusinessData(values) || ![values.affaire, values.ree, values.ot, values.tot].some(isNonBlank)) return null;
 
   // « Non renseigné dans SharePoint » (recopié depuis SharePoint) vaut « Non affecté ».
-  const ownerText = text(values.responsable);
+  // Chargé d’essais lu en colonne M (« Chargé d’essai SP »), sans distinguer prestataires et internes.
+  const ownerText = text(values.responsableSharePoint);
   const responsable = !ownerText || /non renseign/i.test(ownerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ? UNASSIGNED : ownerText;
   const j0Date = parseExcelDate(values.j0);
   // « Non renseigné » : J0 inconnu assumé, ni à compléter ni à corriger.
@@ -202,7 +202,6 @@ function buildTask(sheet, rowNumber, row, today) {
     reeLibelle: text(values.reeLibelle),
     entreprise: text(values.entreprise),
     responsable,
-    responsableType: responsable === UNASSIGNED ? UNASSIGNED : PROVIDER_NAMES.has(status(responsable)) ? "Prestataire" : "Interne",
     chargeAffaires: text(values.chargeAffaires),
     mc: text(values.mc),
     ot: text(values.ot),
