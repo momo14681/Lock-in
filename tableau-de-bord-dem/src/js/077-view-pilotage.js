@@ -154,7 +154,7 @@ function pilotHead(m, cols) {
     kpi({ label: "Préparation terminée", value: pct(m.prepared, m.n), sub: `${fmt(m.prepared)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.prepared, m.n), color: STATE_COLORS[STATE.ready] }, go: go("tasks:prepared") }),
     kpi({ label: "Essais réalisés", value: pct(m.realized, m.n), sub: `${fmt(m.realized)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.realized, m.n), color: STATE_COLORS[STATE.realized] }, go: go("tasks:realized") }),
     kpi({ label: "BPD signés", value: pct(m.chain[3].done, m.n), sub: `${fmt(m.chain[3].done)} / ${fmt(m.n)} TOT`, bar: { ratio: ratio(m.chain[3].done, m.n), color: DOC_COLORS.signed } }),
-    kpi({ label: "Lignes DEM incomplètes", value: fmt(m.overdue), sub: m.overdue ? "échéance J0 − 30 dépassée" : "aucune", tone: m.overdue ? "warn" : "good", go: m.overdue ? go("tasks:overdue") : "" }),
+    kpi({ label: "Prépas en retard", value: fmt(m.overdue), sub: m.overdue ? "échéance J0 − 30 dépassée" : "aucune", tone: m.overdue ? "warn" : "good", go: m.overdue ? go("tasks:overdue") : "" }),
   ].join("");
   return `<section class="panel pilotHeadPanel">
     <div class="panelHead"><div><h2 class="pilotTitle">${pilotTag(m)}</h2>
@@ -188,7 +188,7 @@ function pilotChart(m) {
 function pilotTodo(m) {
   const go = (spec) => `in:${m.sheet}:${spec}`;
   const items = [
-    { n: m.overdue, tone: "warn", title: "lignes DEM incomplètes (échéance dépassée)", go: go("tasks:overdue") },
+    { n: m.overdue, tone: "warn", title: "prépas en retard (échéance dépassée)", go: go("tasks:overdue") },
     { n: m.dueSoon, tone: "warn", title: "préparations à boucler sous 30 jours", go: go("tasks:dueSoon") },
     { n: m.bpdPending, tone: "info", title: "essais réalisés, BPD pas encore signé", go: go("tasks:bpdPending") },
     { n: m.chain.reduce((s, c) => s + c.P, 0), tone: "info", title: "documents à valider (P)", go: go("docs:P") },
@@ -208,7 +208,7 @@ function pilotOwners(m) {
     <td class="num">${fmt(o.n)}</td>
     <td><div class="progressCell">${stateBar(o.ts)}<span>${fmt(o.realized)}/${fmt(o.n)}</span></div></td>
     <td class="num">${o.overdue ? badge(fmt(o.overdue), "warn") : '<span class="muted">—</span>'}</td></tr>`);
-  return panel("Par chargé d’essais", table(["Chargé", { label: "TOT", cls: "num" }, "Réalisées", { label: "DEM incomplète", cls: "num" }], rows, { cls: "compact pilotOwners", free: true })
+  return panel("Par chargé d’essais", table(["Chargé", { label: "TOT", cls: "num" }, "Réalisées", { label: "Prépa en retard", cls: "num" }], rows, { cls: "compact pilotOwners", free: true })
     + legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]])),
     { cls: "pilotPanel", actions: pilotTag(m) });
 }
@@ -228,7 +228,7 @@ function viewPilotage() {
     <div class="ecuChips pilotChips" role="group" aria-label="Tranches affichées">${chips}</div>
     ${row(pilotHead)}${row(pilotChain)}${row(pilotChart)}${row(pilotTodo)}${row(pilotOwners)}`;
   currentExport = () => {
-    const head = ["Tranche", "Feuille", "Code projet", "REE", "TOT", "J0 début", "J0 fin", "Prépa terminée", "% prépa", "Réalisés", "% réalisés", "Lignes DEM incomplètes", "À boucler < 30 j", "Réalisés sans BPD signé", "Sans chargé", "Corrections DEM",
+    const head = ["Tranche", "Feuille", "Code projet", "REE", "TOT", "J0 début", "J0 fin", "Prépa terminée", "% prépa", "Réalisés", "% réalisés", "Prépas en retard", "À boucler < 30 j", "Réalisés sans BPD signé", "Sans chargé", "Corrections DEM",
       ...PILOT_DOCS.flatMap(([, l]) => [`${l} à valider (P)`, `${l} à reprendre (R)`, `${l} % produits`, `${l} % signés`])];
     const rows = models.map((m) => [m.label, m.sheet, m.code, m.ree, m.n, formatDate(m.j0Min), formatDate(m.j0Max), m.prepared, pct(m.prepared, m.n), m.realized, pct(m.realized, m.n), m.overdue, m.dueSoon, m.bpdPending, m.unassigned, m.issues,
       ...m.chain.flatMap((c) => [c.P, c.R, pct(c.prod, c.n), pct(c.done, c.n)])]);
@@ -246,7 +246,7 @@ function pilotReportSections() {
       line("Code projet", (m) => m.code || "—"), line("REE", (m) => m.ree), line("TOT", (m) => m.n),
       line("J0", (m) => (m.j0Min ? `${formatDate(m.j0Min)} → ${formatDate(m.j0Max)}` : "—")),
       line("Préparation terminée", (m) => `${pct(m.prepared, m.n)} (${m.prepared})`), line("Essais réalisés", (m) => `${pct(m.realized, m.n)} (${m.realized})`),
-      line("Lignes DEM incomplètes", (m) => m.overdue), line("À boucler sous 30 jours", (m) => m.dueSoon), line("Réalisés sans BPD signé", (m) => m.bpdPending),
+      line("Prépas en retard", (m) => m.overdue), line("À boucler sous 30 jours", (m) => m.dueSoon), line("Réalisés sans BPD signé", (m) => m.bpdPending),
       line("TOT sans chargé", (m) => m.unassigned), line("Corrections DEM", (m) => m.issues),
       ...PILOT_DOCS.map(([, l], k) => line(`${l} : P / R · % produits / % signés`, (m) => { const c = m.chain[k]; return `${c.P} / ${c.R} · ${pct(c.prod, c.n)} / ${pct(c.done, c.n)}`; })),
     ],
@@ -254,7 +254,7 @@ function pilotReportSections() {
   for (const m of models) {
     sections.push({ title: `${m.label} — avancement ${m.timeline.weekly ? "par semaine" : "par mois"} de J0`, headers: ["Période", "TOT", ...TEAM_ORDER, "% réalisés"],
       rows: m.timeline.columns.filter((c) => c.total).map((c) => [c.long, c.total, ...TEAM_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized], c.total)]) });
-    sections.push({ title: `${m.label} — par chargé d’essais`, headers: ["Chargé", "TOT", "Réalisées", "DEM incomplète"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, o.overdue]) });
+    sections.push({ title: `${m.label} — par chargé d’essais`, headers: ["Chargé", "TOT", "Réalisées", "Prépa en retard"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, o.overdue]) });
   }
   return sections;
 }

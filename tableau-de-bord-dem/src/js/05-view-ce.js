@@ -3,7 +3,7 @@
 // =============================================================================
 
 const AFFAIRE_STATUS = {
-  late: { label: "DEM incomplète", tone: "warn", rank: 0 },
+  late: { label: "Prépa en retard", tone: "warn", rank: 0 },
   missing: { label: "À compléter", tone: "warn", rank: 1 },
   ongoing: { label: "En préparation", tone: "neutral", rank: 2 },
   ready: { label: "Prépa terminée", tone: "info", rank: 3 },
@@ -76,7 +76,7 @@ function stateBar(ts, { width = "" } = {}) {
 
 function attentionBadges(g) {
   const out = [];
-  if (g.overdue) out.push(badge(`${fmt(g.overdue)} ligne${g.overdue > 1 ? "s" : ""} DEM incomplète${g.overdue > 1 ? "s" : ""}`, "warn"));
+  if (g.overdue) out.push(badge(`${fmt(g.overdue)} prépa${g.overdue > 1 ? "s" : ""} en retard`, "warn"));
   else if (g.dueSoon) out.push(badge(`${fmt(g.dueSoon)} à boucler sous 30 j`, "warn"));
   if (g.issues) out.push(`<span class="softCount">${plural(g.issues, "correction")}</span>`);
   return out.join(" ") || '<span class="muted">—</span>';
@@ -109,7 +109,7 @@ function affaireRow(g) {
 }
 
 function attentionLabel(g) {
-  return g.overdue ? "DEM incomplète" : g.dueSoon ? "À boucler sous 30 j" : g.issues ? "Corrections DEM" : "Rien";
+  return g.overdue ? "Prépa en retard" : g.dueSoon ? "À boucler sous 30 j" : g.issues ? "Corrections DEM" : "Rien";
 }
 
 function chooseMePanel() {
@@ -136,7 +136,7 @@ function todoItems(ts, myIssues) {
     { n: dueSoon.length, tone: "warn", title: "préparations à boucler sous 30 jours", go: "tasks:dueSoon" },
     { n: rework.length, tone: "warn", title: "documents à reprendre (R)", go: "documents:R" },
     { n: myIssues.length, tone: "info", title: "corrections à faire dans la DEM", go: "tab:issues" },
-    { n: overdue.length, tone: "warn", title: "lignes DEM incomplètes (échéance dépassée)", go: "tasks:overdue" },
+    { n: overdue.length, tone: "warn", title: "prépas en retard (échéance dépassée)", go: "tasks:overdue" },
     { n: missing.length, tone: "neutral", title: "TOT avec des informations manquantes", go: "tasks:missing" },
   ].filter((item) => item.n > 0);
 }
@@ -159,7 +159,7 @@ function viewMine() {
   const kpis = [
     kpi({ label: "Préparation terminée", value: pct(prepared, n), sub: `équipe : ${teamPct((t) => t.prepComplete)}`, bar: { ratio: ratio(prepared, n), color: STATE_COLORS[STATE.ready] }, go: "tasks:prepared" }),
     kpi({ label: "Essais réalisés", value: pct(realized, n), sub: `équipe : ${teamPct(isRealized)}`, bar: { ratio: ratio(realized, n), color: STATE_COLORS[STATE.realized] }, go: "tasks:realized" }),
-    kpi({ label: "Lignes DEM incomplètes", value: fmt(overdue), sub: overdue ? "échéance J0 − 30 dépassée" : "aucune", tone: overdue ? "warn" : "good", go: "tasks:overdue" }),
+    kpi({ label: "Prépas en retard", value: fmt(overdue), sub: overdue ? "échéance J0 − 30 dépassée" : "aucune", tone: overdue ? "warn" : "good", go: "tasks:overdue" }),
     kpi({ label: "À corriger dans la DEM", value: fmt(issues.length), sub: issues.length ? "cellules à vérifier" : "rien à corriger", tone: issues.length ? "warn" : "good", go: "tab:issues" }),
   ].join("");
   const head = `<div class="viewHead"><div><h2 class="viewTitle">Mes affaires</h2><p class="muted">${plural(groups.length, "affaire")} · ${plural(n, "TOT", "TOT")}</p></div>${meSelector()}</div>`;
@@ -181,7 +181,7 @@ function viewMine() {
       ${todoPanel(ts, issues)}
     </div>`;
   currentExport = () => downloadMatrix(
-    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "BPA signés", "GER/1N signés", "BPD signés", "Lignes DEM incomplètes", "Infos manquantes", "Corrections DEM", "Statut"],
+    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "BPA signés", "GER/1N signés", "BPD signés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
     groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.realized, g.bpa.done, g.ger.done, g.bpd.done, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
     `Mes_affaires_${me.replace(/[^\p{L}\p{N}_-]+/gu, "_")}.csv`);
 }

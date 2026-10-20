@@ -30,7 +30,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 | Onglet | Question |
 |---|---|
 | Synthèse | Qui est chargé, et qui doit corriger la DEM ? 4 chiffres, histogramme de charge, corrections par chargé. |
-| Pilotage par tranche | Où en sont les tranches suivies (CS2M et CS4A par défaut, puces pour en ajouter) ? Côte à côte : préparation, réalisés, BPD signés, lignes DEM incomplètes ; documents EAM / BPA / GER / BPD (P, R, % produits, % signés, comme la feuille Pilotage) ; avancement par semaine de J0 (par mois si la tranche dépasse 20 semaines) ; points à traiter et charge par chargé. Chaque nombre ouvre la liste limitée à la tranche. |
+| Pilotage par tranche | Où en sont les tranches suivies (CS2M et CS4A par défaut, puces pour en ajouter) ? Côte à côte : préparation, réalisés, BPD signés, prépas en retard ; documents EAM / BPA / GER / BPD (P, R, % produits, % signés, comme la feuille Pilotage) ; avancement par semaine de J0 (par mois si la tranche dépasse 20 semaines) ; points à traiter et charge par chargé. Chaque nombre ouvre la liste limitée à la tranche. |
 | À corriger dans la DEM | Toutes les corrections, filtrables par chargé, priorité et type. |
 | Équipe | Avancement global, retards de préparation, documents. |
 | *Autres listes…* | Répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint, **Contrôle 1N / TSR** (export EAM IOP319 chargé ou glissé à part : chaque TOT doit avoir un commentaire 1N et un TSR), **TOT par ECU** (feuille CRU : une ligne par TOT avec son dernier commentaire, compteurs et filtre par ECU, chargé repris de la DEM quand l'OT / TOT y figure) |

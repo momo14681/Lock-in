@@ -311,7 +311,7 @@ function isRealized(t) {
 }
 
 // Statut d'avancement d'une TOT (ordre d'évaluation de la V1.3).
-const STATE = { realized: "Réalisé", missing: "Infos manquantes", ready: "Prépa terminée", late: "DEM incomplète", ongoing: "En préparation", cancelled: "Annulée" };
+const STATE = { realized: "Réalisé", missing: "Infos manquantes", ready: "Prépa terminée", late: "Prépa en retard", ongoing: "En préparation", cancelled: "Annulée" };
 function state(t) {
   return t.cancelled ? STATE.cancelled : isRealized(t) ? STATE.realized : t.infoMissing ? STATE.missing : t.prepComplete ? STATE.ready : t.overdue ? STATE.late : STATE.ongoing;
 }

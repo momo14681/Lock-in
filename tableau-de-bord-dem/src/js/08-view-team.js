@@ -6,7 +6,7 @@
 const MONTHS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 const MONTHS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 
-// Sur l'écran d'équipe, « DEM incomplète » et « Infos manquantes » sont regroupées :
+// Sur l'écran d'équipe, « Prépa en retard » et « Infos manquantes » sont regroupées :
 // ce sont surtout des lignes Excel à mettre à jour, pas des retards d'essais.
 const TEAM_INCOMPLETE = "DEM à compléter";
 const TEAM_ORDER = [STATE.realized, STATE.ready, STATE.ongoing, TEAM_INCOMPLETE];
