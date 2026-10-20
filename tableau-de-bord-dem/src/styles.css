@@ -545,3 +545,21 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .pilotPanel .legend { margin: 10px 0 0; }
 .pilotPanel .timeline { margin-top: 4px; }
 @media (max-width: 1100px) { .pilotRow { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+
+/* Mon pilotage (chargé d'essais) */
+.cepSplit > .panel .segmented { margin-bottom: 10px; }
+.cepList td small, .cepAffaires td small { display: block; }
+.cepDate { display: block; white-space: nowrap; }
+.cepLate { color: var(--bad-ink); }
+.cepSheets td { white-space: nowrap; }
+.cepSheets .meter { min-width: 0; }
+.cepSheets .meterTrack { width: 110px; }
+.cepPct { margin-left: 8px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.cepRees { max-width: 320px; }
+.cepRee { border: 0; background: var(--neutral-bg); color: var(--neutral-ink); border-radius: 6px; padding: 2px 8px; margin: 0 4px 4px 0; font-size: 12.5px; }
+.cepRee:hover { background: var(--info-bg); color: var(--info-ink); }
+.cepFrac { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cepFrac.full { color: var(--good-ink); }
+@media (max-width: 1100px) { .cepSplit { grid-template-columns: minmax(0, 1fr); } }
+.cepSplit .tableWrap { max-height: 560px; overflow: auto; }
+.cepSplit thead th { position: sticky; top: 0; z-index: 1; }

@@ -9,7 +9,7 @@ automatiquement toutes les 30 minutes de 7 h à 20 h (comme en V1.3).
 
 ## Deux profils (bouton en haut de page)
 
-Chaque profil a **3 onglets** (4 pour les coordos), chacun répond à une question. Les listes détaillées
+Chaque profil a **4 onglets**, chacun répond à une question. Les listes détaillées
 sont dans le menu déroulant à droite des onglets. Les filtres (feuilles, période)
 sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel et sa dernière vérification sont en petit en bas de page (menu **Fichier**), le bouton **Actualiser** dans le bandeau.
 
@@ -20,6 +20,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 | Onglet | Question |
 |---|---|
 | Mes affaires | Où en sont mes affaires et que dois-je faire ? 4 chiffres, liste « À faire », une ligne par affaire (cliquer pour le détail REE / TOT). |
+| Mon pilotage | La feuille Pilotage de la DEM pour moi : Gel M0 passé, BPA faits, essais réalisés, BPD signés ; Gel M0 à passer et BPA à faire (court terme < 30 j, moyen terme 30 à 90 j, plus tard) ; avancement par tranche ; mes affaires et REE. Gel M0 = J0 − 70 j, ligne gelée quand MC, OT, TOT, RDU et Régime sont renseignés ; BPA fait = date ou P, par REE ; à préparer par le chargé si titulaire EDF ou BPA en F. |
 | À corriger dans la DEM | Quelles cellules dois-je corriger ? |
 | Équipe | Où en est l'équipe ? (même contenu que l'écran d'équipe) |
 | *Mes listes…* | Mes TOT, mes documents P / R |
@@ -111,6 +112,7 @@ node build.mjs     # Node 18+ ; produit Tableau_de_bord_DEM.html
 | `src/js/07-view-coordo.js` | Synthèse, histogramme de charge, répartition, affectations IPE |
 | `src/js/076-view-iop319.js` | Contrôle 1N / TSR (export EAM IOP319) |
 | `src/js/077-view-pilotage.js` | Pilotage par tranche |
+| `src/js/078-view-ce-pilotage.js` | Mon pilotage (chargé d’essais) |
 | `src/js/08-view-team.js` | Avancement équipe et image PNG |
 | `src/js/09-exports.js` | Exports CSV et PDF |
 | `src/js/10-source.js` | Chargement, fichier mémorisé, DEM 2026 / 2027 |

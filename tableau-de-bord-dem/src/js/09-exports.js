@@ -53,6 +53,9 @@ function reportModel() {
     sections.push({ title: `Avancement par mois de J0 — ${m.timeline.title}`, headers: ["Période", "TOT", ...TEAM_ORDER, "% réalisés"], rows: m.timeline.columns.map((c) => [c.long, c.total, ...TEAM_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized], c.total)]) });
     sections.push({ title: "À venir : J0 des 60 prochains jours", headers: ["Affaire / REE", "Chargé", "J0", "Dans", "TOT", "Préparation"], widths: [.28, .2, .14, .12, .08, .18], rows: m.upcoming.map((g) => [`${g.affaire} / ${g.ree} (${g.phase})`, g.owners.join(", "), formatDate(g.j0), `${g.inDays} j`, g.ts.length, g.status]) });
     sections.push({ title: "Avancement par chargé", headers: ["Chargé", "TOT", "Réalisés", "Prépa terminée", "Lignes DEM incomplètes", "Échéances < 30 j"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, `${o.prepared} (${pct(o.prepared, o.n)})`, o.overdue, o.dueSoon]) });
+  } else if (tab === CEP_TAB) {
+    title = `Mon pilotage — ${me || "chargé non choisi"}`;
+    sections.push(...cePilotageReportSections());
   } else if (tab === PILOT_TAB) {
     title = "Pilotage par tranche — " + pilotSelection().map(trancheLabel).join(", ");
     sections.push(...pilotReportSections());

@@ -24,6 +24,7 @@ function plural(n, one, many = one + "s") {
 const TABS = {
   ce: [
     { id: "mine", label: "Mes affaires" },
+    { id: "cePilotage", label: "Mon pilotage" },
     { id: "issues", label: "À corriger dans la DEM", count: () => activeIssueCount(me) },
     { id: "team", label: "Équipe" },
   ],

@@ -3,7 +3,7 @@
 // =============================================================================
 
 const VIEWS = {
-  mine: viewMine, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
+  mine: viewMine, cePilotage: viewCePilotage, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
   documents: viewDocuments, cru: viewCRU, pilotage: viewPilotage, iop319: viewIOP, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
 };
 
@@ -137,6 +137,7 @@ function go(spec) {
     tableState["documents-" + docCode] = { search: "", open: false, filters: key ? { [docCol]: [names[key]] } : {} };
     return setTab("documents");
   }
+  if (kind === "affaire") { expandedAffaires.add(arg); return setTab("mine"); }
   if (kind === "owner-tasks") { $("owner").value = arg; return openTasks(""); }
   if (kind === "iop") { iopCheck = arg; tab = tabByMode[mode] = IOP_TAB; page = 1; return render(); }
 }
@@ -151,6 +152,8 @@ const SETTABLE = {
   documentType: (v) => { documentType = v; },
   teamLateOwner: (v) => { teamLateOwner = v; },
   iopCheck: (v) => { iopCheck = v; },
+  cepGelWindow: (v) => { cepGelWindow = v; },
+  cepBpaWindow: (v) => { cepBpaWindow = v; },
 };
 
 function onClick(e) {
