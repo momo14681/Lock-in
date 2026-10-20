@@ -32,7 +32,6 @@ function formatProblem(t, key) {
 
 function audit(tasks) {
   const out = [];
-  const { min, max } = j0Period();
   const add = (t, kind, keys, reason, level = "À vérifier") => out.push({
     t, kind, keys, reason, level,
     cells: where(t, keys),
@@ -41,15 +40,12 @@ function audit(tasks) {
 
   for (const t of tasks) {
     if (t.cancelled) continue;
-    if (t.infoMissing) add(t, t.bpdSigned ? "Incomplet" : "Infos manquantes", t.missingInfoKeys, `${t.bpdSigned ? "BPD signé" : t.totReady ? "TOT prête" : "GER/1N renseigné"}. À compléter : ${missingLabel(t)}.`, "À compléter");
+    if (t.infoMissing) add(t, "Infos manquantes", t.missingInfoKeys, `${t.bpdSigned ? "BPD signé" : t.totReady ? "TOT prête" : "GER/1N renseigné"}. À compléter : ${missingLabel(t)}.`, "À compléter");
     if (t.responsable === UNASSIGNED) add(t, "Non-affectation", ["responsable"], "Désigner un chargé d’essais ou une entreprise.", "À compléter");
     if (!t.affaire) add(t, "Identifiants", ["affaire"], "Renseigner la référence eDIM.", "À compléter");
     if (!t.ree) add(t, "Identifiants", ["ree"], "Renseigner le REE.", "À compléter");
-    if (!t.j0 && !formatProblem(t, "j0")) add(t, "J0 absent / invalide", ["j0"], "Renseigner une date exploitable pour calculer J0 − 30.", "À compléter");
-    else if (t.j0) {
-      const d = isoDay(t.j0);
-      if ((min && d < min) || (max && d > max)) add(t, "J0 hors période", ["j0"], `Date hors de la période ${min || "sans début"} au ${max || "sans fin"}. Confirmer si l’activité est historique.`);
-    }
+    if (!t.j0 && !t.j0Unknown && !formatProblem(t, "j0")) add(t, "J0 absent / invalide", ["j0"], "Renseigner une date exploitable (ou « Non renseigné ») pour calculer J0 − 30.", "À compléter");
+    if (t.rduMissing && (t.totReady || t.bpdSigned || String(t.ger || "").trim() !== "")) add(t, "RDU manquant", ["rdu"], "Le RDU n’est pas renseigné. À ajouter si possible.");
     // Prioritaire seulement si l'activité (J0) est encore à venir ; sinon simple mise à jour de la DEM.
     if (t.overdue) add(t, "Prépa en retard (échéance dépassée)", [...t.missingPrerequisites, ...(!t.totReady ? ["totPrete"] : []), "j0"], `Préparation attendue le ${t.prepDueLabel}. Compléter les informations ou confirmer le planning.`, t.j0 && data?.today && t.j0 >= data.today ? "Prioritaire" : "À compléter");
     if (t.duplicate) add(t, "Doublon possible", ["affaire", "ree", "ot", "tot"], "Même combinaison feuille, affaire, REE, OT et TOT sur plusieurs lignes. Vérifier avant toute suppression.");
@@ -57,7 +53,7 @@ function audit(tasks) {
     for (const key of ["j0", "totPrete", "bpa", "ger", "bpd"]) {
       if (formatProblem(t, key)) {
         add(t, "Format non conforme", [key], key === "ger"
-          ? "Valeur numérique ou date non admise pour GER/1N. Utiliser P, PS, TS, PSR, TSR ou R."
+          ? "Valeur numérique ou date non admise pour GER/1N. Utiliser P, PS, TS, PSR, TSR, TAR ou R."
           : "Date ou nombre au format non conforme. Vérifier le jour, le mois et l’année, puis saisir une date valide (ex. 21/07/2026).", "À compléter");
         continue;
       }

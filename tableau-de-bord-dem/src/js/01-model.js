@@ -8,7 +8,7 @@ const TECHNICAL_SHEETS = ["CS0M", "CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A"
 const IPE_SHEET = "Suivi modification IPE";
 const PROVIDER_NAMES = new Set(["EKIUM", "SOM"]);
 const GER_PRODUCED_CODES = ["P", "PS", "TS"];
-const GER_SIGNED_CODES = ["PSR", "TSR"];
+const GER_SIGNED_CODES = ["PSR", "TSR", "TAR"]; // TAR : total avec réserve
 const DAY_MS = 86_400_000;
 const UNASSIGNED = "Non affecté";
 
@@ -167,9 +167,12 @@ function buildTask(sheet, rowNumber, row, today) {
   const ownerText = text(values.responsable);
   const responsable = !ownerText || /non renseign/i.test(ownerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ? UNASSIGNED : ownerText;
   const j0Date = parseExcelDate(values.j0);
+  // « Non renseigné » : J0 inconnu assumé, ni à compléter ni à corriger.
+  const j0Unknown = !j0Date && /^NON RENSEIGNE/.test(status(values.j0));
   const prepDue = j0Date ? addDays(j0Date, -30) : null;
   const totReady = Boolean(parseExcelDate(values.totPrete)) || status(values.totPrete) === "P";
-  const missingPrerequisites = ["mc", "ot", "tot", "rdu"].filter((key) => !isNonBlank(values[key]));
+  // Un RDU manquant n'est pas bloquant : signalé à part, en « À vérifier ».
+  const missingPrerequisites = ["mc", "ot", "tot"].filter((key) => !isNonBlank(values[key]));
   // Préparation terminée = TOT prête (date ou P), comme l'indicateur « TOT prête produits ».
   // MC, OT, TOT et RDU manquants restent signalés comme informations à compléter.
   const prepComplete = totReady;
@@ -218,6 +221,8 @@ function buildTask(sheet, rowNumber, row, today) {
     prepComplete,
     totReady,
     missingPrerequisites,
+    rduMissing: !isNonBlank(values.rdu),
+    j0Unknown,
     bpaState,
     gerState,
     bpdState,
@@ -276,7 +281,7 @@ function applyMissingInfo(t) {
   t.bpdSigned = !!parseExcelDate(t.cells?.bpd?.v ?? t.bpd);
   if (t.bpdSigned) {
     for (const k of ["affaire", "ree", "responsable", "j0", "bpa", "ger"]) {
-      const missing = k === "j0" ? !t.j0 : k === "responsable" ? (!t.responsable || t.responsable === UNASSIGNED) : !String(t[k] ?? "").trim();
+      const missing = k === "j0" ? !t.j0 && !t.j0Unknown : k === "responsable" ? (!t.responsable || t.responsable === UNASSIGNED) : !String(t[k] ?? "").trim();
       if (missing) t.missingInfoKeys.push(k);
     }
     for (const [k, c] of Object.entries(t.cells || {})) if (c?.t === "e" && !["regime", "observations"].includes(k)) t.missingInfoKeys.push(k);

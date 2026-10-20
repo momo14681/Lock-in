@@ -71,13 +71,16 @@ n'est pas comptée.
 
 ## Règles de calcul (identiques à la V1.3)
 
-- **Réalisé** : GER/1N signé (PSR ou TSR).
+- **Réalisé** : GER/1N signé (PSR, TSR ou TAR, ou une date).
 - **Équivalences de saisie** : « Prêt » (ou « Prête ») en TOT prête vaut P ; une date en GER/1N vaut TSR.
-- **Préparation terminée** : « TOT prête » renseignée (date ou P), donc égale au % de TOT prête produites. MC, OT, TOT ou RDU manquants restent signalés en informations à compléter.
-- **TOT prête mais MC, OT, TOT ou RDU manquant** : jamais « en retard », compté en « infos manquantes » (à compléter).
+- **Préparation terminée** : « TOT prête » renseignée (date ou P), donc égale au % de TOT prête produites. MC, OT ou TOT manquants restent signalés en informations à compléter.
+- **TOT prête mais MC, OT ou TOT manquant** : jamais « en retard », compté en « infos manquantes » (à compléter).
 - **Documents P** : à valider par les coordos (onglet coordo) ; **R** : à reprendre par le chargé d'essais.
 - **Échéance de préparation** : J0 − 30 jours ; **en retard** si dépassée sans préparation terminée.
-- **Période** : années de J0 attendues (contrôle « J0 hors période » et colonnes du graphique mensuel).
+- **Période** : années de J0 attendues (colonnes du graphique mensuel). Pas d'alerte « J0 hors période ».
+- **J0 « Non renseigné »** : J0 inconnu assumé, ni à compléter ni à corriger.
+- **RDU manquant** : simple alerte « À vérifier », ne compte pas en informations manquantes.
+- **GER/1N « TAR »** (total avec réserve) : signé, comme PSR et TSR.
 
 Les indicateurs ont été comparés à la V1.3 sur `DEM_2026_1.xlsm` : mêmes valeurs
 (TOT, affaires, REE, préparation, réalisés, retards, non affectées, 676 signalements,
