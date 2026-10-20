@@ -101,7 +101,7 @@ function ecuSort(a, b) {
   if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
   if (Number.isFinite(na)) return -1;
   if (Number.isFinite(nb)) return 1;
-  return a.localeCompare(b, "fr");
+  return COLLATOR_FR.compare(a, b);
 }
 
 function viewCRU() {

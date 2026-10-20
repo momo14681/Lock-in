@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; worker-src blob:; base-uri 'none'; form-action 'none'">
 <title>Pilotage des essais · DEM</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23001A70'/%3E%3Cpath d='M8 23V16h4v7m3 0V10h4v13m3 0V6h4v17' stroke='%23FE5815' stroke-width='3'/%3E%3C/svg%3E">
 <style>/*@@FONT_FACE@@*/
@@ -105,6 +105,7 @@
 </dialog>
 <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
 
+<script id="xlsxLib">/*@@XLSX_JS@@*/</script>
 <script>/*@@VENDOR_JS@@*/
 ;(() => {
 "use strict";

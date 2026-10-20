@@ -28,7 +28,7 @@ function chargeGroups() {
     const segments = chargeSegments(ts);
     return { name, ts, segments, total: segments.reduce((s, x) => s + x.value, 0), AT: phaseLoad(ts, "AT"), TEM: phaseLoad(ts, "TEM") };
   });
-  const byName = (a, b) => a.name.localeCompare(b.name, "fr", { numeric: true });
+  const byName = (a, b) => COLLATOR_FR_NUM.compare(a.name, b.name);
   const sorters = {
     total: (a, b) => b.total - a.total || byName(a, b),
     AT: (a, b) => b.AT - a.AT || b.total - a.total || byName(a, b),
@@ -213,7 +213,7 @@ function ownerStats() {
       issues: issueCount.get(name) || 0,
       bpa: milestoneStats(ts, "bpaState"), ger: milestoneStats(ts, "gerState"), bpd: milestoneStats(ts, "bpdState"),
     };
-  }).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "fr"));
+  }).sort((a, b) => b.n - a.n || COLLATOR_FR.compare(a.name, b.name));
 }
 
 function viewOwners() {

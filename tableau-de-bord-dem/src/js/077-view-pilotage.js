@@ -124,7 +124,7 @@ function pilotModel(sheet) {
   const owners = [...new Set(ts.map((t) => t.responsable))].map((name) => {
     const mine = ts.filter((t) => t.responsable === name);
     return { name, ts: mine, n: mine.length, realized: mine.filter(isRealized).length, overdue: mine.filter((t) => t.overdue).length };
-  }).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "fr"));
+  }).sort((a, b) => b.n - a.n || COLLATOR_FR.compare(a.name, b.name));
   return {
     sheet, ts, n, label: trancheLabel(sheet), code: sheetProjectCodes().get(sheet) || "",
     ree: dossierCount(ts), j0Min: j0s[0] || null, j0Max: j0s[j0s.length - 1] || null,

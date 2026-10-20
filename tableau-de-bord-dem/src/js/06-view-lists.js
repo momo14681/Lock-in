@@ -178,7 +178,7 @@ function groupsFor(kind, rows = visible) {
     if (!groups.has(key)) groups.set(key, { kind, affaire: t.affaire, ree: kind === "dossiers" ? t.ree : "", phase: kind === "dossiers" ? dossierPhase(t) : "", ts: [] });
     groups.get(key).ts.push(t);
   }
-  return [...groups.values()].sort((a, b) => (a.affaire + " " + a.ree).localeCompare(b.affaire + " " + b.ree, "fr", { numeric: true }));
+  return [...groups.values()].sort((a, b) => COLLATOR_FR_NUM.compare(a.affaire + " " + a.ree, b.affaire + " " + b.ree));
 }
 
 function groupData(kind) {

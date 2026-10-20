@@ -4,11 +4,12 @@
 
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmt = (n) => Number(n || 0).toLocaleString("fr-FR");
+const NUMBER_FR = new Intl.NumberFormat("fr-FR"), PCT_FR = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
+const fmt = (n) => NUMBER_FR.format(Number(n || 0));
 const PAGE_SIZE = 50;
 
 function pct(n, total) {
-  return total ? (100 * n / total).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " %" : "—";
+  return total ? PCT_FR.format(100 * n / total) + " %" : "—";
 }
 function ratio(n, total) {
   return total ? Math.max(0, Math.min(1, n / total)) : 0;
@@ -133,7 +134,7 @@ function activeIssueCount(owner) {
 }
 
 function ownersList() {
-  return [...new Set((data?.tasks || []).filter((t) => !t.cancelled).map((t) => t.responsable))].sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+  return [...new Set((data?.tasks || []).filter((t) => !t.cancelled).map((t) => t.responsable))].sort((a, b) => COLLATOR_FR_NUM.compare(a, b));
 }
 
 function scopeLabel() {

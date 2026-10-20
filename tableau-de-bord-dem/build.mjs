@@ -21,7 +21,10 @@ const appJs = readdirSync(join(root, "src", "js"))
   .map((name) => `// ---- ${name} ----\n${read("src", "js", name)}`)
   .join("\n");
 
-const vendorJs = ["xlsx.full.min.js", "pdf-lib.min.js", "fontkit.min.js"]
+// SheetJS dans sa propre balise <script id="xlsxLib"> : la page la réutilise pour lire
+// le classeur dans un Worker, sans figer l'affichage.
+const xlsxJs = stripSourceMaps(read("vendor", "xlsx.full.min.js"));
+const vendorJs = ["pdf-lib.min.js", "fontkit.min.js"]
   .map((name) => stripSourceMaps(read("vendor", name)))
   .join("\n;");
 
@@ -29,6 +32,7 @@ const parts = {
   FONT_FACE: read("vendor", "work-sans.css"),
   FONT_LICENSE: read("vendor", "work-sans-OFL.txt"),
   STYLES: read("src", "styles.css"),
+  XLSX_JS: xlsxJs,
   VENDOR_JS: vendorJs,
   PDF_FONTS: read("vendor", "pdf-fonts.js"),
   APP_JS: appJs,

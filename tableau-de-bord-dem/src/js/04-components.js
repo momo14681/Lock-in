@@ -153,7 +153,7 @@ function dataTable({ key, columns, items, row, paged = true, cls = "", empty = "
   const active = st.search.trim() || Object.values(st.filters).some((v) => v?.length);
   const head = columns.map((c, i) => {
     if (!c.filter) return { label: c.label, cls: c.cls };
-    const values = [...new Set(items.map((it) => String(c.value(it) ?? "")))].filter(Boolean).sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+    const values = [...new Set(items.map((it) => String(c.value(it) ?? "")))].filter(Boolean).sort((a, b) => COLLATOR_FR_NUM.compare(a, b));
     // Filtre à choix multiples : cases à cocher dans un petit menu déroulant.
     const chosen = st.filters[i] || [];
     const id = `${key}:${i}`;

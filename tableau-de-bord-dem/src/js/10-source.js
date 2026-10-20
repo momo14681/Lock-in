@@ -10,6 +10,51 @@ function fillOwnerSelect(selected = "") {
   $("owner").value = selected;
 }
 
+// Lecture du classeur dans un Worker (fil séparé) : sur une grosse DEM, la lecture prend
+// plusieurs secondes et le navigateur affichait « Cette page ne répond pas ». Si le Worker
+// est indisponible, lecture directe comme avant.
+const WORKBOOK_OPTIONS = { type: "array", cellDates: true, cellFormula: true, sheets: [...TECHNICAL_SHEETS, IPE_SHEET, CRU_SHEET, "Pilotage", "Préparation"] };
+// Le Worker ne renvoie que l'utile (valeur, type, formule de Pilotage / Préparation, texte des
+// erreurs) : la recopie vers la page est d'autant plus courte.
+const WORKER_HANDLER = `
+;onmessage = (e) => {
+  try {
+    const wb = XLSX.read(e.data.bytes, e.data.options), sheets = {};
+    for (const [name, sh] of Object.entries(wb.Sheets)) {
+      const keepFormula = name === "Pilotage" || name === "Préparation", out = {};
+      for (const key in sh) {
+        const c = sh[key];
+        if (key[0] === "!") { out[key] = c; continue; }
+        const slim = { t: c.t, v: c.v };
+        if (c.t === "e" && c.w) slim.w = c.w;
+        if (keepFormula && c.f) slim.f = c.f;
+        out[key] = slim;
+      }
+      sheets[name] = out;
+    }
+    postMessage({ ok: true, wb: { SheetNames: wb.SheetNames, Sheets: sheets } });
+  } catch (err) { postMessage({ ok: false, error: String((err && err.message) || err) }); }
+};`;
+
+function readWorkbook(bytes) {
+  const direct = () => XLSX.read(bytes, WORKBOOK_OPTIONS);
+  const lib = document.getElementById("xlsxLib")?.textContent;
+  if (!lib || typeof Worker === "undefined") return Promise.resolve().then(direct);
+  return new Promise((resolve, reject) => {
+    let url = "", worker = null, settled = false;
+    const finish = (fn) => { if (settled) return; settled = true; worker?.terminate(); if (url) URL.revokeObjectURL(url); fn(); };
+    const fallback = () => finish(() => { try { resolve(direct()); } catch (e) { reject(e); } });
+    try {
+      url = URL.createObjectURL(new Blob([lib, WORKER_HANDLER], { type: "text/javascript" }));
+      worker = new Worker(url);
+    } catch (e) { fallback(); return; }
+    worker.onmessage = (e) => finish(() => (e.data?.ok ? resolve(e.data.wb) : reject(Error(e.data?.error || "Lecture du classeur impossible."))));
+    worker.onerror = (e) => { e.preventDefault?.(); fallback(); };
+    worker.onmessageerror = fallback;
+    worker.postMessage({ bytes, options: WORKBOOK_OPTIONS });
+  });
+}
+
 async function load(file, { preserveView = false, resetIgnored = true } = {}) {
   if (!file || busy) return false;
   const previousOwner = $("owner").value;
@@ -20,10 +65,12 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
     if (!/\.(xlsx|xlsm)$/i.test(file.name)) throw Error("Choisissez le fichier Excel .xlsm ou .xlsx, pas un raccourci .url.");
     const bytes = await file.arrayBuffer();
     await new Promise((r) => setTimeout(r, 30));
-    const result = await parseWorkbook(bytes, file);
-    const wb = XLSX.read(bytes, { type: "array", cellDates: true, cellFormula: true, sheets: [...TECHNICAL_SHEETS, IPE_SHEET, CRU_SHEET, "Pilotage", "Préparation"] });
+    // Une seule lecture du classeur (auparavant deux), hors du fil de la page si possible.
+    const wb = await readWorkbook(bytes);
+    const result = await parseWorkbook(wb, file);
     result.ipe = readAssignments(wb.Sheets[IPE_SHEET]);
-    for (const t of result.tasks) {
+    for (const [i, t] of result.tasks.entries()) {
+      if (i % 3000 === 2999) await pauseForPaint();
       const sheet = wb.Sheets[t.sheet];
       t.merges = sheet["!merges"] || [];
       t.cells = {};
@@ -34,6 +81,7 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
         t.raw[k] = c?.t === "e" ? (c.w || "Erreur Excel") : c?.v instanceof Date ? formatDate(c.v) : String(c?.v ?? "");
       }
     }
+    await pauseForPaint();
     result.tasks.forEach(applyMissingInfo);
     if (!result.tasks.length) throw Error("Aucune TOT exploitable trouvée dans les feuilles techniques.");
     // Colonnes attendues : refuser un modèle décalé plutôt que publier des indicateurs faux.
@@ -47,9 +95,12 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
     const liveCounts = new Map();
     for (const t of result.tasks.filter((x) => !x.cancelled)) liveCounts.set(t.id, (liveCounts.get(t.id) || 0) + 1);
     result.tasks.forEach((t, i) => { t.duplicate = !t.cancelled && (liveCounts.get(t.id) || 0) > 1; t.index = i; });
+    await pauseForPaint();
     result.cru = readCRU(wb.Sheets[CRU_SHEET]);
     result.projectCodes = readProjectCodes(wb.Sheets.Pilotage, wb.Sheets["Préparation"]);
+    await pauseForPaint();
     linkCRU(result.cru, result.tasks.filter((t) => !t.cancelled));
+    await pauseForPaint();
 
     data = result;
     data.fileName = file.name;

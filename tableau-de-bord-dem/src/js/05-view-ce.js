@@ -56,7 +56,7 @@ function affaireGroups(tasks, issueList = issues) {
     return g;
   }).sort((a, b) => AFFAIRE_STATUS[a.status].rank - AFFAIRE_STATUS[b.status].rank
     || (a.nextDue || a.nextJ0 || Infinity) - (b.nextDue || b.nextJ0 || Infinity)
-    || a.affaire.localeCompare(b.affaire, "fr", { numeric: true }));
+    || COLLATOR_FR_NUM.compare(a.affaire, b.affaire));
 }
 
 function j0Range(g) {
@@ -97,7 +97,7 @@ function affaireRow(g) {
       <td>${attentionBadges(g)}</td>
       <td>${badge(st.label, st.tone)}</td></tr>`;
     if (!open) return row;
-    const sub = g.ts.slice().sort((a, b) => a.ree.localeCompare(b.ree, "fr", { numeric: true }) || a.rowNumber - b.rowNumber).map((t) => `<tr>
+    const sub = g.ts.slice().sort((a, b) => COLLATOR_FR_NUM.compare(a.ree, b.ree) || a.rowNumber - b.rowNumber).map((t) => `<tr>
       <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
       <td>${t.j0Label}</td>
       <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>

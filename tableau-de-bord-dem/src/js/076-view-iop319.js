@@ -198,7 +198,7 @@ function viewIOP() {
   // Les cartes et le segment suivent les états et ECU choisis ; les pastilles suivent le contrôle choisi.
   const base = scoped.filter((r) => iopPass(r));
   const n = base.length, count = (k) => base.filter((r) => iopMatches(r, k)).length;
-  const chips = iopChipGroup(scoped, "statut", { title: "État de la TOT", all: "Tous les états", name: (v) => v, sort: (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr") })
+  const chips = iopChipGroup(scoped, "statut", { title: "État de la TOT", all: "Tous les états", name: (v) => v, sort: (a, b) => b[1] - a[1] || COLLATOR_FR.compare(a[0], b[0]) })
     + iopChipGroup(scoped, "ecu", { title: "ECU", all: "Tous les ECU", name: (v) => (v === IOP_NO_ECU ? "Sans ECU" : "ECU " + v), sort: (a, b) => ecuSort(a[0], b[0]) });
   const card = (k, label, sub, tone) => {
     const v = count(k), on = iopCheck === k;

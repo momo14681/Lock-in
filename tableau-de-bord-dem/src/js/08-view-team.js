@@ -69,7 +69,7 @@ function lateGroups(ts, today) {
     if (t.prepDue < g.prepDue) { g.prepDue = t.prepDue; g.j0 = t.j0; }
   }
   return [...groups.values()].map((g) => ({ ...g, owners: [...g.owners], missing: [...g.missing], late: daysBetween(g.prepDue, today) }))
-    .sort((a, b) => b.prepDue - a.prepDue || a.affaire.localeCompare(b.affaire, "fr", { numeric: true }));
+    .sort((a, b) => b.prepDue - a.prepDue || COLLATOR_FR_NUM.compare(a.affaire, b.affaire));
 }
 
 // À venir : REE dont le J0 tombe dans les `days` prochains jours (non réalisés).
@@ -85,7 +85,7 @@ function upcomingGroups(ts, today, days = 60) {
   return [...groups.values()].map((g) => {
     const status = g.ts.some((t) => teamState(t) === TEAM_INCOMPLETE) ? TEAM_INCOMPLETE : g.ts.every((t) => t.prepComplete) ? STATE.ready : STATE.ongoing;
     return { ...g, owners: [...g.owners], inDays: daysBetween(today, g.j0), status };
-  }).sort((a, b) => a.j0 - b.j0 || a.affaire.localeCompare(b.affaire, "fr", { numeric: true }));
+  }).sort((a, b) => a.j0 - b.j0 || COLLATOR_FR_NUM.compare(a.affaire, b.affaire));
 }
 
 // L'écran d'équipe couvre toujours toute l'équipe ; seul le filtre chargé du
@@ -103,7 +103,7 @@ function teamModel() {
   const owners = [...new Set(ts.map((t) => t.responsable))].map((name) => {
     const mine = ts.filter((t) => t.responsable === name);
     return { name, n: mine.length, realized: mine.filter(isRealized).length, prepared: mine.filter((t) => t.prepComplete).length, overdue: mine.filter((t) => t.overdue).length, dueSoon: mine.filter((t) => t.dueSoon).length };
-  }).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "fr"));
+  }).sort((a, b) => b.n - a.n || COLLATOR_FR.compare(a.name, b.name));
   return {
     ts, n, today,
     realized: ts.filter(isRealized).length,

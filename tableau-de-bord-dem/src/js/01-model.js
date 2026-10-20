@@ -16,6 +16,20 @@ const UNASSIGNED = "Non affecté";
 const fields = { affaire: "A", ree: "D", responsable: "G", mc: "I", ot: "J", tot: "K", rdu: "L", totPrete: "N", j0: "O", regime: "P", bpa: "Q", ger: "R", bpd: "S", observations: "V" };
 const names = { affaire: "Affaire eDIM", ree: "REE", responsable: "Chargé d’essais", mc: "MC", ot: "OT", tot: "TOT", rdu: "RDU", totPrete: "TOT prête", j0: "J0", regime: "Régime", bpa: "BPA", ger: "GER/1N", bpd: "BPD", observations: "Observations" };
 
+// Formateurs créés une seule fois : en créer un par appel (toLocaleDateString, new Intl…)
+// coûte cher et figeait la page sur une grosse DEM.
+const DATE_FR = new Intl.DateTimeFormat("fr-FR");
+const DATE_FR_2D = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+const DATE_FR_SHORT = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+const DATETIME_FR = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" });
+const COLLATOR_FR = new Intl.Collator("fr");
+const COLLATOR_FR_NUM = new Intl.Collator("fr", { numeric: true });
+
+// Rend la main au navigateur entre deux paquets de calcul (évite « page ne répond pas »).
+function pauseForPaint() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 function compact(value) {
   if (value === null || value === undefined) return "";
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
@@ -25,7 +39,7 @@ function compact(value) {
 
 function text(value) {
   const normalized = compact(value);
-  if (normalized instanceof Date) return normalized.toLocaleDateString("fr-FR");
+  if (normalized instanceof Date) return DATE_FR.format(normalized);
   if (typeof normalized === "number" && Number.isInteger(normalized)) return String(normalized);
   return String(normalized);
 }
@@ -85,15 +99,15 @@ function daysBetween(from, to) {
 }
 
 function formatDate(date) {
-  return date ? new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date) : "—";
+  return date ? DATE_FR_2D.format(date) : "—";
 }
 
 function formatShortDate(date) {
-  return date ? new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(date) : "—";
+  return date ? DATE_FR_SHORT.format(date) : "—";
 }
 
 function formatFrenchDateTime(date) {
-  return date ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }).format(date) : "—";
+  return date ? DATETIME_FR.format(date) : "—";
 }
 
 function classifyMilestone(value, doneStatuses = [], allowDate = true, readyStatuses = ["P"]) {
@@ -209,7 +223,8 @@ function buildTask(sheet, rowNumber, row, today) {
 
 async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
   const today = startOfDay(now);
-  const workbook = XLSX.read(input, {
+  // input : classeur déjà lu (chargement normal, lu une seule fois) ou octets du fichier.
+  const workbook = input?.Sheets ? input : XLSX.read(input, {
     type: "array", cellDates: true, cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false, dense: true, sheets: TECHNICAL_SHEETS,
   });
 
@@ -222,6 +237,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
   for (const sheetName of TECHNICAL_SHEETS) {
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) continue;
+    await pauseForPaint();
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
     // Les cellules fusionnées portent la valeur de leur coin supérieur gauche.
     for (const merge of sheet["!merges"] || []) {
