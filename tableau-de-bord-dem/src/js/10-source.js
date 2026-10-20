@@ -76,7 +76,8 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
       t.cells = {};
       t.raw = {};
       for (const k of Object.keys(fields)) {
-        const loc = address(t, k).split(":")[0], c = sheet[loc];
+        const loc = address(t, k).split(":")[0], cell = sheet[loc], v = cell && cell.t !== "e" ? normalizeStatus(k, cell.v) : cell?.v;
+        const c = v === cell?.v ? cell : { t: "s", v };
         t.cells[k] = c;
         t.raw[k] = c?.t === "e" ? (c.w || "Erreur Excel") : c?.v instanceof Date ? formatDate(c.v) : String(c?.v ?? "");
       }

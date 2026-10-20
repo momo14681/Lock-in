@@ -90,6 +90,13 @@ function parseExcelDate(value) {
   return null;
 }
 
+// Équivalences de saisie : « Prêt » en TOT prête vaut P ; une date en GER/1N vaut TSR.
+function normalizeStatus(key, value) {
+  if (key === "totPrete" && /^PRETE?S?$/.test(status(value))) return "P";
+  if (key === "ger" && parseExcelDate(value)) return "TSR";
+  return value;
+}
+
 function addDays(date, amount) {
   return new Date(date.getTime() + amount * DAY_MS);
 }
@@ -144,11 +151,11 @@ function buildTask(sheet, rowNumber, row, today) {
     tot: compact(row[10]),
     rdu: compact(row[11]),
     responsableSharePoint: compact(row[12]),
-    totPrete: compact(row[13]),
+    totPrete: normalizeStatus("totPrete", compact(row[13])),
     j0: compact(row[14]),
     regime: compact(row[15]),
     bpa: compact(row[16]),
-    ger: compact(row[17]),
+    ger: normalizeStatus("ger", compact(row[17])),
     bpd: compact(row[18]),
     edrt: compact(row[19]),
     observations: row[21] == null ? "" : String(row[21]).trim(),
