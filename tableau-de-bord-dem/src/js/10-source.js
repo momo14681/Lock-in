@@ -183,6 +183,7 @@ function applyProfile(profile) {
   $("drop").classList.toggle("hidden", !!data);
   $("view").innerHTML = "";
   $("pdfExport").disabled = !data;
+  $("paExport").disabled = !data;
   $("pngExport").disabled = !data;
   $("pngRhythm").disabled = !data;
   renderChrome();
@@ -502,6 +503,7 @@ function closeWorkbook() {
   sourcePaused = true;
   stopSchedule();
   $("pdfExport").disabled = true;
+  $("paExport").disabled = true;
   $("pngExport").disabled = true;
   $("pngRhythm").disabled = true;
   data = null; issues = []; allIssues = []; visible = [];

@@ -201,3 +201,28 @@ async function exportPDF() {
     b.textContent = "Cette vue en PDF";
   }
 }
+
+// --- Données pour l'appli Power Apps ---------------------------------------------
+// Une ligne par TOT, cellules fusionnées résolues, valeurs telles qu'écrites dans la DEM
+// (dates jj/mm/aaaa en texte). À mettre en tableau « DEM » (Ctrl+T) ou à importer en liste SharePoint.
+const PA_COLUMNS = ["Cle", "Num", "Feuille", "Ligne", "Affaire", "Libelle", "REE", "LibelleREE", "Titulaire", "MC", "OT", "TOT", "RDU", "Charge", "TOTPrete", "J0", "Regime", "BPA", "GER1N", "BPD", "Observations"];
+
+function exportPowerApps() {
+  if (!data) return;
+  const o = (t, k) => t.orig?.[k] ?? "";
+  const rows = data.tasks.map((t, i) => [
+    `${t.sheet}-${t.rowNumber}`, i + 1, t.sheet, t.rowNumber, o(t, "affaire") || t.affaire, t.libelle, o(t, "ree") || t.ree, t.reeLibelle, t.entreprise,
+    o(t, "mc"), o(t, "ot"), o(t, "tot"), o(t, "rdu"), o(t, "responsable"), o(t, "totPrete"), o(t, "j0"), o(t, "regime"),
+    o(t, "bpa"), o(t, "ger"), o(t, "bpd"), o(t, "observations"),
+  ]);
+  // Tout en texte sauf Num et Ligne : OT « 01 », dates et codes restent tels quels.
+  const ws = XLSX.utils.aoa_to_sheet([PA_COLUMNS, ...rows]);
+  for (const [addr, cell] of Object.entries(ws)) {
+    if (addr[0] === "!" || /^[BD]\d+$/.test(addr) && !/^[BD]1$/.test(addr)) continue;
+    if (cell.t !== "s") { cell.v = String(cell.v ?? ""); cell.t = "s"; }
+  }
+  ws["!cols"] = PA_COLUMNS.map((c) => ({ wch: ["Libelle", "LibelleREE", "Observations"].includes(c) ? 40 : 12 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "DEM");
+  downloadBytes(XLSX.write(wb, { type: "array", bookType: "xlsx" }), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", `DEM_${activeDEM}_PowerApps.xlsx`);
+}

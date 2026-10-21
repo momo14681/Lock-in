@@ -1,0 +1,477 @@
+Screens:
+  scrPilotage:
+    Properties:
+      Fill: |-
+        =RGBA(243, 245, 248, 1)
+    Children:
+      - pilBandeau:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =64
+            Fill: |-
+              =RGBA(0, 26, 112, 1)
+      - pilTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Pilotage des essais"
+            X: =24
+            Y: =8
+            Width: =400
+            Height: =28
+            Size: =17
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+      - pilSousTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="DEM · " & If(gCoordo, "Coordo essais", Coalesce(gMoi, "chargé non choisi"))
+            X: =24
+            Y: =34
+            Width: =520
+            Height: =22
+            Size: =11
+            Color: |-
+              =RGBA(200, 210, 235, 1)
+      - pilNav0:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Accueil"
+            X: =Parent.Width - 616
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrAccueil, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - pilNav1:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mes TOT"
+            X: =Parent.Width - 466
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrTOT, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - pilNav2:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mon pilotage"
+            X: =Parent.Width - 316
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrPilotage, ScreenTransition.None)
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - pilNav3:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Équipe"
+            X: =Parent.Width - 166
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrEquipe, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - pilCarte0:
+          Control: Rectangle
+          Properties:
+            X: =40
+            Y: =80
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: =false
+      - pilValeur0:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, Gelee)) / CountRows(tMes)), "0%")
+            X: =60
+            Y: =96
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            OnSelect: =false
+      - pilLegende0:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Lignes gelées (MC, OT, TOT, RDU, Régime) · " & Text(CountRows(Filter(tMes, Gelee))) & " / " & Text(CountRows(tMes)) & " "
+            X: =60
+            Y: =146
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: =false
+            VerticalAlign: =VerticalAlign.Top
+      - pilCarte1:
+          Control: Rectangle
+          Properties:
+            X: =364
+            Y: =80
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: =false
+      - pilValeur1:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, BpaFait)) / CountRows(tMes)), "0%")
+            X: =384
+            Y: =96
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            OnSelect: =false
+      - pilLegende1:
+          Control: Label
+          Properties:
+            Text: |-
+              ="BPA faits · " & Text(CountRows(Filter(tMes, BpaFait))) & " / " & Text(CountRows(tMes)) & " "
+            X: =384
+            Y: =146
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: =false
+            VerticalAlign: =VerticalAlign.Top
+      - pilCarte2:
+          Control: Rectangle
+          Properties:
+            X: =688
+            Y: =80
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: =false
+      - pilValeur2:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, Realise)) / CountRows(tMes)), "0%")
+            X: =708
+            Y: =96
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            OnSelect: =false
+      - pilLegende2:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Essais réalisés · " & Text(CountRows(Filter(tMes, Realise))) & " / " & Text(CountRows(tMes)) & " "
+            X: =708
+            Y: =146
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: =false
+            VerticalAlign: =VerticalAlign.Top
+      - pilCarte3:
+          Control: Rectangle
+          Properties:
+            X: =1012
+            Y: =80
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: =false
+      - pilValeur3:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, BpdSigne)) / CountRows(tMes)), "0%")
+            X: =1032
+            Y: =96
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            OnSelect: =false
+      - pilLegende3:
+          Control: Label
+          Properties:
+            Text: |-
+              ="BPD signés · " & Text(CountRows(Filter(tMes, BpdSigne))) & " / " & Text(CountRows(tMes)) & " "
+            X: =1032
+            Y: =146
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: =false
+            VerticalAlign: =VerticalAlign.Top
+      - pilPeriode:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Échéance"
+            X: =40
+            Y: =212
+            Width: =100
+            Height: =36
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - ddFenetre:
+          Control: Classic/DropDown
+          Properties:
+            Items: |-
+              =["Moins de 30 jours", "30 à 90 jours", "Plus tard", "Tout"]
+            Default: |-
+              =Coalesce(gFenetre, "Moins de 30 jours")
+            OnChange: |-
+              =Set(gFenetre, Self.Selected.Value)
+            X: =140
+            Y: =212
+            Width: =240
+            Height: =36
+            Size: =12
+      - GelTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Gel M0 à passer (J0 − 70 j) · " & Text(CountRows(galGel.AllItems)) & " REE"
+            X: =40
+            Y: =262
+            Width: =(Parent.Width - 104) / 2
+            Height: =30
+            Size: =15
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+      - galGel:
+          Control: Gallery
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            Items: |-
+              =SortByColumns(Filter(AddColumns(GroupBy(Filter(tMes, !Gelee && !IsBlank(GelM0)), Affaire, REE, Lignes), Gel, Min(Lignes, GelM0), Libelle1, First(Lignes).LibelleREE, Manque, First(Lignes).ManqueGel, NbLignes, CountRows(Lignes)), Switch(ddFenetre.Selected.Value, "Moins de 30 jours", Gel < DateAdd(Today(), 30), "30 à 90 jours", Gel >= DateAdd(Today(), 30) && Gel < DateAdd(Today(), 90), "Plus tard", Gel >= DateAdd(Today(), 90), true)), Gel, SortOrder.Ascending)
+            TemplateSize: =58
+            TemplatePadding: =0
+            X: =40
+            Y: =298
+            Width: =(Parent.Width - 104) / 2
+            Height: =Parent.Height - 318
+            Fill: |-
+              =RGBA(220, 226, 234, 1)
+            ShowScrollbar: =true
+          Children:
+            - GelFond:
+                Control: Rectangle
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight - 1
+                  Fill: |-
+                    =RGBA(255, 255, 255, 1)
+            - GelRee:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =ThisItem.Affaire & " · REE " & ThisItem.REE
+                  X: =16
+                  Y: =6
+                  Width: =Parent.TemplateWidth - 180
+                  Height: =24
+                  Size: =13
+                  Color: |-
+                    =RGBA(16, 87, 200, 1)
+            - GelLib:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="Manque " & ThisItem.Manque & " · " & Text(ThisItem.NbLignes) & " TOT · " & ThisItem.Libelle1
+                  X: =16
+                  Y: =30
+                  Width: =Parent.TemplateWidth - 180
+                  Height: =22
+                  Size: =11
+                  Color: |-
+                    =RGBA(90, 102, 120, 1)
+            - GelDate:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =Text(ThisItem.Gel, "dd/mm/yyyy")
+                  X: =Parent.TemplateWidth - 160
+                  Y: =6
+                  Width: =144
+                  Height: =46
+                  Size: =12
+                  Color: |-
+                    =RGBA(0, 26, 112, 1)
+                  Align: =Align.Right
+      - BpaTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="BPA à faire · " & Text(CountRows(galBpa.AllItems)) & " REE"
+            X: =64 + (Parent.Width - 104) / 2
+            Y: =262
+            Width: =(Parent.Width - 104) / 2
+            Height: =30
+            Size: =15
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+      - galBpa:
+          Control: Gallery
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            Items: |-
+              =SortByColumns(Filter(AddColumns(GroupBy(Filter(tMes, !BpaFait && !IsBlank(J0Date)), Affaire, REE, Lignes), J0Min, Min(Lignes, J0Date), Libelle1, First(Lignes).LibelleREE, NbLignes, CountRows(Lignes), ParMoi, CountRows(Filter(Lignes, APreparerParMoi)) > 0), Switch(ddFenetre.Selected.Value, "Moins de 30 jours", J0Min < DateAdd(Today(), 30), "30 à 90 jours", J0Min >= DateAdd(Today(), 30) && J0Min < DateAdd(Today(), 90), "Plus tard", J0Min >= DateAdd(Today(), 90), true)), J0Min, SortOrder.Ascending)
+            TemplateSize: =58
+            TemplatePadding: =0
+            X: =64 + (Parent.Width - 104) / 2
+            Y: =298
+            Width: =(Parent.Width - 104) / 2
+            Height: =Parent.Height - 318
+            Fill: |-
+              =RGBA(220, 226, 234, 1)
+            ShowScrollbar: =true
+          Children:
+            - BpaFond:
+                Control: Rectangle
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight - 1
+                  Fill: |-
+                    =RGBA(255, 255, 255, 1)
+            - BpaRee:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =ThisItem.Affaire & " · REE " & ThisItem.REE
+                  X: =16
+                  Y: =6
+                  Width: =Parent.TemplateWidth - 180
+                  Height: =24
+                  Size: =13
+                  Color: |-
+                    =RGBA(16, 87, 200, 1)
+            - BpaLib:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =Text(ThisItem.NbLignes) & " TOT sans BPA" & If(ThisItem.ParMoi, " · à préparer par moi", "") & " · " & ThisItem.Libelle1
+                  X: =16
+                  Y: =30
+                  Width: =Parent.TemplateWidth - 180
+                  Height: =22
+                  Size: =11
+                  Color: |-
+                    =RGBA(90, 102, 120, 1)
+            - BpaDate:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="J0 " & Text(ThisItem.J0Min, "dd/mm/yyyy")
+                  X: =Parent.TemplateWidth - 160
+                  Y: =6
+                  Width: =144
+                  Height: =46
+                  Size: =12
+                  Color: |-
+                    =RGBA(0, 26, 112, 1)
+                  Align: =Align.Right

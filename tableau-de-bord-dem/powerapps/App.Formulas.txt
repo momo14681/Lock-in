@@ -1,0 +1,72 @@
+// =============================================================================
+// Règles de lecture de la DEM (les mêmes que le tableau de bord HTML).
+// À coller dans App > propriété Formulas (version séparateurs anglais « , » et « ; »).
+// colSrc : lignes de la source DEM, chargées à l'ouverture de l'écran Accueil.
+// =============================================================================
+
+tDEM =
+    ForAll(
+        colSrc As r,
+        With(
+            {
+                j0: IfError(DateValue(r.J0, "fr-FR"), Blank()),
+                dTP: IfError(DateValue(r.TOTPrete, "fr-FR"), Blank()),
+                dBPA: IfError(DateValue(r.BPA, "fr-FR"), Blank()),
+                dGER: IfError(DateValue(r.GER1N, "fr-FR"), Blank()),
+                dBPD: IfError(DateValue(r.BPD, "fr-FR"), Blank()),
+                tp: Upper(Trim(r.TOTPrete)),
+                ger: Upper(Trim(r.GER1N)),
+                bpa: Upper(Trim(r.BPA)),
+                manque: IsBlank(r.MC) || IsBlank(r.OT) || IsBlank(r.TOT),
+                annul: CountRows(Filter([r.MC, r.OT, r.TOT, r.RDU, r.TOTPrete, r.Regime, r.BPA, r.GER1N, r.BPD] As a, StartsWith(Upper(Trim(a.Value)), "ANNUL"))) > 0
+            },
+            With(
+                {
+                    // TOT prête faite : date, P, Prêt ou Renseigné.
+                    totOk: !IsBlank(dTP) || tp in ["P", "PRÊT", "PRET", "RENSEIGNÉ", "RENSEIGNE"],
+                    // GER/1N signé : PSR, TSR, TAR (total avec réserve) ou une date.
+                    gerSigne: !IsBlank(dGER) || ger in ["PSR", "TSR", "TAR"],
+                    bpdSigne: !IsBlank(dBPD)
+                },
+                With(
+                    {
+                        infos: !annul && If(bpdSigne, manque || !totOk, (manque || !totOk) && (totOk || !IsBlank(ger)))
+                    },
+                    With(
+                        {
+                            // Prépa en retard : TOT pas prête alors que J0 - 30 j est passé.
+                            retard: !annul && !totOk && !infos && !bpdSigne && !IsBlank(j0) && DateAdd(j0, -30) < Today()
+                        },
+                        Patch(
+                            r,
+                            {
+                                Charge: If(IsBlank(Trim(r.Charge)) || StartsWith(Lower(Trim(r.Charge)), "non renseign"), "Non affecté", Trim(r.Charge)),
+                                Phase: If(EndsWith(r.Feuille, "M"), "TEM", EndsWith(r.Feuille, "A"), "AT", ""),
+                                J0Date: j0,
+                                J0Inconnu: IsBlank(j0) && StartsWith(Upper(Trim(r.J0)), "NON RENSEIGN"),
+                                Echeance: If(IsBlank(j0), Blank(), DateAdd(j0, -30)),
+                                GelM0: If(IsBlank(j0), Blank(), DateAdd(j0, -70)),
+                                // Ligne gelée : MC, OT, TOT, RDU et Régime renseignés.
+                                Gelee: !IsBlank(r.MC) && !IsBlank(r.OT) && !IsBlank(r.TOT) && !IsBlank(r.RDU) && !IsBlank(r.Regime),
+                                ManqueGel: Concat(Filter(Table({n: "MC", v: r.MC}, {n: "OT", v: r.OT}, {n: "TOT", v: r.TOT}, {n: "RDU", v: r.RDU}, {n: "Régime", v: r.Regime}) As m, IsBlank(m.v)), n, ", "),
+                                // BPA fait : date ou P. À préparer par le chargé si titulaire EDF ou BPA en F.
+                                BpaFait: !IsBlank(dBPA) || bpa = "P",
+                                APreparerParMoi: "EDF" in Upper(r.Titulaire) || bpa = "F",
+                                Annulee: annul,
+                                TotPreteOk: totOk,
+                                GerSigne: gerSigne,
+                                BpdSigne: bpdSigne,
+                                Realise: !annul && gerSigne,
+                                InfosManquantes: infos,
+                                Retard: retard,
+                                Etat: If(annul, "Annulée", gerSigne, "Réalisé", infos, "Infos manquantes", totOk, "Prépa terminée", retard, "Prépa en retard", "En préparation")
+                            }
+                        )
+                    )
+                )
+            )
+        )
+    );
+
+// TOT affichées : celles du chargé choisi, ou toutes en mode coordo. Les TOT annulées sont écartées.
+tMes = Filter(tDEM, !Annulee && (gCoordo || Charge = gMoi));

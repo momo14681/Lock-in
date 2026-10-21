@@ -1,0 +1,577 @@
+Screens:
+  scrFiche:
+    Properties:
+      Fill: |-
+        =RGBA(243, 245, 248, 1)
+    Children:
+      - ficBandeau:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =64
+            Fill: |-
+              =RGBA(0, 26, 112, 1)
+      - ficTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Pilotage des essais"
+            X: =24
+            Y: =8
+            Width: =400
+            Height: =28
+            Size: =17
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+      - ficSousTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="DEM · " & If(gCoordo, "Coordo essais", Coalesce(gMoi, "chargé non choisi"))
+            X: =24
+            Y: =34
+            Width: =520
+            Height: =22
+            Size: =11
+            Color: |-
+              =RGBA(200, 210, 235, 1)
+      - ficNav0:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Accueil"
+            X: =Parent.Width - 616
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrAccueil, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - ficNav1:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mes TOT"
+            X: =Parent.Width - 466
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrTOT, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - ficNav2:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mon pilotage"
+            X: =Parent.Width - 316
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrPilotage, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - ficNav3:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Équipe"
+            X: =Parent.Width - 166
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrEquipe, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - ficRetour:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="‹ Retour à la liste"
+            X: =40
+            Y: =80
+            Width: =170
+            Height: =34
+            OnSelect: =Back()
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =1
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            BorderColor: |-
+              =RGBA(0, 26, 112, 1)
+      - ficTitre2:
+          Control: Label
+          Properties:
+            Text: |-
+              =gSel.Affaire & " · REE " & gSel.REE
+            X: =40
+            Y: =124
+            Width: =700
+            Height: =36
+            Size: =20
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+      - ficLibelle:
+          Control: Label
+          Properties:
+            Text: |-
+              =gSel.Libelle & " · " & gSel.LibelleREE
+            X: =40
+            Y: =160
+            Width: =900
+            Height: =24
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - ficInfos:
+          Control: Label
+          Properties:
+            Text: |-
+              ="TOT " & gSel.OT & "-" & gSel.TOT & " · " & gSel.Feuille & " ligne " & Text(gSel.Ligne) & " · titulaire " & Coalesce(gSel.Titulaire, "—") & " · chargé " & gSel.Charge
+            X: =40
+            Y: =184
+            Width: =1000
+            Height: =24
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - ficEtat:
+          Control: Label
+          Properties:
+            Text: |-
+              ="État : " & gSel.Etat & If(IsBlank(gSel.Echeance), "", " · échéance prépa " & Text(gSel.Echeance, "dd/mm/yyyy")) & If(gSel.Gelee, " · ligne gelée", " · manque pour le Gel M0 : " & gSel.ManqueGel)
+            X: =40
+            Y: =210
+            Width: =1100
+            Height: =24
+            Size: =12
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+      - ficCadre:
+          Control: Rectangle
+          Properties:
+            X: =40
+            Y: =246
+            Width: =Parent.Width - 80
+            Height: =400
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+      - libTOTPrete:
+          Control: Label
+          Properties:
+            Text: |-
+              ="TOT prête"
+            X: =64
+            Y: =266
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inTOTPrete:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.TOTPrete
+            HintText: |-
+              ="jj/mm/aaaa, P, R ou Renseigné"
+            X: =64
+            Y: =290
+            Width: =400
+            Height: =38
+            Size: =13
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - libBPA:
+          Control: Label
+          Properties:
+            Text: |-
+              ="BPA"
+            X: =488
+            Y: =266
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inBPA:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.BPA
+            HintText: |-
+              ="jj/mm/aaaa, P, R ou F"
+            X: =488
+            Y: =290
+            Width: =400
+            Height: =38
+            Size: =13
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - libGER1N:
+          Control: Label
+          Properties:
+            Text: |-
+              ="GER/1N"
+            X: =912
+            Y: =266
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inGER1N:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.GER1N
+            HintText: |-
+              ="jj/mm/aaaa, P, PS, TS, PSR, TSR, TAR ou R"
+            X: =912
+            Y: =290
+            Width: =400
+            Height: =38
+            Size: =13
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - libBPD:
+          Control: Label
+          Properties:
+            Text: |-
+              ="BPD"
+            X: =64
+            Y: =358
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inBPD:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.BPD
+            HintText: |-
+              ="jj/mm/aaaa, P ou R"
+            X: =64
+            Y: =382
+            Width: =400
+            Height: =38
+            Size: =13
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - libJ0:
+          Control: Label
+          Properties:
+            Text: |-
+              ="J0"
+            X: =488
+            Y: =358
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inJ0:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.J0
+            HintText: |-
+              ="jj/mm/aaaa ou Non renseigné"
+            X: =488
+            Y: =382
+            Width: =400
+            Height: =38
+            Size: =13
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - libMC:
+          Control: Label
+          Properties:
+            Text: |-
+              ="MC"
+            X: =912
+            Y: =358
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inMC:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.MC
+            HintText: |-
+              =""
+            X: =912
+            Y: =382
+            Width: =400
+            Height: =38
+            Size: =13
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - libRDU:
+          Control: Label
+          Properties:
+            Text: |-
+              ="RDU"
+            X: =64
+            Y: =450
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inRDU:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.RDU
+            HintText: |-
+              =""
+            X: =64
+            Y: =474
+            Width: =400
+            Height: =38
+            Size: =13
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - libRegime:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Régime"
+            X: =488
+            Y: =450
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inRegime:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.Regime
+            HintText: |-
+              =""
+            X: =488
+            Y: =474
+            Width: =400
+            Height: =38
+            Size: =13
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - libObservations:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Observations"
+            X: =912
+            Y: =450
+            Width: =400
+            Height: =22
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - inObservations:
+          Control: Classic/TextInput
+          Properties:
+            Default: =gSel.Observations
+            Mode: =TextMode.MultiLine
+            X: =912
+            Y: =474
+            Width: =400
+            Height: =110
+            Size: =12
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - ficEnregistrer:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Enregistrer dans la DEM"
+            X: =64
+            Y: =586
+            Width: =230
+            Height: =42
+            OnSelect: |-
+              =With(
+                  {
+                      tp: Trim(inTOTPrete.Text),
+                      bpa: Trim(inBPA.Text),
+                      ger: Trim(inGER1N.Text),
+                      bpd: Trim(inBPD.Text),
+                      j0: Trim(inJ0.Text)
+                  },
+                  With(
+                      {
+                          dtp: IfError(DateValue(tp, "fr-FR"), Blank()),
+                          dbpa: IfError(DateValue(bpa, "fr-FR"), Blank()),
+                          dger: IfError(DateValue(ger, "fr-FR"), Blank()),
+                          dbpd: IfError(DateValue(bpd, "fr-FR"), Blank()),
+                          dj0: IfError(DateValue(j0, "fr-FR"), Blank())
+                      },
+                      With(
+                          {
+                              erreurs: Concat(
+                                  Filter(
+                                      Table(
+                                          {champ: "TOT prête", ok: IsBlank(tp) || !IsBlank(dtp) || Upper(tp) in ["P", "R", "PRÊT", "PRET", "RENSEIGNÉ", "RENSEIGNE"] || StartsWith(Upper(tp), "ANNUL")},
+                                          {champ: "BPA", ok: IsBlank(bpa) || !IsBlank(dbpa) || Upper(bpa) in ["P", "R", "F"] || StartsWith(Upper(bpa), "ANNUL")},
+                                          {champ: "GER/1N", ok: IsBlank(ger) || !IsBlank(dger) || Upper(ger) in ["P", "PS", "TS", "PSR", "TSR", "TAR", "R"] || StartsWith(Upper(ger), "ANNUL")},
+                                          {champ: "BPD", ok: IsBlank(bpd) || !IsBlank(dbpd) || Upper(bpd) in ["P", "R"] || StartsWith(Upper(bpd), "ANNUL")},
+                                          {champ: "J0", ok: IsBlank(j0) || !IsBlank(dj0) || StartsWith(Upper(j0), "NON RENSEIGN")}
+                                      ) As e,
+                                      !e.ok
+                                  ),
+                                  champ,
+                                  ", "
+                              ),
+                              valeurs: {
+                                  TOTPrete: If(IsBlank(dtp), tp, Text(dtp, "dd/mm/yyyy")),
+                                  BPA: If(IsBlank(dbpa), Upper(bpa), Text(dbpa, "dd/mm/yyyy")),
+                                  GER1N: If(IsBlank(dger), Upper(ger), Text(dger, "dd/mm/yyyy")),
+                                  BPD: If(IsBlank(dbpd), Upper(bpd), Text(dbpd, "dd/mm/yyyy")),
+                                  J0: If(IsBlank(dj0), j0, Text(dj0, "dd/mm/yyyy")),
+                                  MC: Trim(inMC.Text),
+                                  RDU: Trim(inRDU.Text),
+                                  Regime: Trim(inRegime.Text),
+                                  Observations: inObservations.Text
+                              }
+                          },
+                          If(
+                              !IsBlank(erreurs),
+                              Notify("Valeur non reconnue pour : " & erreurs & ". Saisir une date jj/mm/aaaa ou un des codes proposés.", NotificationType.Error),
+                              Patch(DEM, LookUp(DEM, Num = gSel.Num), valeurs);
+                              If(
+                                  IsEmpty(Errors(DEM)),
+                                  Patch(colSrc, LookUp(colSrc, Num = gSel.Num), valeurs);
+                                  Set(gSel, LookUp(tDEM, Num = gSel.Num));
+                                  Notify("Enregistré dans la DEM.", NotificationType.Success),
+                                  Notify("Enregistrement impossible : " & First(Errors(DEM)).Message, NotificationType.Error)
+                              )
+                          )
+                      )
+                  )
+              )
+            Fill: |-
+              =RGBA(16, 87, 200, 1)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =13
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - ficAnnuler:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Annuler les saisies"
+            X: =308
+            Y: =586
+            Width: =180
+            Height: =42
+            OnSelect: =Reset(inTOTPrete); Reset(inBPA); Reset(inGER1N); Reset(inBPD); Reset(inJ0); Reset(inMC); Reset(inRDU); Reset(inRegime); Reset(inObservations)
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =1
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            BorderColor: |-
+              =RGBA(0, 26, 112, 1)
+      - ficNote:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Les dates sont enregistrées au format jj/mm/aaaa. Les autres colonnes de la DEM ne sont pas modifiées."
+            X: =504
+            Y: =586
+            Width: =700
+            Height: =42
+            Size: =11
+            Color: |-
+              =RGBA(90, 102, 120, 1)

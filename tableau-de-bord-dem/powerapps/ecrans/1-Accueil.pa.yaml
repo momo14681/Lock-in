@@ -1,0 +1,672 @@
+Screens:
+  scrAccueil:
+    Properties:
+      Fill: |-
+        =RGBA(243, 245, 248, 1)
+      OnVisible: |-
+        =If(CountRows(colSrc) = 0,
+        Clear(colSrc);
+        ForAll(
+            Sequence(5, 0, 2000) As b,
+            Collect(colSrc, Filter(DEM, Num > b.Value && Num <= b.Value + 2000))
+        );
+        Set(gMaj, Now());
+        If(
+            IsBlank(gMoi),
+            Set(
+                gMoi,
+                First(
+                    Filter(
+                        Distinct(Filter(tDEM, !Annulee), Charge) As c,
+                        CountRows(Filter(Split(User().FullName, " ") As w, Len(w.Value) > 1 && !(Lower(w.Value) in Lower(c.Value)))) = 0
+                    )
+                ).Value
+            )
+        )
+        )
+    Children:
+      - accBandeau:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =64
+            Fill: |-
+              =RGBA(0, 26, 112, 1)
+      - accTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Pilotage des essais"
+            X: =24
+            Y: =8
+            Width: =400
+            Height: =28
+            Size: =17
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+      - accSousTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="DEM · " & If(gCoordo, "Coordo essais", Coalesce(gMoi, "chargé non choisi"))
+            X: =24
+            Y: =34
+            Width: =520
+            Height: =22
+            Size: =11
+            Color: |-
+              =RGBA(200, 210, 235, 1)
+      - accNav0:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Accueil"
+            X: =Parent.Width - 616
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrAccueil, ScreenTransition.None)
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - accNav1:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mes TOT"
+            X: =Parent.Width - 466
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrTOT, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - accNav2:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mon pilotage"
+            X: =Parent.Width - 316
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrPilotage, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - accNav3:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Équipe"
+            X: =Parent.Width - 166
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrEquipe, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - accProfil:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Profil"
+            X: =40
+            Y: =84
+            Width: =100
+            Height: =24
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - accModeCharge:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Chargé d’essais"
+            X: =40
+            Y: =110
+            Width: =170
+            Height: =36
+            OnSelect: |-
+              =Set(gCoordo, false)
+            Fill: |-
+              =If(gCoordo, RGBA(255, 255, 255, 1), RGBA(0, 26, 112, 1))
+            Color: |-
+              =If(gCoordo, RGBA(0, 26, 112, 1), RGBA(255, 255, 255, 1))
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =1
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            BorderColor: |-
+              =RGBA(0, 26, 112, 1)
+      - accModeCoordo:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Coordo essais"
+            X: =216
+            Y: =110
+            Width: =170
+            Height: =36
+            OnSelect: |-
+              =Set(gCoordo, true)
+            Fill: |-
+              =If(gCoordo, RGBA(0, 26, 112, 1), RGBA(255, 255, 255, 1))
+            Color: |-
+              =If(gCoordo, RGBA(255, 255, 255, 1), RGBA(0, 26, 112, 1))
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =1
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            BorderColor: |-
+              =RGBA(0, 26, 112, 1)
+      - accChoixLib:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Chargé d’essais"
+            X: =420
+            Y: =84
+            Width: =300
+            Height: =24
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - accCharge:
+          Control: Classic/DropDown
+          Properties:
+            Items: |-
+              =Sort(Distinct(Filter(tDEM, !Annulee), Charge), Value)
+            Default: =gMoi
+            OnChange: |-
+              =Set(gMoi, Self.Selected.Value)
+            X: =420
+            Y: =110
+            Width: =320
+            Height: =36
+            Size: =12
+            DisplayMode: |-
+              =If(gCoordo, DisplayMode.Disabled, DisplayMode.Edit)
+      - accMaj:
+          Control: Label
+          Properties:
+            Text: |-
+              =If(IsBlank(gMaj), "Chargement de la DEM…", "Données lues à " & Text(gMaj, "hh:mm") & " · " & Text(CountRows(colSrc)) & " lignes")
+            X: =Parent.Width - 520
+            Y: =110
+            Width: =340
+            Height: =36
+            Size: =11
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            Align: =Align.Right
+      - accActualiser:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Actualiser"
+            X: =Parent.Width - 168
+            Y: =110
+            Width: =128
+            Height: =36
+            OnSelect: |-
+              =Clear(colSrc);
+              ForAll(
+                  Sequence(5, 0, 2000) As b,
+                  Collect(colSrc, Filter(DEM, Num > b.Value && Num <= b.Value + 2000))
+              );
+              Set(gMaj, Now());
+              If(
+                  IsBlank(gMoi),
+                  Set(
+                      gMoi,
+                      First(
+                          Filter(
+                              Distinct(Filter(tDEM, !Annulee), Charge) As c,
+                              CountRows(Filter(Split(User().FullName, " ") As w, Len(w.Value) > 1 && !(Lower(w.Value) in Lower(c.Value)))) = 0
+                          )
+                      ).Value
+                  )
+              )
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =1
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            BorderColor: |-
+              =RGBA(0, 26, 112, 1)
+      - accCarte0:
+          Control: Rectangle
+          Properties:
+            X: =40
+            Y: =176
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: |-
+              =Set(gFiltre, "Tous les états"); Navigate(scrTOT, ScreenTransition.None)
+      - accValeur0:
+          Control: Label
+          Properties:
+            Text: =Text(CountRows(tMes))
+            X: =60
+            Y: =192
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            OnSelect: |-
+              =Set(gFiltre, "Tous les états"); Navigate(scrTOT, ScreenTransition.None)
+      - accLegende0:
+          Control: Label
+          Properties:
+            Text: |-
+              ="TOT suivies · " & Text(CountRows(Distinct(tMes, Affaire & REE))) & " REE"
+            X: =60
+            Y: =242
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: |-
+              =Set(gFiltre, "Tous les états"); Navigate(scrTOT, ScreenTransition.None)
+            VerticalAlign: =VerticalAlign.Top
+      - accCarte1:
+          Control: Rectangle
+          Properties:
+            X: =364
+            Y: =176
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: |-
+              =Set(gFiltre, "Prépa terminée"); Navigate(scrTOT, ScreenTransition.None)
+      - accValeur1:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, TotPreteOk)) / CountRows(tMes)), "0%")
+            X: =384
+            Y: =192
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(16, 87, 200, 1)
+            OnSelect: |-
+              =Set(gFiltre, "Prépa terminée"); Navigate(scrTOT, ScreenTransition.None)
+      - accLegende1:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Préparation terminée · " & Text(CountRows(Filter(tMes, TotPreteOk))) & " / " & Text(CountRows(tMes)) & " TOT"
+            X: =384
+            Y: =242
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: |-
+              =Set(gFiltre, "Prépa terminée"); Navigate(scrTOT, ScreenTransition.None)
+            VerticalAlign: =VerticalAlign.Top
+      - accCarte2:
+          Control: Rectangle
+          Properties:
+            X: =688
+            Y: =176
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: |-
+              =Set(gFiltre, "Réalisé"); Navigate(scrTOT, ScreenTransition.None)
+      - accValeur2:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, Realise)) / CountRows(tMes)), "0%")
+            X: =708
+            Y: =192
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(80, 158, 47, 1)
+            OnSelect: |-
+              =Set(gFiltre, "Réalisé"); Navigate(scrTOT, ScreenTransition.None)
+      - accLegende2:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Essais réalisés (GER/1N signé) · " & Text(CountRows(Filter(tMes, Realise))) & " / " & Text(CountRows(tMes)) & " TOT"
+            X: =708
+            Y: =242
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: |-
+              =Set(gFiltre, "Réalisé"); Navigate(scrTOT, ScreenTransition.None)
+            VerticalAlign: =VerticalAlign.Top
+      - accCarte3:
+          Control: Rectangle
+          Properties:
+            X: =1012
+            Y: =176
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: |-
+              =Navigate(scrPilotage, ScreenTransition.None)
+      - accValeur3:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, BpdSigne)) / CountRows(tMes)), "0%")
+            X: =1032
+            Y: =192
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            OnSelect: |-
+              =Navigate(scrPilotage, ScreenTransition.None)
+      - accLegende3:
+          Control: Label
+          Properties:
+            Text: |-
+              ="BPD signés · " & Text(CountRows(Filter(tMes, BpdSigne))) & " / " & Text(CountRows(tMes)) & " TOT"
+            X: =1032
+            Y: =242
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: |-
+              =Navigate(scrPilotage, ScreenTransition.None)
+            VerticalAlign: =VerticalAlign.Top
+      - accCarte4:
+          Control: Rectangle
+          Properties:
+            X: =40
+            Y: =316
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: |-
+              =Set(gFiltre, "Prépa en retard"); Navigate(scrTOT, ScreenTransition.None)
+      - accValeur4:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(CountRows(Filter(tMes, Retard)))
+            X: =60
+            Y: =332
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =If(CountRows(Filter(tMes, Retard)) > 0, RGBA(227, 38, 45, 1), RGBA(0, 26, 112, 1))
+            OnSelect: |-
+              =Set(gFiltre, "Prépa en retard"); Navigate(scrTOT, ScreenTransition.None)
+      - accLegende4:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Prépas en retard (J0 − 30 j passé, TOT pas prête)"
+            X: =60
+            Y: =382
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: |-
+              =Set(gFiltre, "Prépa en retard"); Navigate(scrTOT, ScreenTransition.None)
+            VerticalAlign: =VerticalAlign.Top
+      - accCarte5:
+          Control: Rectangle
+          Properties:
+            X: =364
+            Y: =316
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: |-
+              =Set(gFiltre, "Infos manquantes"); Navigate(scrTOT, ScreenTransition.None)
+      - accValeur5:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(CountRows(Filter(tMes, InfosManquantes)))
+            X: =384
+            Y: =332
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =If(CountRows(Filter(tMes, InfosManquantes)) > 0, RGBA(170, 110, 0, 1), RGBA(0, 26, 112, 1))
+            OnSelect: |-
+              =Set(gFiltre, "Infos manquantes"); Navigate(scrTOT, ScreenTransition.None)
+      - accLegende5:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Infos manquantes (MC, OT, TOT ou TOT prête)"
+            X: =384
+            Y: =382
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: |-
+              =Set(gFiltre, "Infos manquantes"); Navigate(scrTOT, ScreenTransition.None)
+            VerticalAlign: =VerticalAlign.Top
+      - accCarte6:
+          Control: Rectangle
+          Properties:
+            X: =688
+            Y: =316
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: |-
+              =Set(gFenetre, "Moins de 30 jours"); Navigate(scrPilotage, ScreenTransition.None)
+      - accValeur6:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(CountRows(Distinct(Filter(tMes, !BpaFait && !IsBlank(J0Date) && J0Date < DateAdd(Today(), 30)), Affaire & REE)))
+            X: =708
+            Y: =332
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            OnSelect: |-
+              =Set(gFenetre, "Moins de 30 jours"); Navigate(scrPilotage, ScreenTransition.None)
+      - accLegende6:
+          Control: Label
+          Properties:
+            Text: |-
+              ="REE avec BPA à faire, J0 sous 30 jours"
+            X: =708
+            Y: =382
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: |-
+              =Set(gFenetre, "Moins de 30 jours"); Navigate(scrPilotage, ScreenTransition.None)
+            VerticalAlign: =VerticalAlign.Top
+      - accCarte7:
+          Control: Rectangle
+          Properties:
+            X: =1012
+            Y: =316
+            Width: =300
+            Height: =116
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+            BorderThickness: =1
+            OnSelect: |-
+              =Set(gFenetre, "Moins de 30 jours"); Navigate(scrPilotage, ScreenTransition.None)
+      - accValeur7:
+          Control: Label
+          Properties:
+            Text: |-
+              =Text(CountRows(Distinct(Filter(tMes, !Gelee && !IsBlank(GelM0) && GelM0 < DateAdd(Today(), 30)), Affaire & REE)))
+            X: =1032
+            Y: =332
+            Width: =260
+            Height: =48
+            Size: =30
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            OnSelect: |-
+              =Set(gFenetre, "Moins de 30 jours"); Navigate(scrPilotage, ScreenTransition.None)
+      - accLegende7:
+          Control: Label
+          Properties:
+            Text: |-
+              ="REE à passer en Gel M0 sous 30 jours"
+            X: =1032
+            Y: =382
+            Width: =260
+            Height: =40
+            Size: =12
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+            OnSelect: |-
+              =Set(gFenetre, "Moins de 30 jours"); Navigate(scrPilotage, ScreenTransition.None)
+            VerticalAlign: =VerticalAlign.Top
+      - accAide:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Touchez une carte pour ouvrir la liste correspondante. Les modifications faites dans la fiche d’une TOT sont écrites directement dans la DEM."
+            X: =40
+            Y: =470
+            Width: =1000
+            Height: =40
+            Size: =11
+            Color: |-
+              =RGBA(90, 102, 120, 1)

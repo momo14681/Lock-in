@@ -60,6 +60,13 @@ Teams). La saisie se fait en deux temps :
 
 Source de la macro : `src/vba/AppliquerModifsDEM.bas` (embarquée dans le HTML au build).
 
+## Appli Power Apps
+
+Le dossier `powerapps/` contient une appli canevas (écrans à coller dans Power Apps Studio et
+règles de calcul) qui reprend ce tableau de bord avec saisie directe. Les données viennent de
+l’export **Exporter › Données pour l’appli Power Apps (Excel)**. Mode d’emploi :
+`powerapps/README.md`.
+
 ## Écran d'équipe (export PNG 1920 × 1080)
 
 Bouton « Écran d'équipe (PNG) » (ou « Aperçu de l'écran » dans l'onglet

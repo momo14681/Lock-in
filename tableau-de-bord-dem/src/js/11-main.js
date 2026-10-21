@@ -53,6 +53,7 @@ function render() {
   renderChrome();
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
+  $("paExport").disabled = false;
   $("pngExport").disabled = false;
   $("pngRhythm").disabled = false;
   $("pngExport").textContent = pngMenuLabel();
@@ -290,6 +291,7 @@ function init() {
   $("closeDetail").onclick = () => $("detail").close();
   $("detail").addEventListener("close", () => { delete $("detail").dataset.task; editMode = false; editError = ""; });
   $("pdfExport").onclick = exportPDF;
+  $("paExport").onclick = exportPowerApps;
   $("pngExport").onclick = () => exportPNG();
   $("pngRhythm").onclick = () => exportPNG("rythme");
 

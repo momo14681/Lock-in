@@ -1,0 +1,326 @@
+Screens:
+  scrEquipe:
+    Properties:
+      Fill: |-
+        =RGBA(243, 245, 248, 1)
+    Children:
+      - equBandeau:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =64
+            Fill: |-
+              =RGBA(0, 26, 112, 1)
+      - equTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Pilotage des essais"
+            X: =24
+            Y: =8
+            Width: =400
+            Height: =28
+            Size: =17
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+      - equSousTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="DEM · vue équipe"
+            X: =24
+            Y: =34
+            Width: =520
+            Height: =22
+            Size: =11
+            Color: |-
+              =RGBA(200, 210, 235, 1)
+      - equNav0:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Accueil"
+            X: =Parent.Width - 616
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrAccueil, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - equNav1:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mes TOT"
+            X: =Parent.Width - 466
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrTOT, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - equNav2:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mon pilotage"
+            X: =Parent.Width - 316
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrPilotage, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - equNav3:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Équipe"
+            X: =Parent.Width - 166
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrEquipe, ScreenTransition.None)
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - equTitreListe:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Avancement par chargé d’essais"
+            X: =40
+            Y: =80
+            Width: =600
+            Height: =36
+            Size: =20
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+      - equEntete1:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Préparation (TOT prête)"
+            X: =340
+            Y: =124
+            Width: =300
+            Height: =24
+            Size: =11
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - equEntete2:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Essais réalisés (GER/1N signé)"
+            X: =690
+            Y: =124
+            Width: =300
+            Height: =24
+            Size: =11
+            Color: |-
+              =RGBA(90, 102, 120, 1)
+      - galEquipe:
+          Control: Gallery
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            Items: |-
+              =SortByColumns(AddColumns(GroupBy(Filter(tDEM, !Annulee), Charge, Lignes), NbTot, CountRows(Lignes), NbPrepa, CountRows(Filter(Lignes, TotPreteOk)), NbReal, CountRows(Filter(Lignes, Realise)), NbRetard, CountRows(Filter(Lignes, Retard)), NbInfos, CountRows(Filter(Lignes, InfosManquantes))), NbTot, SortOrder.Descending)
+            OnSelect: |-
+              =Set(gMoi, ThisItem.Charge); Set(gCoordo, false); Set(gFiltre, "Tous les états"); Navigate(scrTOT, ScreenTransition.None)
+            TemplateSize: =58
+            TemplatePadding: =0
+            X: =40
+            Y: =152
+            Width: =Parent.Width - 80
+            Height: =Parent.Height - 172
+            Fill: |-
+              =RGBA(220, 226, 234, 1)
+            ShowScrollbar: =true
+          Children:
+            - equFond:
+                Control: Rectangle
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight - 1
+                  Fill: |-
+                    =RGBA(255, 255, 255, 1)
+                  OnSelect: =Select(Parent)
+            - equNom:
+                Control: Label
+                Properties:
+                  Text: =ThisItem.Charge
+                  X: =16
+                  Y: =6
+                  Width: =260
+                  Height: =26
+                  Size: =13
+                  Color: |-
+                    =RGBA(16, 87, 200, 1)
+                  OnSelect: =Select(Parent)
+            - equNb:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =Text(ThisItem.NbTot) & " TOT"
+                  X: =16
+                  Y: =30
+                  Width: =260
+                  Height: =22
+                  Size: =11
+                  Color: |-
+                    =RGBA(90, 102, 120, 1)
+                  OnSelect: =Select(Parent)
+            - equPrepaPiste:
+                Control: Rectangle
+                Properties:
+                  X: =300
+                  Y: =22
+                  Width: =260
+                  Height: =12
+                  Fill: |-
+                    =RGBA(220, 226, 234, 1)
+                  OnSelect: =Select(Parent)
+            - equPrepaPlein:
+                Control: Rectangle
+                Properties:
+                  X: =300
+                  Y: =22
+                  Width: |-
+                    =260 * ThisItem.NbPrepa / Max(1, ThisItem.NbTot)
+                  Height: =12
+                  Fill: |-
+                    =RGBA(16, 87, 200, 1)
+                  OnSelect: =Select(Parent)
+            - equPrepaTxt:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =Text(ThisItem.NbPrepa / Max(1, ThisItem.NbTot), "0%")
+                  X: =568
+                  Y: =12
+                  Width: =60
+                  Height: =32
+                  Size: =12
+                  Color: |-
+                    =RGBA(0, 26, 112, 1)
+                  OnSelect: =Select(Parent)
+            - equRealPiste:
+                Control: Rectangle
+                Properties:
+                  X: =650
+                  Y: =22
+                  Width: =260
+                  Height: =12
+                  Fill: |-
+                    =RGBA(220, 226, 234, 1)
+                  OnSelect: =Select(Parent)
+            - equRealPlein:
+                Control: Rectangle
+                Properties:
+                  X: =650
+                  Y: =22
+                  Width: |-
+                    =260 * ThisItem.NbReal / Max(1, ThisItem.NbTot)
+                  Height: =12
+                  Fill: |-
+                    =RGBA(80, 158, 47, 1)
+                  OnSelect: =Select(Parent)
+            - equRealTxt:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =Text(ThisItem.NbReal / Max(1, ThisItem.NbTot), "0%")
+                  X: =918
+                  Y: =12
+                  Width: =60
+                  Height: =32
+                  Size: =12
+                  Color: |-
+                    =RGBA(0, 26, 112, 1)
+                  OnSelect: =Select(Parent)
+            - equRetard:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =Text(ThisItem.NbRetard) & " en retard"
+                  X: =1000
+                  Y: =6
+                  Width: =140
+                  Height: =46
+                  Size: =12
+                  Color: |-
+                    =If(ThisItem.NbRetard > 0, RGBA(227, 38, 45, 1), RGBA(90, 102, 120, 1))
+                  OnSelect: =Select(Parent)
+            - equInfos:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =Text(ThisItem.NbInfos) & " infos manquantes"
+                  X: =1140
+                  Y: =6
+                  Width: =170
+                  Height: =46
+                  Size: =12
+                  Color: |-
+                    =If(ThisItem.NbInfos > 0, RGBA(170, 110, 0, 1), RGBA(90, 102, 120, 1))
+                  OnSelect: =Select(Parent)

@@ -1,0 +1,287 @@
+Screens:
+  scrTOT:
+    Properties:
+      Fill: |-
+        =RGBA(243, 245, 248, 1)
+    Children:
+      - totBandeau:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =64
+            Fill: |-
+              =RGBA(0, 26, 112, 1)
+      - totTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="Pilotage des essais"
+            X: =24
+            Y: =8
+            Width: =400
+            Height: =28
+            Size: =17
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+      - totSousTitre:
+          Control: Label
+          Properties:
+            Text: |-
+              ="DEM · " & If(gCoordo, "Coordo essais", Coalesce(gMoi, "chargé non choisi"))
+            X: =24
+            Y: =34
+            Width: =520
+            Height: =22
+            Size: =11
+            Color: |-
+              =RGBA(200, 210, 235, 1)
+      - totNav0:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Accueil"
+            X: =Parent.Width - 616
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrAccueil, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - totNav1:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mes TOT"
+            X: =Parent.Width - 466
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrTOT, ScreenTransition.None)
+            Fill: |-
+              =RGBA(255, 255, 255, 1)
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - totNav2:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Mon pilotage"
+            X: =Parent.Width - 316
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrPilotage, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - totNav3:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="Équipe"
+            X: =Parent.Width - 166
+            Y: =12
+            Width: =140
+            Height: =40
+            OnSelect: |-
+              =Navigate(scrEquipe, ScreenTransition.None)
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =0
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+      - totTitreListe:
+          Control: Label
+          Properties:
+            Text: |-
+              =If(gCoordo, "Toutes les TOT", "Mes TOT") & " · " & Text(CountRows(galTOT.AllItems))
+            X: =40
+            Y: =80
+            Width: =500
+            Height: =36
+            Size: =20
+            Color: |-
+              =RGBA(0, 26, 112, 1)
+      - txtRecherche:
+          Control: Classic/TextInput
+          Properties:
+            Default: |-
+              =""
+            HintText: |-
+              ="Rechercher une affaire, un REE, un OT…"
+            X: =40
+            Y: =124
+            Width: =420
+            Height: =36
+            Size: =12
+            BorderColor: |-
+              =RGBA(220, 226, 234, 1)
+      - ddEtat:
+          Control: Classic/DropDown
+          Properties:
+            Items: |-
+              =["Tous les états", "Prépa en retard", "Infos manquantes", "En préparation", "Prépa terminée", "Réalisé"]
+            Default: |-
+              =Coalesce(gFiltre, "Tous les états")
+            OnChange: |-
+              =Set(gFiltre, Self.Selected.Value)
+            X: =476
+            Y: =124
+            Width: =240
+            Height: =36
+            Size: =12
+      - galTOT:
+          Control: Gallery
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            Items: |-
+              =SortByColumns(Filter(tMes, (ddEtat.Selected.Value = "Tous les états" || Etat = ddEtat.Selected.Value) && (IsBlank(txtRecherche.Text) || txtRecherche.Text in Affaire || txtRecherche.Text in REE || txtRecherche.Text in OT || txtRecherche.Text in Libelle || txtRecherche.Text in LibelleREE)), J0Date, SortOrder.Ascending)
+            OnSelect: |-
+              =Set(gSel, ThisItem); Navigate(scrFiche, ScreenTransition.None)
+            TemplateSize: =64
+            TemplatePadding: =0
+            X: =40
+            Y: =172
+            Width: =Parent.Width - 80
+            Height: =Parent.Height - 192
+            Fill: |-
+              =RGBA(220, 226, 234, 1)
+            ShowScrollbar: =true
+          Children:
+            - totLigneFond:
+                Control: Rectangle
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight - 1
+                  Fill: |-
+                    =RGBA(255, 255, 255, 1)
+                  OnSelect: =Select(Parent)
+            - totLigneTitre:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =ThisItem.Affaire & " · REE " & ThisItem.REE & " · " & ThisItem.LibelleREE
+                  X: =16
+                  Y: =8
+                  Width: =560
+                  Height: =24
+                  Size: =13
+                  Color: |-
+                    =RGBA(16, 87, 200, 1)
+                  OnSelect: =Select(Parent)
+            - totLigneSous:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="TOT " & ThisItem.OT & "-" & ThisItem.TOT & " · " & ThisItem.Feuille & " ligne " & Text(ThisItem.Ligne) & If(gCoordo, " · " & ThisItem.Charge, "")
+                  X: =16
+                  Y: =34
+                  Width: =560
+                  Height: =22
+                  Size: =11
+                  Color: |-
+                    =RGBA(90, 102, 120, 1)
+                  OnSelect: =Select(Parent)
+            - totLigneJ0:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="J0 " & If(IsBlank(ThisItem.J0Date), Coalesce(ThisItem.J0, "—"), Text(ThisItem.J0Date, "dd/mm/yyyy"))
+                  X: =590
+                  Y: =8
+                  Width: =170
+                  Height: =24
+                  Size: =12
+                  Color: |-
+                    =RGBA(0, 26, 112, 1)
+                  OnSelect: =Select(Parent)
+            - totLigneEtat:
+                Control: Label
+                Properties:
+                  Text: =ThisItem.Etat
+                  X: =590
+                  Y: =34
+                  Width: =170
+                  Height: =22
+                  Size: =11
+                  Color: |-
+                    =Switch(ThisItem.Etat, "Réalisé", RGBA(80, 158, 47, 1), "Prépa en retard", RGBA(227, 38, 45, 1), "Infos manquantes", RGBA(170, 110, 0, 1), "Prépa terminée", RGBA(16, 87, 200, 1), RGBA(90, 102, 120, 1))
+                  OnSelect: =Select(Parent)
+            - totLigneDocs:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="TOT prête " & Coalesce(ThisItem.TOTPrete, "—") & "    BPA " & Coalesce(ThisItem.BPA, "—") & "    GER/1N " & Coalesce(ThisItem.GER1N, "—") & "    BPD " & Coalesce(ThisItem.BPD, "—")
+                  X: =780
+                  Y: =8
+                  Width: =Parent.TemplateWidth - 840
+                  Height: =48
+                  Size: =11
+                  Color: |-
+                    =RGBA(90, 102, 120, 1)
+                  OnSelect: =Select(Parent)
+            - totLigneFleche:
+                Control: Classic/Icon
+                Variant: ChevronRight
+                Properties:
+                  Icon: =Icon.ChevronRight
+                  X: =Parent.TemplateWidth - 48
+                  Y: =16
+                  Width: =32
+                  Height: =32
+                  Color: |-
+                    =RGBA(90, 102, 120, 1)
+                  OnSelect: =Select(Parent)
