@@ -55,18 +55,27 @@ function readWorkbook(bytes) {
   });
 }
 
-async function load(file, { preserveView = false, resetIgnored = true } = {}) {
-  if (!file || busy) return false;
+function load(file, options = {}) {
+  if (!file) return Promise.resolve(false);
+  return loadFrom(async () => {
+    if (!/\.(xlsx|xlsm)$/i.test(file.name)) throw Error("Choisissez le fichier Excel .xlsm ou .xlsx, pas un raccourci .url.");
+    const bytes = await file.arrayBuffer();
+    await new Promise((r) => setTimeout(r, 30));
+    // Une seule lecture du classeur (auparavant deux), hors du fil de la page si possible.
+    return readWorkbook(bytes);
+  }, { name: file.name, lastModified: file.lastModified }, options);
+}
+
+// Lecture commune : fichier choisi sur le PC (load) ou DEM ouverte dans Excel (complément).
+// readWb renvoie un classeur au format SheetJS ({SheetNames, Sheets}).
+async function loadFrom(readWb, file, { preserveView = false, resetIgnored = true } = {}) {
+  if (busy) return false;
   const previousOwner = $("owner").value;
   busy = true;
   updateSourceControls();
   $("message").innerHTML = '<div class="notice">Lecture du classeur et vérification des données…</div>';
   try {
-    if (!/\.(xlsx|xlsm)$/i.test(file.name)) throw Error("Choisissez le fichier Excel .xlsm ou .xlsx, pas un raccourci .url.");
-    const bytes = await file.arrayBuffer();
-    await new Promise((r) => setTimeout(r, 30));
-    // Une seule lecture du classeur (auparavant deux), hors du fil de la page si possible.
-    const wb = await readWorkbook(bytes);
+    const wb = await readWb();
     const result = await parseWorkbook(wb, file);
     result.ipe = readAssignments(wb.Sheets[IPE_SHEET]);
     for (const [i, t] of result.tasks.entries()) {
@@ -119,7 +128,7 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
     if ($("detail").open) $("detail").close();
     $("workspace").classList.remove("hidden");
     $("drop").classList.add("hidden");
-    $("source").textContent = `${file.name} · ${fmt(data.tasks.filter((t) => !t.cancelled).length)} TOT hors annulées · ${data.availableSheets.length} feuilles · importé le ${formatFrenchDateTime(data.analyzedAt)} · copie enregistrée le ${formatFrenchDateTime(new Date(file.lastModified))}.`;
+    $("source").textContent = `${file.name} · ${fmt(data.tasks.filter((t) => !t.cancelled).length)} TOT hors annulées · ${data.availableSheets.length} feuilles · importé le ${formatFrenchDateTime(data.analyzedAt)}${file.lastModified ? ` · copie enregistrée le ${formatFrenchDateTime(new Date(file.lastModified))}` : " · lu dans Excel"}.`;
     $("message").innerHTML = data.missingSheets.length ? `<div class="notice">Import partiel : feuilles absentes ${esc(data.missingSheets.join(", "))}. Les indicateurs couvrent uniquement les feuilles présentes.</div>` : "";
     render();
     return true;
@@ -230,6 +239,7 @@ async function switchDEM(year) {
 
 async function refreshSource() {
   if (busy || sourceReading || sourceSelecting || profileSwitching) return false;
+  if (excelMode) return readFromExcel();
   if (sourceHandle) return authorizeSource();
   if (currentSessionFile) {
     const ok = await load(currentSessionFile, { preserveView: !!data, resetIgnored: false });
@@ -303,14 +313,26 @@ async function storedSource(operation, handle, key = "source:" + activeDEM) {
 
 function updateSourceControls() {
   const working = busy || sourceSelecting || sourceReading || profileSwitching;
-  $("sourceFile").textContent = sourceHandle?.name || data?.fileName || `DEM ${activeDEM} · aucun fichier sélectionné`;
+  $("sourceFile").textContent = sourceHandle?.name || data?.fileName || (excelMode ? excelFileName : `DEM ${activeDEM} · aucun fichier sélectionné`);
   $("demSelector").value = activeDEM;
   $("demSelector").disabled = working;
   $("sourceState").textContent = sourceStatus;
   $("sourceChange").textContent = sourceHandle || currentSessionFile ? "Changer le fichier" : `Choisir DEM ${activeDEM}`;
   $("sourceChange").disabled = working;
-  $("sourceRefresh").disabled = working || (!sourceHandle && !currentSessionFile);
+  $("sourceRefresh").disabled = working || (!sourceHandle && !currentSessionFile && !excelMode);
   $("autoRefresh").disabled = !sourceHandle;
+  if (excelMode) {
+    $("sourceSchedule").textContent = "Relecture : bouton Actualiser, après chaque enregistrement, et au retour sur le volet après 5 min";
+    $("sourceLastCheck").textContent = lastChecked ? `· lu le ${sourceTime(lastChecked)}` : "";
+    $("sourceDot").className = "sourceDot " + (working || excelReading ? "busy" : data ? "ok" : "off");
+    for (const id of ["sourceChange", "clear", "autoRefresh"]) $(id).hidden = true;
+    $("autoRefresh").closest("label").hidden = true;
+    for (const id of ["choose", "reopen"]) $(id).hidden = true;
+    $("dropTitle").textContent = excelReading || working ? "Lecture de la DEM ouverte dans Excel…" : "DEM ouverte dans Excel";
+    $("dropText").textContent = "Le tableau de bord lit la DEM de ce classeur et y écrit les saisies des fiches TOT.";
+    $("dropHint").hidden = true;
+    return;
+  }
   const active = sourceHandle && sourcePermission === "granted" && !sourcePaused && $("autoRefresh").checked;
   $("sourceSchedule").textContent = active ? `Prochaine lecture : ${sourceTime(nextScheduledRead())}`
     : sourcePaused ? "Lecture automatique en pause"
@@ -351,6 +373,7 @@ function armSchedule() {
   scheduleTimer = setTimeout(async () => { scheduleTimer = null; await checkSchedule(); armSchedule(); }, delay);
 }
 async function checkSchedule(now = new Date()) {
+  if (excelMode) return !busy && data && (!lastChecked || now - lastChecked > EXCEL_REFRESH_MS) ? readFromExcel() : false;
   if (!sourceHandle || sourcePaused || !$("autoRefresh").checked || sourcePermission !== "granted" || busy || sourceReading || sourceSelecting || profileSwitching) return false;
   const slot = scheduledSlot(now);
   if (!slot || slot === lastScheduleSlot) return false;
@@ -397,6 +420,7 @@ async function readSource({ force = false } = {}) {
 }
 
 async function chooseSource() {
+  if (excelMode) return;
   if (busy || sourceSelecting || sourceReading || profileSwitching) return;
   if (!persistentPicker) { $("file").click(); return; }
   sourceEpoch++;
@@ -449,6 +473,7 @@ async function authorizeSource() {
 }
 
 async function manualImport(file) {
+  if (excelMode) return false;
   if (!file || busy || sourceReading || sourceSelecting || profileSwitching) return false;
   try { checkDEMFile(file); } catch (e) { $("message").innerHTML = `<div class="notice error">${esc(e.message)}</div>`; return false; }
   sourceEpoch++;

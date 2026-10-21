@@ -96,10 +96,12 @@ function editForm(t) {
       : `<input type="text" data-edit-field="${k}" value="${esc(p ? p.label : current)}" ${options ? `list="editList-${k}"` : ""} placeholder="${EDIT_DATES.has(k) ? "jj/mm/aaaa" : ""}${codes.length ? (EDIT_DATES.has(k) ? " ou " : "") + codes.join(", ") : ""}">${options ? `<datalist id="editList-${k}">${options}</datalist>` : ""}`;
     return `<label class="editRow${k === "observations" ? " full" : ""}"><span>${names[k]} <span class="loc">${esc(editCell(t, k))}</span></span>${input}<small class="muted">Dans la DEM : ${esc(current || "vide")}</small></label>`;
   }).join("");
-  return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">Vos saisies rejoignent « Modifications à appliquer ». La DEM n’est modifiée qu’au passage de la macro.</p></div>
+  const intro = excelMode ? "Les valeurs modifiées sont écrites directement dans la DEM, si personne ne les a changées entre-temps."
+    : "Vos saisies rejoignent « Modifications à appliquer ». La DEM n’est modifiée qu’au passage de la macro.";
+  return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">${intro}</p></div>
     ${editError ? `<div class="notice error">${esc(editError)}</div>` : ""}
     <div class="editGrid">${rows}</div>
-    <div class="editActions"><button type="button" class="accent" data-edit-save>Ajouter aux modifications</button><button type="button" class="ghost" data-edit-cancel>Annuler</button></div>`;
+    <div class="editActions"><button type="button" class="accent" data-edit-save>${excelMode ? "Enregistrer dans la DEM" : "Ajouter aux modifications"}</button><button type="button" class="ghost" data-edit-cancel>Annuler</button></div>`;
 }
 
 function editPendingNote(t) {
@@ -128,6 +130,8 @@ function saveEditForm(t) {
     added++;
   });
   if (errors.length) { editError = errors.join(" "); detail(t); return; }
+  // Dans Excel : écriture directe des champs de cette ligne.
+  if (excelMode) { applyExcelEdits(list.filter((e) => e.taskId === t.id && !editList().includes(e)), t); return; }
   editError = "";
   editMode = false;
   saveEdits(list);
@@ -163,7 +167,10 @@ function viewEdits() {
       <td>${esc(e.owner)}</td>
       <td><button type="button" class="ghost" data-edit-remove="${esc(e.id)}" title="Retirer cette modification">Retirer</button></td></tr>`,
   });
-  const steps = `<ol class="editSteps">
+  const steps = excelMode ? `<ol class="editSteps">
+      <li>Dans Excel, la fiche d’une TOT écrit directement dans la DEM : cette liste ne garde que les saisies faites hors d’Excel.</li>
+      <li>« Écrire dans la DEM » les applique toutes, après contrôle de chaque cellule.</li>
+    </ol>` : `<ol class="editSteps">
       <li>Ouvrez une TOT puis « Modifier cette ligne » : vos saisies s’ajoutent ici (mémorisées sur ce PC).</li>
       <li>Relisez la liste, puis « Télécharger le fichier pour la DEM ».</li>
       <li>Dans Excel (application de bureau), ouvrez la DEM et lancez la macro <b>AppliquerModifsDEM</b> : elle montre ce qui sera écrit, demande confirmation, puis produit un compte rendu.</li>
@@ -171,8 +178,9 @@ function viewEdits() {
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Modifications à appliquer</h2>
       <p class="muted">DEM ${esc(activeDEM)} · ${plural(list.length, "modification")} · ${fmt(todo)} à appliquer</p></div>
       <div class="panelActions">
-        <button type="button" class="accent" data-edits-export ${todo ? "" : "disabled"}>Télécharger le fichier pour la DEM</button>
-        <button type="button" data-edits-macro>Télécharger la macro Excel</button>
+        ${excelMode ? `<button type="button" class="accent" data-edits-write ${todo ? "" : "disabled"}>Écrire dans la DEM</button>`
+          : `<button type="button" class="accent" data-edits-export ${todo ? "" : "disabled"}>Télécharger le fichier pour la DEM</button>
+        <button type="button" data-edits-macro>Télécharger la macro Excel</button>`}
       </div></div>
     ${panel("Comment ça marche", steps)}
     ${panel("Liste des modifications", dt.html, { actions: `${count("done") ? `<button type="button" class="ghost" data-edits-purge>Retirer les ${fmt(count("done"))} déjà dans la DEM</button>` : ""}${list.length ? '<button type="button" class="ghost" data-edits-clear>Tout effacer</button>' : ""}` })}`;
@@ -207,6 +215,7 @@ function editAction(d) {
     return true;
   }
   if (d.editsExport !== undefined) return exportEdits(), true;
+  if (d.editsWrite !== undefined) return applyExcelEdits(editList().filter((e) => editState(e).code === "todo")), true;
   if (d.editsMacro !== undefined) {
     // L'éditeur VBA importe les .bas en Windows-1252 : le module n'utilise que des caractères Latin-1.
     const src = VBA_MACRO.replace(/\r?\n/g, "\r\n");

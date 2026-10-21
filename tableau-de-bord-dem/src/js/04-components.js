@@ -192,9 +192,9 @@ function positionColMenus() {
 }
 
 // --- Liens vers les outils EDF (EAM, eDRT) pour une TOT -------------------------------
-// Exemple TOT 06100540-25 :
-//   EAM  : https://prod-sdin.edf.fr/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=0610054025
-//   eDRT : https://prod-sdin.edf.fr/drt/06100540/25/cloture
+// Exemple TOT 06100540-25 : EAM …/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=0610054025,
+// eDRT …/drt/06100540/25/cloture. Adresse vide dans la version publiée (complément) : pas de liens.
+const EDF_TOOLS = "https://prod-sdin.edf.fr";
 function totIds(ot, tot) {
   const o = String(ot ?? "").replace(/\D/g, ""), n = String(tot ?? "").replace(/\D/g, "");
   if (!o || !n) return null;
@@ -202,15 +202,15 @@ function totIds(ot, tot) {
 }
 
 function eamUrl(ids) {
-  return `https://prod-sdin.edf.fr/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=${ids.ot}${ids.tot}`;
+  return EDF_TOOLS ? `${EDF_TOOLS}/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=${ids.ot}${ids.tot}` : "";
 }
 
 function edrtUrl(ids) {
-  return `https://prod-sdin.edf.fr/drt/${ids.ot}/${ids.tot}/cloture`;
+  return EDF_TOOLS ? `${EDF_TOOLS}/drt/${ids.ot}/${ids.tot}/cloture` : "";
 }
 
 function toolLinks(ot, tot) {
   const ids = totIds(ot, tot);
-  if (!ids) return '<span class="muted">—</span>';
+  if (!ids || !EDF_TOOLS) return '<span class="muted">—</span>';
   return `<span class="toolLinks"><a href="${esc(eamUrl(ids))}" target="_blank" rel="noopener noreferrer" title="Ouvrir la TOT ${ids.ot}-${ids.tot} dans EAM">EAM ↗</a><a href="${esc(edrtUrl(ids))}" target="_blank" rel="noopener noreferrer" title="Ouvrir la clôture eDRT de la TOT ${ids.ot}-${ids.tot}">eDRT ↗</a></span>`;
 }

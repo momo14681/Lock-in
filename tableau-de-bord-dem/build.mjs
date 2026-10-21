@@ -3,6 +3,8 @@
 // externe : la politique CSP du fichier interdit tout accès réseau).
 //
 //   node build.mjs            -> Tableau_de_bord_DEM.html
+//                                 addin/index.html + addin/manifest.xml (complément Excel)
+//   ADDIN_URL=https://…/ node build.mjs   adresse où addin/ est publié (pour le manifeste)
 //
 // Sources lisibles : src/template.html, src/styles.css, src/js/*.js (concaténés
 // dans l'ordre alphabétique, partagent une même portée).
@@ -54,6 +56,22 @@ const html = read("src", "template.html").replace(/\/\*@@([A-Z_]+)@@\*\/|<!--@@(
 const out = join(root, "Tableau_de_bord_DEM.html");
 writeFileSync(out, html);
 console.log(`${out} · ${(html.length / 1024 / 1024).toFixed(2)} Mo`);
+
+// Complément Excel : même page, avec office.js chargé depuis Microsoft ; la page lit et écrit
+// alors la DEM ouverte. La politique « aucun accès réseau » du fichier autonome est retirée :
+// office.js charge lui-même d'autres scripts Microsoft. Toujours en police Work Sans :
+// addin/ est publié sur une adresse web.
+const csp = /<meta http-equiv="Content-Security-Policy" content="[^"]*">/;
+if (!csp.test(html)) throw new Error("Politique de sécurité introuvable dans le modèle.");
+// Page publique : sans l'adresse des outils internes (liens EAM / eDRT masqués).
+const tools = 'const EDF_TOOLS = "https://prod-sdin.edf.fr";';
+if (!html.includes(tools)) throw new Error("Adresse des outils EDF introuvable.");
+const addinHtml = html.replace(csp, () => `<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>`).replace(tools, 'const EDF_TOOLS = "";');
+if (/prod-sdin|edf\.fr/i.test(addinHtml)) throw new Error("La page du complément contient encore une adresse interne EDF.");
+const addinUrl = (process.env.ADDIN_URL || "https://momo14681.github.io/pilotage-essais/").replace(/\/?$/, "/");
+writeFileSync(join(root, "addin", "index.html"), addinHtml);
+writeFileSync(join(root, "addin", "manifest.xml"), read("src", "addin", "manifest.xml").replaceAll("{{URL}}", addinUrl));
+console.log(`addin/index.html + addin/manifest.xml · ${addinUrl}`);
 
 // Police EDF 2020 : propriété d'EDF, jamais versionnée (dossier fonts-edf/ ignoré).
 // Si elle est présente localement, une seconde version l'embarque pour un usage interne.

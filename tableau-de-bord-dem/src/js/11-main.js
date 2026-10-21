@@ -318,7 +318,9 @@ function init() {
 
   renderChrome();
   updateSourceControls();
-  restoreSource();
+  // Version complément : office.js est chargé ; dans Excel, la DEM ouverte remplace le fichier.
+  if (window.Office?.onReady) Office.onReady((info) => (info?.host === Office.HostType.Excel ? startExcel() : restoreSource()));
+  else restoreSource();
 }
 
 init();

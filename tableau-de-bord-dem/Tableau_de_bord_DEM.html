@@ -1713,9 +1713,9 @@ function positionColMenus() {
 }
 
 // --- Liens vers les outils EDF (EAM, eDRT) pour une TOT -------------------------------
-// Exemple TOT 06100540-25 :
-//   EAM  : https://prod-sdin.edf.fr/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=0610054025
-//   eDRT : https://prod-sdin.edf.fr/drt/06100540/25/cloture
+// Exemple TOT 06100540-25 : EAM …/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=0610054025,
+// eDRT …/drt/06100540/25/cloture. Adresse vide dans la version publiée (complément) : pas de liens.
+const EDF_TOOLS = "https://prod-sdin.edf.fr";
 function totIds(ot, tot) {
   const o = String(ot ?? "").replace(/\D/g, ""), n = String(tot ?? "").replace(/\D/g, "");
   if (!o || !n) return null;
@@ -1723,16 +1723,16 @@ function totIds(ot, tot) {
 }
 
 function eamUrl(ids) {
-  return `https://prod-sdin.edf.fr/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=${ids.ot}${ids.tot}`;
+  return EDF_TOOLS ? `${EDF_TOOLS}/as/ui/#as-currentpage-view?view=PassPortTIMM101&keydata=${ids.ot}${ids.tot}` : "";
 }
 
 function edrtUrl(ids) {
-  return `https://prod-sdin.edf.fr/drt/${ids.ot}/${ids.tot}/cloture`;
+  return EDF_TOOLS ? `${EDF_TOOLS}/drt/${ids.ot}/${ids.tot}/cloture` : "";
 }
 
 function toolLinks(ot, tot) {
   const ids = totIds(ot, tot);
-  if (!ids) return '<span class="muted">—</span>';
+  if (!ids || !EDF_TOOLS) return '<span class="muted">—</span>';
   return `<span class="toolLinks"><a href="${esc(eamUrl(ids))}" target="_blank" rel="noopener noreferrer" title="Ouvrir la TOT ${ids.ot}-${ids.tot} dans EAM">EAM ↗</a><a href="${esc(edrtUrl(ids))}" target="_blank" rel="noopener noreferrer" title="Ouvrir la clôture eDRT de la TOT ${ids.ot}-${ids.tot}">eDRT ↗</a></span>`;
 }
 
@@ -3583,10 +3583,12 @@ function editForm(t) {
       : `<input type="text" data-edit-field="${k}" value="${esc(p ? p.label : current)}" ${options ? `list="editList-${k}"` : ""} placeholder="${EDIT_DATES.has(k) ? "jj/mm/aaaa" : ""}${codes.length ? (EDIT_DATES.has(k) ? " ou " : "") + codes.join(", ") : ""}">${options ? `<datalist id="editList-${k}">${options}</datalist>` : ""}`;
     return `<label class="editRow${k === "observations" ? " full" : ""}"><span>${names[k]} <span class="loc">${esc(editCell(t, k))}</span></span>${input}<small class="muted">Dans la DEM : ${esc(current || "vide")}</small></label>`;
   }).join("");
-  return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">Vos saisies rejoignent « Modifications à appliquer ». La DEM n’est modifiée qu’au passage de la macro.</p></div>
+  const intro = excelMode ? "Les valeurs modifiées sont écrites directement dans la DEM, si personne ne les a changées entre-temps."
+    : "Vos saisies rejoignent « Modifications à appliquer ». La DEM n’est modifiée qu’au passage de la macro.";
+  return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">${intro}</p></div>
     ${editError ? `<div class="notice error">${esc(editError)}</div>` : ""}
     <div class="editGrid">${rows}</div>
-    <div class="editActions"><button type="button" class="accent" data-edit-save>Ajouter aux modifications</button><button type="button" class="ghost" data-edit-cancel>Annuler</button></div>`;
+    <div class="editActions"><button type="button" class="accent" data-edit-save>${excelMode ? "Enregistrer dans la DEM" : "Ajouter aux modifications"}</button><button type="button" class="ghost" data-edit-cancel>Annuler</button></div>`;
 }
 
 function editPendingNote(t) {
@@ -3615,6 +3617,8 @@ function saveEditForm(t) {
     added++;
   });
   if (errors.length) { editError = errors.join(" "); detail(t); return; }
+  // Dans Excel : écriture directe des champs de cette ligne.
+  if (excelMode) { applyExcelEdits(list.filter((e) => e.taskId === t.id && !editList().includes(e)), t); return; }
   editError = "";
   editMode = false;
   saveEdits(list);
@@ -3650,7 +3654,10 @@ function viewEdits() {
       <td>${esc(e.owner)}</td>
       <td><button type="button" class="ghost" data-edit-remove="${esc(e.id)}" title="Retirer cette modification">Retirer</button></td></tr>`,
   });
-  const steps = `<ol class="editSteps">
+  const steps = excelMode ? `<ol class="editSteps">
+      <li>Dans Excel, la fiche d’une TOT écrit directement dans la DEM : cette liste ne garde que les saisies faites hors d’Excel.</li>
+      <li>« Écrire dans la DEM » les applique toutes, après contrôle de chaque cellule.</li>
+    </ol>` : `<ol class="editSteps">
       <li>Ouvrez une TOT puis « Modifier cette ligne » : vos saisies s’ajoutent ici (mémorisées sur ce PC).</li>
       <li>Relisez la liste, puis « Télécharger le fichier pour la DEM ».</li>
       <li>Dans Excel (application de bureau), ouvrez la DEM et lancez la macro <b>AppliquerModifsDEM</b> : elle montre ce qui sera écrit, demande confirmation, puis produit un compte rendu.</li>
@@ -3658,8 +3665,9 @@ function viewEdits() {
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Modifications à appliquer</h2>
       <p class="muted">DEM ${esc(activeDEM)} · ${plural(list.length, "modification")} · ${fmt(todo)} à appliquer</p></div>
       <div class="panelActions">
-        <button type="button" class="accent" data-edits-export ${todo ? "" : "disabled"}>Télécharger le fichier pour la DEM</button>
-        <button type="button" data-edits-macro>Télécharger la macro Excel</button>
+        ${excelMode ? `<button type="button" class="accent" data-edits-write ${todo ? "" : "disabled"}>Écrire dans la DEM</button>`
+          : `<button type="button" class="accent" data-edits-export ${todo ? "" : "disabled"}>Télécharger le fichier pour la DEM</button>
+        <button type="button" data-edits-macro>Télécharger la macro Excel</button>`}
       </div></div>
     ${panel("Comment ça marche", steps)}
     ${panel("Liste des modifications", dt.html, { actions: `${count("done") ? `<button type="button" class="ghost" data-edits-purge>Retirer les ${fmt(count("done"))} déjà dans la DEM</button>` : ""}${list.length ? '<button type="button" class="ghost" data-edits-clear>Tout effacer</button>' : ""}` })}`;
@@ -3694,6 +3702,7 @@ function editAction(d) {
     return true;
   }
   if (d.editsExport !== undefined) return exportEdits(), true;
+  if (d.editsWrite !== undefined) return applyExcelEdits(editList().filter((e) => editState(e).code === "todo")), true;
   if (d.editsMacro !== undefined) {
     // L'éditeur VBA importe les .bas en Windows-1252 : le module n'utilise que des caractères Latin-1.
     const src = VBA_MACRO.replace(/\r?\n/g, "\r\n");
@@ -4478,18 +4487,27 @@ function readWorkbook(bytes) {
   });
 }
 
-async function load(file, { preserveView = false, resetIgnored = true } = {}) {
-  if (!file || busy) return false;
+function load(file, options = {}) {
+  if (!file) return Promise.resolve(false);
+  return loadFrom(async () => {
+    if (!/\.(xlsx|xlsm)$/i.test(file.name)) throw Error("Choisissez le fichier Excel .xlsm ou .xlsx, pas un raccourci .url.");
+    const bytes = await file.arrayBuffer();
+    await new Promise((r) => setTimeout(r, 30));
+    // Une seule lecture du classeur (auparavant deux), hors du fil de la page si possible.
+    return readWorkbook(bytes);
+  }, { name: file.name, lastModified: file.lastModified }, options);
+}
+
+// Lecture commune : fichier choisi sur le PC (load) ou DEM ouverte dans Excel (complément).
+// readWb renvoie un classeur au format SheetJS ({SheetNames, Sheets}).
+async function loadFrom(readWb, file, { preserveView = false, resetIgnored = true } = {}) {
+  if (busy) return false;
   const previousOwner = $("owner").value;
   busy = true;
   updateSourceControls();
   $("message").innerHTML = '<div class="notice">Lecture du classeur et vérification des données…</div>';
   try {
-    if (!/\.(xlsx|xlsm)$/i.test(file.name)) throw Error("Choisissez le fichier Excel .xlsm ou .xlsx, pas un raccourci .url.");
-    const bytes = await file.arrayBuffer();
-    await new Promise((r) => setTimeout(r, 30));
-    // Une seule lecture du classeur (auparavant deux), hors du fil de la page si possible.
-    const wb = await readWorkbook(bytes);
+    const wb = await readWb();
     const result = await parseWorkbook(wb, file);
     result.ipe = readAssignments(wb.Sheets[IPE_SHEET]);
     for (const [i, t] of result.tasks.entries()) {
@@ -4542,7 +4560,7 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
     if ($("detail").open) $("detail").close();
     $("workspace").classList.remove("hidden");
     $("drop").classList.add("hidden");
-    $("source").textContent = `${file.name} · ${fmt(data.tasks.filter((t) => !t.cancelled).length)} TOT hors annulées · ${data.availableSheets.length} feuilles · importé le ${formatFrenchDateTime(data.analyzedAt)} · copie enregistrée le ${formatFrenchDateTime(new Date(file.lastModified))}.`;
+    $("source").textContent = `${file.name} · ${fmt(data.tasks.filter((t) => !t.cancelled).length)} TOT hors annulées · ${data.availableSheets.length} feuilles · importé le ${formatFrenchDateTime(data.analyzedAt)}${file.lastModified ? ` · copie enregistrée le ${formatFrenchDateTime(new Date(file.lastModified))}` : " · lu dans Excel"}.`;
     $("message").innerHTML = data.missingSheets.length ? `<div class="notice">Import partiel : feuilles absentes ${esc(data.missingSheets.join(", "))}. Les indicateurs couvrent uniquement les feuilles présentes.</div>` : "";
     render();
     return true;
@@ -4653,6 +4671,7 @@ async function switchDEM(year) {
 
 async function refreshSource() {
   if (busy || sourceReading || sourceSelecting || profileSwitching) return false;
+  if (excelMode) return readFromExcel();
   if (sourceHandle) return authorizeSource();
   if (currentSessionFile) {
     const ok = await load(currentSessionFile, { preserveView: !!data, resetIgnored: false });
@@ -4726,14 +4745,26 @@ async function storedSource(operation, handle, key = "source:" + activeDEM) {
 
 function updateSourceControls() {
   const working = busy || sourceSelecting || sourceReading || profileSwitching;
-  $("sourceFile").textContent = sourceHandle?.name || data?.fileName || `DEM ${activeDEM} · aucun fichier sélectionné`;
+  $("sourceFile").textContent = sourceHandle?.name || data?.fileName || (excelMode ? excelFileName : `DEM ${activeDEM} · aucun fichier sélectionné`);
   $("demSelector").value = activeDEM;
   $("demSelector").disabled = working;
   $("sourceState").textContent = sourceStatus;
   $("sourceChange").textContent = sourceHandle || currentSessionFile ? "Changer le fichier" : `Choisir DEM ${activeDEM}`;
   $("sourceChange").disabled = working;
-  $("sourceRefresh").disabled = working || (!sourceHandle && !currentSessionFile);
+  $("sourceRefresh").disabled = working || (!sourceHandle && !currentSessionFile && !excelMode);
   $("autoRefresh").disabled = !sourceHandle;
+  if (excelMode) {
+    $("sourceSchedule").textContent = "Relecture : bouton Actualiser, après chaque enregistrement, et au retour sur le volet après 5 min";
+    $("sourceLastCheck").textContent = lastChecked ? `· lu le ${sourceTime(lastChecked)}` : "";
+    $("sourceDot").className = "sourceDot " + (working || excelReading ? "busy" : data ? "ok" : "off");
+    for (const id of ["sourceChange", "clear", "autoRefresh"]) $(id).hidden = true;
+    $("autoRefresh").closest("label").hidden = true;
+    for (const id of ["choose", "reopen"]) $(id).hidden = true;
+    $("dropTitle").textContent = excelReading || working ? "Lecture de la DEM ouverte dans Excel…" : "DEM ouverte dans Excel";
+    $("dropText").textContent = "Le tableau de bord lit la DEM de ce classeur et y écrit les saisies des fiches TOT.";
+    $("dropHint").hidden = true;
+    return;
+  }
   const active = sourceHandle && sourcePermission === "granted" && !sourcePaused && $("autoRefresh").checked;
   $("sourceSchedule").textContent = active ? `Prochaine lecture : ${sourceTime(nextScheduledRead())}`
     : sourcePaused ? "Lecture automatique en pause"
@@ -4774,6 +4805,7 @@ function armSchedule() {
   scheduleTimer = setTimeout(async () => { scheduleTimer = null; await checkSchedule(); armSchedule(); }, delay);
 }
 async function checkSchedule(now = new Date()) {
+  if (excelMode) return !busy && data && (!lastChecked || now - lastChecked > EXCEL_REFRESH_MS) ? readFromExcel() : false;
   if (!sourceHandle || sourcePaused || !$("autoRefresh").checked || sourcePermission !== "granted" || busy || sourceReading || sourceSelecting || profileSwitching) return false;
   const slot = scheduledSlot(now);
   if (!slot || slot === lastScheduleSlot) return false;
@@ -4820,6 +4852,7 @@ async function readSource({ force = false } = {}) {
 }
 
 async function chooseSource() {
+  if (excelMode) return;
   if (busy || sourceSelecting || sourceReading || profileSwitching) return;
   if (!persistentPicker) { $("file").click(); return; }
   sourceEpoch++;
@@ -4872,6 +4905,7 @@ async function authorizeSource() {
 }
 
 async function manualImport(file) {
+  if (excelMode) return false;
   if (!file || busy || sourceReading || sourceSelecting || profileSwitching) return false;
   try { checkDEMFile(file); } catch (e) { $("message").innerHTML = `<div class="notice error">${esc(e.message)}</div>`; return false; }
   sourceEpoch++;
@@ -4947,6 +4981,209 @@ function closeWorkbook() {
       updateSourceControls();
     }).catch(() => {});
   }
+}
+
+// ---- 105-excel.js ----
+// =============================================================================
+// Complément Excel : le tableau de bord s'ouvre dans Excel (Teams, Excel en ligne ou
+// bureau), lit la DEM ouverte et y écrit les saisies de la fiche TOT.
+// La page est la même que le fichier HTML autonome ; seule la version « complément »
+// charge office.js (voir build.mjs). Hors d'Excel, rien ici ne s'exécute.
+// =============================================================================
+
+let excelMode = false, excelReading = false, excelFileName = "";
+const EXCEL_JOURNAL = "Journal appli";
+const EXCEL_MERGE_ROWS = 50; // lignes par lecture des cellules fusionnées (Excel refuse au-delà de 512 zones)
+const EXCEL_REFRESH_MS = 5 * 60_000; // relecture au retour sur le volet si la dernière a plus de 5 min
+
+function startExcel() {
+  excelMode = true;
+  document.body.classList.add("inExcel");
+  const url = decodeURIComponent(Office.context?.document?.url || "");
+  const name = url.split(/[\\/]/).pop().split("?")[0] || "DEM ouverte dans Excel";
+  const year = name.match(/DEM[\s_-]*(2026|2027)\b/i)?.[1] || String(new Date().getFullYear());
+  if (["2026", "2027"].includes(year)) activeDEM = year;
+  $("demSelector").hidden = true;
+  excelFileName = name;
+  sourceStatus = "DEM ouverte dans Excel · lecture et écriture directes";
+  updateSourceControls();
+  return readFromExcel();
+}
+
+function readFromExcel({ preserveView = !!data } = {}) {
+  if (excelReading) return Promise.resolve(false);
+  excelReading = true;
+  return loadFrom(readExcelWorkbook, { name: excelFileName }, { preserveView, resetIgnored: !preserveView })
+    .then((ok) => { if (ok) lastChecked = new Date(); return ok; })
+    .finally(() => { excelReading = false; updateSourceControls(); });
+}
+
+// --- Lecture : classeur au format SheetJS, comme la lecture d'un fichier -------------
+
+// Cellule Excel → cellule SheetJS (dates en Date, erreurs avec leur texte).
+function excelCell(value, type, format, formula) {
+  if (type === "Empty" || value === "" || value == null) return null;
+  let cell;
+  if (type === "Error") cell = { t: "e", v: String(value), w: String(value) };
+  else if (typeof value === "boolean") cell = { t: "b", v: value };
+  else if (typeof value === "number") cell = format && format !== "General" && XLSX.SSF.is_date(format) ? { t: "d", v: excelDate(value) } : { t: "n", v: value };
+  else cell = { t: "s", v: String(value) };
+  if (typeof formula === "string" && formula[0] === "=") cell.f = formula.slice(1);
+  return cell;
+}
+
+function excelDate(serial) {
+  const u = new Date(Math.round((serial - 25569) * DAY_MS));
+  return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours(), u.getUTCMinutes(), u.getUTCSeconds());
+}
+
+// Texte d'une cellule tel que la saisie le compare (même règle que t.orig à la lecture).
+function excelText(cell) {
+  return cell?.t === "e" ? (cell.w || "Erreur Excel") : cell?.v instanceof Date ? formatDate(cell.v) : String(cell?.v ?? "").trim();
+}
+
+async function readExcelWorkbook() {
+  return Excel.run(async (ctx) => {
+    const wanted = WORKBOOK_OPTIONS.sheets;
+    const sheets = ctx.workbook.worksheets;
+    sheets.load("items/name");
+    await ctx.sync();
+    const present = sheets.items.map((s) => s.name);
+    const wb = { SheetNames: present, Sheets: {} };
+    for (const name of wanted.filter((n) => present.includes(n))) {
+      await pauseForPaint();
+      wb.Sheets[name] = await readExcelSheet(ctx, sheets.getItem(name), name);
+    }
+    return wb;
+  });
+}
+
+async function readExcelSheet(ctx, ws, name) {
+  const used = ws.getUsedRangeOrNullObject(true);
+  used.load("rowIndex,columnIndex,rowCount,columnCount");
+  await ctx.sync();
+  const sheet = {};
+  if (used.isNullObject) { sheet["!ref"] = "A1:A1"; return sheet; }
+  const lastRow = used.rowIndex + used.rowCount, lastCol = used.columnIndex + used.columnCount - 1;
+  const colName = XLSX.utils.encode_col(lastCol);
+  sheet["!ref"] = `A1:${colName}${lastRow}`;
+  const keepFormula = name === "Pilotage" || name === "Préparation";
+  // Lecture par tranches : Excel en ligne limite la taille d'une réponse.
+  const step = Math.max(100, Math.floor(40000 / (lastCol + 1)));
+  for (let start = 1; start <= lastRow; start += step) {
+    const end = Math.min(lastRow, start + step - 1);
+    const range = ws.getRange(`A${start}:${colName}${end}`);
+    range.load(keepFormula ? "values,valueTypes,numberFormat,formulas" : "values,valueTypes,numberFormat");
+    await ctx.sync();
+    range.values.forEach((row, i) => row.forEach((v, c) => {
+      const cell = excelCell(v, range.valueTypes[i][c], range.numberFormat[i][c], keepFormula ? range.formulas[i][c] : null);
+      if (cell) sheet[XLSX.utils.encode_cell({ r: start - 1 + i, c })] = cell;
+    }));
+  }
+  if (TECHNICAL_SHEETS.includes(name)) sheet["!merges"] = await excelMerges(ctx, ws, lastRow, colName);
+  return sheet;
+}
+
+// Cellules fusionnées, lues par tranches de 50 lignes en un seul échange ; si Excel refuse
+// (trop de zones), chaque tranche est relue seule et coupée en deux autant que nécessaire.
+async function excelMerges(ctx, ws, lastRow, colName) {
+  const chunks = [];
+  for (let start = 1; start <= lastRow; start += EXCEL_MERGE_ROWS) chunks.push([start, Math.min(lastRow, start + EXCEL_MERGE_ROWS - 1)]);
+  const queue = (a, b) => { const z = ws.getRange(`A${a}:${colName}${b}`).getMergedAreasOrNullObject(); z.load("address"); return z; };
+  try {
+    const zones = chunks.map(([a, b]) => queue(a, b));
+    await ctx.sync();
+    return zones.flatMap(mergeList);
+  } catch (e) {
+    const out = [];
+    const read = async (a, b) => {
+      try { const z = queue(a, b); await ctx.sync(); out.push(...mergeList(z)); }
+      catch (err) { if (a === b) return; const m = Math.floor((a + b) / 2); await read(a, m); await read(m + 1, b); }
+    };
+    for (const [a, b] of chunks) await read(a, b);
+    return out;
+  }
+}
+
+function mergeList(zones) {
+  if (zones.isNullObject || !zones.address) return [];
+  return zones.address.split(",").map((a) => a.split("!").pop().replace(/\$/g, "").trim()).filter(Boolean)
+    .map((a) => XLSX.utils.decode_range(a.includes(":") ? a : `${a}:${a}`));
+}
+
+// --- Écriture des saisies ---------------------------------------------------------------
+
+// entries : saisies de la fiche TOT (même forme que la liste « Modifications à appliquer »).
+// Vérifie d'abord que chaque ligne est toujours la même TOT (Affaire, REE, OT, TOT) et que
+// chaque cellule contient encore l'ancienne valeur ; sinon rien n'est écrit.
+async function writeEditsToExcel(entries) {
+  if (!entries.length) return { ok: true, written: 0 };
+  const result = await Excel.run(async (ctx) => {
+    const checks = [];
+    const read = (sheet, cell) => { const r = ctx.workbook.worksheets.getItem(sheet).getRange(cell); r.load("values,valueTypes,numberFormat"); return r; };
+    const text = (r) => excelText(excelCell(r.values[0][0], r.valueTypes[0][0], r.numberFormat[0][0]));
+    for (const e of entries) {
+      const t = data.tasks.find((x) => x.id === e.taskId);
+      if (!t) return { ok: false, message: "TOT introuvable : actualisez." };
+      const identity = ["affaire", "ree", "ot", "tot"].map((k) => ({ k, range: read(t.sheet, editCell(t, k)), expected: t.orig?.[k] ?? "" }));
+      checks.push({ e, t, identity, target: read(t.sheet, e.cell) });
+    }
+    await ctx.sync();
+    const conflicts = [];
+    for (const c of checks) {
+      if (c.identity.some((i) => status(text(i.range)) !== status(i.expected))) {
+        return { ok: false, message: `La ligne ${c.t.rowNumber} de ${c.t.sheet} a changé depuis la lecture (ligne insérée ou supprimée). Rien n’a été écrit : actualisez puis recommencez.` };
+      }
+      const current = text(c.target);
+      c.skip = status(current) === status(c.e.label);
+      if (!c.skip && status(current) !== status(c.e.old)) conflicts.push(`${names[c.e.key]} (${current || "vide"} dans la DEM)`);
+    }
+    if (conflicts.length) return { ok: false, message: `Modifié entre-temps dans la DEM : ${conflicts.join(", ")}. Rien n’a été écrit : actualisez puis recommencez.` };
+    const journal = ctx.workbook.worksheets.getItemOrNullObject(EXCEL_JOURNAL);
+    const journalUsed = journal.getUsedRangeOrNullObject(true);
+    journalUsed.load("rowIndex,rowCount");
+    await ctx.sync();
+    let next = journal.isNullObject ? 0 : journalUsed.isNullObject ? 1 : journalUsed.rowIndex + journalUsed.rowCount + 1;
+    const who = mode === "ce" && me ? me : "";
+    let written = 0;
+    for (const c of checks.filter((x) => !x.skip)) {
+      const r = c.target, e = c.e;
+      if (e.type === "vide") r.clear("Contents");
+      else if (e.type === "date") {
+        const [y, m, d] = e.value.split("-").map(Number);
+        if (r.numberFormat[0][0] === "General") r.numberFormat = [["dd/mm/yyyy"]];
+        r.values = [[Date.UTC(y, m - 1, d) / DAY_MS + 25569]];
+      } else r.values = [[/^[=+\-@]/.test(e.value) ? "'" + e.value : e.value]];
+      if (next) journal.getRange(`A${next}:G${next}`).values = [[new Date().toISOString(), who, e.sheet, e.cell, names[e.key], e.old, e.label]], next++;
+      written++;
+    }
+    await ctx.sync();
+    return { ok: true, written };
+  });
+  return result;
+}
+
+// Enregistre les saisies, relit la DEM et affiche le résultat.
+async function applyExcelEdits(entries, t = null) {
+  $("message").innerHTML = '<div class="notice">Écriture dans la DEM…</div>';
+  let res;
+  try { res = await writeEditsToExcel(entries); }
+  catch (e) { res = { ok: false, message: `Écriture impossible : ${e.message || e}. Rien n’a été écrit.` }; }
+  if (!res.ok) {
+    editError = res.message;
+    $("message").innerHTML = `<div class="notice error">${esc(res.message)}</div>`;
+    if (t) { editMode = true; detail(t); }
+    return false;
+  }
+  const done = new Set(entries.map((e) => e.id));
+  saveEdits(editList().filter((e) => !done.has(e.id)));
+  editError = ""; editMode = false;
+  const taskId = t?.id;
+  await readFromExcel({ preserveView: true });
+  const fresh = taskId && data?.tasks.find((x) => x.id === taskId);
+  if (fresh && $("detail").open) detail(fresh);
+  $("message").innerHTML = `<div class="notice">${res.written ? `${plural(res.written, "cellule")} écrite${res.written > 1 ? "s" : ""} dans la DEM.` : "Rien à écrire : la DEM contient déjà ces valeurs."}</div>`;
+  return true;
 }
 
 // ---- 11-main.js ----
@@ -5270,7 +5507,9 @@ function init() {
 
   renderChrome();
   updateSourceControls();
-  restoreSource();
+  // Version complément : office.js est chargé ; dans Excel, la DEM ouverte remplace le fichier.
+  if (window.Office?.onReady) Office.onReady((info) => (info?.host === Office.HostType.Excel ? startExcel() : restoreSource()));
+  else restoreSource();
 }
 
 init();

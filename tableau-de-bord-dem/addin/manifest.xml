@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Manifeste du complément Excel « Pilotage des essais ». Généré par build.mjs dans
+     addin/manifest.xml ; https://momo14681.github.io/pilotage-essais/ = adresse où le dossier addin/ est publié (ADDIN_URL). -->
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+           xsi:type="TaskPaneApp">
+  <Id>21e748ec-551b-4fb3-9137-d7491804d397</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Pilotage des essais</ProviderName>
+  <DefaultLocale>fr-FR</DefaultLocale>
+  <DisplayName DefaultValue="Pilotage des essais"/>
+  <Description DefaultValue="Tableau de bord de la DEM : indicateurs, listes, fiches TOT et saisie directe dans la DEM."/>
+  <IconUrl DefaultValue="https://momo14681.github.io/pilotage-essais/icone-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://momo14681.github.io/pilotage-essais/icone-64.png"/>
+  <SupportUrl DefaultValue="https://momo14681.github.io/pilotage-essais/index.html"/>
+  <AppDomains>
+    <AppDomain>https://momo14681.github.io/pilotage-essais/</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  <Requirements>
+    <Sets DefaultMinVersion="1.13">
+      <Set Name="ExcelApi" MinVersion="1.13"/>
+    </Sets>
+  </Requirements>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://momo14681.github.io/pilotage-essais/index.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="Titre"/>
+            <Description resid="Aide"/>
+            <LearnMoreUrl resid="Page"/>
+          </GetStarted>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="PilotageGroupe">
+                <Label resid="Titre"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icone16"/>
+                  <bt:Image size="32" resid="Icone32"/>
+                  <bt:Image size="80" resid="Icone80"/>
+                </Icon>
+                <Control xsi:type="Button" id="PilotageBouton">
+                  <Label resid="Bouton"/>
+                  <Supertip>
+                    <Title resid="Bouton"/>
+                    <Description resid="Aide"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icone16"/>
+                    <bt:Image size="32" resid="Icone32"/>
+                    <bt:Image size="80" resid="Icone80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>PilotageVolet</TaskpaneId>
+                    <SourceLocation resid="Page"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icone16" DefaultValue="https://momo14681.github.io/pilotage-essais/icone-16.png"/>
+        <bt:Image id="Icone32" DefaultValue="https://momo14681.github.io/pilotage-essais/icone-32.png"/>
+        <bt:Image id="Icone80" DefaultValue="https://momo14681.github.io/pilotage-essais/icone-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Page" DefaultValue="https://momo14681.github.io/pilotage-essais/index.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Titre" DefaultValue="Pilotage des essais"/>
+        <bt:String id="Bouton" DefaultValue="Tableau de bord"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="Aide" DefaultValue="Ouvre le tableau de bord de la DEM : indicateurs, listes, fiches TOT et saisie directe dans la DEM."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
