@@ -4,7 +4,8 @@
 // - Gel M0 = J0 − 70 jours ; une ligne est gelée quand MC, OT, TOT, RDU et Régime
 //   sont renseignés (colonne « TOT restant à préparer ») ;
 // - BPA fait = date ou P, compté par REE (affaire + REE + tranche) ; « préparable »
-//   par le chargé si le titulaire est EDF ou si le BPA est en F ;
+//   par le chargé si le titulaire est EDF ou si le BPA est en F. Comme dans les
+//   listes de la feuille, un REE reste « à faire » tant qu'une de ses lignes n'a pas son BPA ;
 // - échéances : Gel M0 à moins de 30 j / 30 à 90 j / au-delà, BPA selon le J0
 //   (moins de 30 j / 30 à 90 j / au-delà). Les dates dépassées restent « court terme ».
 // Réalisés et BPD signés suivent les règles du reste du tableau de bord.
@@ -52,7 +53,10 @@ function cepDossiers(ts) {
   for (const d of map.values()) {
     const j0s = d.ts.map((t) => t.j0).filter(Boolean).sort((a, b) => a - b);
     d.j0 = j0s[0] || null;
-    d.bpaDone = d.ts.some(bpaDone);
+    // Lignes sans BPA (ni date ni P) : le REE apparaît dans « BPA à faire », au J0 le plus proche.
+    d.pendingBpa = d.ts.filter((t) => !bpaDone(t));
+    d.bpaDone = !d.pendingBpa.length;
+    d.bpaJ0 = d.pendingBpa.map((t) => t.j0).filter(Boolean).sort((a, b) => a - b)[0] || null;
     d.bpaPreparable = d.ts.some(bpaPreparable);
     d.bpdSigned = d.ts.some((t) => t.bpdState === "done");
     d.pendingGel = d.ts.filter((t) => !gelDone(t));
@@ -84,7 +88,7 @@ function cepModel() {
     return { sheet, ...cepStats(st, ds) };
   });
   const gel = dossiers.filter((d) => d.pendingGel.length).map((d) => ({ d, date: d.gelDate, win: cepWindow(d.gelDate, today) }));
-  const bpa = dossiers.filter((d) => !d.bpaDone).map((d) => ({ d, date: d.j0, win: cepWindow(d.j0, today) }));
+  const bpa = dossiers.filter((d) => d.pendingBpa.length).map((d) => ({ d, date: d.bpaJ0, win: cepWindow(d.bpaJ0, today) }));
   return { ts, today, dossiers, bySheet, total: cepStats(ts, dossiers), gel, bpa };
 }
 

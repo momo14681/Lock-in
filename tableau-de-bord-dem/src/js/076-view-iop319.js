@@ -4,7 +4,8 @@
 // de clôture. Conformité de l'IOP319 : chaque TOT porte un commentaire « 1N » ET
 // un commentaire TSR (ou PAR / TAR) dans « Type Commentaire ».
 // Analyse : chaque TOT de l'IOP est comparée à la DEM, qui doit l'avoir en TSR
-// (GER/1N signé) avec le 1N fait (date dans la colonne BPD).
+// (GER/1N signé) avec le 1N fait (date dans la colonne BPD ; P = 1N en cours).
+// Une TOT à l'état « PRÊT » sans 1N ni TSR n'est pas encore réalisée : c'est normal.
 // =============================================================================
 
 const IOP_TAB = "iop319";
@@ -16,9 +17,9 @@ const IOP_COLUMNS = {
 };
 const IOP_TSR_KINDS = ["TSR", "PAR", "TAR"];
 // Contrôles du tableau : écarts avec la DEM, conformes, hors DEM, IOP319 non conforme.
-const IOP_CHECKS = [["gap", "Écarts avec la DEM"], ["demTsr", "Pas TSR dans la DEM"], ["dem1n", "1N non fait dans la DEM"], ["ok", "Conformes"], ["out", "Hors DEM"], ["iop", "IOP319 non conforme"], ["", "Toutes"]];
-const IOP_CHECK_LABEL = { ok: "Conforme", gap: "DEM à mettre à jour", out: "Hors DEM", iop: "IOP319 non conforme" };
-const IOP_CHECK_TONE = { ok: "good", gap: "warn", out: "neutral", iop: "bad" };
+const IOP_CHECKS = [["gap", "Écarts avec la DEM"], ["demTsr", "Pas TSR dans la DEM"], ["dem1n", "1N non fait dans la DEM"], ["pending", "1N en cours"], ["ok", "Conformes"], ["ready", "Pas encore réalisées"], ["out", "Hors DEM"], ["iop", "IOP319 non conforme"], ["", "Toutes"]];
+const IOP_CHECK_LABEL = { ok: "Conforme", gap: "DEM à mettre à jour", pending: "1N en cours", ready: "Pas encore réalisée", out: "Hors DEM", iop: "IOP319 non conforme" };
+const IOP_CHECK_TONE = { ok: "good", gap: "warn", pending: "info", ready: "neutral", out: "neutral", iop: "bad" };
 const IOP_IOP_LABEL = { ok: "1N et TSR", noTSR: "TSR manquant", no1N: "1N manquant", none: "1N et TSR manquants" };
 const IOP_NO_ECU = "Non renseigné";
 const IOP_COLS = { statut: 2, ecu: 3, check: 4 }; // index des colonnes filtrables du tableau
@@ -108,10 +109,13 @@ function linkIOP() {
   for (const r of iop.rows) {
     r.task = index.get(r.key) || null;
     r.owner = r.task ? r.task.responsable : "Hors DEM";
-    r.iopOk = r.iopCheck === "ok";
+    // TOT « PRÊT » sans aucun commentaire : essai pas encore réalisé, rien à signaler.
+    r.notRealized = /^PRET/.test(status(r.statut)) && r.iopCheck === "none";
+    r.iopOk = r.iopCheck === "ok" || r.notRealized;
     r.demTsr = !!r.task && r.task.gerState === "done";
     r.dem1n = !!r.task && r.task.bpdState === "done";
-    r.check = !r.task ? "out" : !r.iopOk ? "iop" : r.demTsr && r.dem1n ? "ok" : "gap";
+    r.dem1nPending = !!r.task && !r.dem1n && status(r.task.bpd) === "P";
+    r.check = r.notRealized ? "ready" : !r.task ? "out" : !r.iopOk ? "iop" : !r.demTsr || (!r.dem1n && !r.dem1nPending) ? "gap" : r.dem1n ? "ok" : "pending";
   }
 }
 
@@ -144,7 +148,7 @@ function openIOP() {
 function iopMatches(r, k = iopCheck) {
   if (k === "iop") return !r.iopOk;
   if (k === "demTsr") return r.check === "gap" && !r.demTsr;
-  if (k === "dem1n") return r.check === "gap" && !r.dem1n;
+  if (k === "dem1n") return r.check === "gap" && !r.dem1n && !r.dem1nPending;
   return !k || r.check === k;
 }
 
@@ -200,11 +204,14 @@ function iopCommentCell(list, label) {
 function iopDemCell(r, key) {
   if (!r.task) return '<td><span class="muted">—</span></td>';
   const ok = key === "ger" ? r.demTsr : r.dem1n, value = r.task.raw?.[key] || r.task[key] || "vide";
-  return `<td>${badge(key === "ger" ? (ok ? "TSR" : "Pas TSR") : ok ? "1N fait" : "1N non fait", ok ? "good" : "warn", { icon: true })}<small>${esc(names[key])} : ${esc(value)}</small></td>`;
+  const label = key === "ger" ? (ok ? "TSR" : "Pas TSR") : ok ? "1N fait" : r.dem1nPending ? "1N en cours" : "1N non fait";
+  return `<td>${badge(label, ok ? "good" : r.dem1nPending && key === "bpd" ? "info" : r.check === "ready" ? "neutral" : "warn", { icon: true })}<small>${esc(names[key])} : ${esc(value)}</small></td>`;
 }
 
 function iopAnalysis(r) {
-  if (r.check === "gap") return [!r.demTsr && "GER/1N pas TSR", !r.dem1n && "BPD sans date"].filter(Boolean).join(" · ");
+  if (r.check === "gap") return [!r.demTsr && "GER/1N pas TSR", !r.dem1n && (r.dem1nPending ? "1N en cours (BPD en P)" : "BPD sans date")].filter(Boolean).join(" · ");
+  if (r.check === "pending") return "BPD en P : 1N en cours";
+  if (r.check === "ready") return "TOT à l’état PRÊT : essai pas encore réalisé";
   if (r.check === "iop") return IOP_IOP_LABEL[r.iopCheck];
   if (r.check === "out") return "OT / TOT absente de la DEM";
   return "IOP et DEM concordent";
@@ -232,7 +239,7 @@ function viewIOP() {
       <span class="kpiLabel">${esc(label)}</span><strong class="kpiValue">${fmt(v)}</strong><span class="kpiBar" aria-hidden="true"><span style="width:${(ratio(v, n) * 100).toFixed(1)}%;background:var(--${t === "neutral" ? "neutral" : t})"></span></span><span class="kpiSub">${esc(sub)} · ${pct(v, n)}</span></button>`;
   };
   const kpis = card("ok", "Conformes", "IOP et DEM concordent", "good") + card("demTsr", "Pas TSR dans la DEM", "GER/1N à passer en TSR", "warn")
-    + card("dem1n", "1N non fait dans la DEM", "BPD sans date", "warn") + card("out", "Hors DEM", "OT / TOT absente de la DEM", "neutral");
+    + card("dem1n", "1N non fait dans la DEM", "BPD sans date (P = 1N en cours)", "warn") + card("out", "Hors DEM", "OT / TOT absente de la DEM", "neutral");
   // Conformité de l'export lui-même : petit indicateur, cliquable s'il y a des TOT non conformes.
   const bad = count("iop");
   const conformity = bad
@@ -251,7 +258,7 @@ function viewIOP() {
       { label: "IOP · 1N", value: (r) => r.n1.map((c) => c.auteur).join(" ") },
       { label: "IOP · TSR", value: (r) => r.tsr.map((c) => c.auteur).join(" ") },
       { label: "DEM · GER/1N", value: (r) => (r.task ? (r.demTsr ? "TSR" : "Pas TSR") : "") },
-      { label: "DEM · BPD", value: (r) => (r.task ? (r.dem1n ? "1N fait" : "1N non fait") : "") },
+      { label: "DEM · BPD", value: (r) => (r.task ? (r.dem1n ? "1N fait" : r.dem1nPending ? "1N en cours" : "1N non fait") : "") },
       { label: "Chargé d’essais (DEM)", value: (r) => r.owner, filter: true },
       { label: "Liens", value: () => "" },
     ],

@@ -20,7 +20,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 | Onglet | Question |
 |---|---|
 | Mes affaires | Où en sont mes affaires et que dois-je faire ? 4 chiffres, liste « À faire », une ligne par affaire (cliquer pour le détail REE / TOT). |
-| Mon pilotage | La feuille Pilotage de la DEM pour moi : Gel M0 passé, BPA faits, essais réalisés, BPD signés ; Gel M0 à passer et BPA à faire (court terme < 30 j, moyen terme 30 à 90 j, plus tard) ; avancement par tranche ; mes affaires et REE. Gel M0 = J0 − 70 j, ligne gelée quand MC, OT, TOT, RDU et Régime sont renseignés ; BPA fait = date ou P, par REE ; à préparer par le chargé si titulaire EDF ou BPA en F. |
+| Mon pilotage | La feuille Pilotage de la DEM pour moi : Gel M0 passé, BPA faits, essais réalisés, BPD signés ; Gel M0 à passer et BPA à faire (court terme < 30 j, moyen terme 30 à 90 j, plus tard) ; avancement par tranche ; mes affaires et REE. Gel M0 = J0 − 70 j, ligne gelée quand MC, OT, TOT, RDU et Régime sont renseignés ; BPA fait = date ou P sur toutes les lignes du REE (un REE reste dans « BPA à faire » tant qu’une ligne n’a pas son BPA) ; à préparer par le chargé si titulaire EDF ou BPA en F. |
 | À corriger dans la DEM | Quelles cellules dois-je corriger ? |
 | Équipe | Où en est l'équipe ? (même contenu que l'écran d'équipe) |
 | *Mes listes…* | Mes TOT, mes documents P / R |
@@ -33,7 +33,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 | Pilotage par tranche | Où en sont les tranches suivies (CS2M et CS4A par défaut, puces pour en ajouter) ? Côte à côte : préparation, réalisés, BPD signés, prépas en retard ; documents EAM / BPA / GER / BPD (P, R, % produits, % signés, comme la feuille Pilotage) ; avancement par semaine de J0 (par mois si la tranche dépasse 20 semaines) ; points à traiter et charge par chargé. Chaque nombre ouvre la liste limitée à la tranche. |
 | À corriger dans la DEM | Toutes les corrections, filtrables par chargé, priorité et type. |
 | Équipe | Avancement global, retards de préparation, documents. |
-| *Autres listes…* | Répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint, **Contrôle 1N / TSR** (export EAM IOP319 chargé ou glissé à part : indicateur Conforme / Non conforme si chaque TOT a un commentaire 1N et un TSR, PAR ou TAR ; puis comparaison avec la DEM, qui doit avoir la TOT en TSR dans GER/1N et le 1N fait, c’est-à-dire une date dans BPD), **TOT par ECU** (feuille CRU : une ligne par TOT avec son dernier commentaire, compteurs et filtre par ECU, chargé repris de la DEM quand l'OT / TOT y figure) |
+| *Autres listes…* | Répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint, **Contrôle 1N / TSR** (export EAM IOP319 chargé ou glissé à part : indicateur Conforme / Non conforme si chaque TOT a un commentaire 1N et un TSR, PAR ou TAR ; puis comparaison avec la DEM, qui doit avoir la TOT en TSR dans GER/1N et le 1N fait, c’est-à-dire une date dans BPD ; BPD en P = 1N en cours ; une TOT à l’état PRÊT sans 1N ni TSR n’est pas encore réalisée et n’est pas signalée), **TOT par ECU** (feuille CRU : une ligne par TOT avec son dernier commentaire, compteurs et filtre par ECU, chargé repris de la DEM quand l'OT / TOT y figure) |
 
 **Histogramme de charge :** unité *TOT par statut*, *REE TEM / AT* ou *REE* ; tri par
 charge **Total, AT, TEM** ou nom. Avec le tri AT, le segment AT est placé en premier et
