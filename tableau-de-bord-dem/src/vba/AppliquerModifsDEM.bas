@@ -120,11 +120,11 @@ Public Sub AppliquerModifsDEM()
 End Sub
 
 ' Retrouve la ligne et la cellule, puis compare la valeur actuelle a celle vue lors de la saisie.
-Private Function Analyser(wb As Workbook, f() As String) As Variant
+Private Function Analyser(wb As Workbook, f As Variant) As Variant
     Dim m(0 To 16) As Variant, i As Long, ws As Worksheet, r As Long, c As Long, cible As Range
     Dim actuelle As String
     For i = 0 To 12
-        If i <= UBound(f) Then m(i) = Decoder(f(i)) Else m(i) = ""
+        If i <= UBound(f) Then m(i) = Decoder(CStr(f(i))) Else m(i) = ""
     Next i
     m(F_ADRESSE) = m(F_CELLULE)
     m(F_AFFICHAGE) = m(F_NOUVELLE)
