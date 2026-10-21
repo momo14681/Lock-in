@@ -1,8 +1,10 @@
 // =============================================================================
 // Contrôle 1N / TSR : export EAM « IOP319 », fichier séparé de la DEM.
 // Une TOT = un bloc de lignes (cellules fusionnées), une ligne par commentaire
-// de clôture. Chaque TOT doit porter un commentaire « 1N » ET un commentaire
-// « TSR » (colonne « Type Commentaire » ; « Etat du REE » n'est pas utilisée).
+// de clôture. Conformité de l'IOP319 : chaque TOT porte un commentaire « 1N » ET
+// un commentaire TSR (ou PAR / TAR) dans « Type Commentaire ».
+// Analyse : chaque TOT de l'IOP est comparée à la DEM, qui doit l'avoir en TSR
+// (GER/1N signé) avec le 1N fait (date dans la colonne BPD).
 // =============================================================================
 
 const IOP_TAB = "iop319";
@@ -12,14 +14,17 @@ const IOP_COLUMNS = {
   tot: /^tot concernee/, description: /^description tache/, statut: /^statut$/, codeProjet: /^code projet/, charge: /^charge d'essais/,
   fin: /^date fin/, resultat: /^resultat/, commentType: /^type commentaire$/, auteur: /^auteur/, commentDate: /^date commentaire/, ecu: /^ecu$/,
 };
-const IOP_CHECKS = [["missing", "Incomplètes"], ["noTSR", "1N sans TSR"], ["no1N", "TSR sans 1N"], ["none", "Ni 1N ni TSR"], ["ok", "Complètes"], ["", "Toutes"]];
-const IOP_CHECK_LABEL = { ok: "Complète", noTSR: "TSR manquant", no1N: "1N manquant", none: "1N et TSR manquants" };
-const IOP_CHECK_TONE = { ok: "good", noTSR: "bad", no1N: "bad", none: "bad" };
+const IOP_TSR_KINDS = ["TSR", "PAR", "TAR"];
+// Contrôles du tableau : écarts avec la DEM, conformes, hors DEM, IOP319 non conforme.
+const IOP_CHECKS = [["gap", "Écarts avec la DEM"], ["demTsr", "Pas TSR dans la DEM"], ["dem1n", "1N non fait dans la DEM"], ["ok", "Conformes"], ["out", "Hors DEM"], ["iop", "IOP319 non conforme"], ["", "Toutes"]];
+const IOP_CHECK_LABEL = { ok: "Conforme", gap: "DEM à mettre à jour", out: "Hors DEM", iop: "IOP319 non conforme" };
+const IOP_CHECK_TONE = { ok: "good", gap: "warn", out: "neutral", iop: "bad" };
+const IOP_IOP_LABEL = { ok: "1N et TSR", noTSR: "TSR manquant", no1N: "1N manquant", none: "1N et TSR manquants" };
 const IOP_NO_ECU = "Non renseigné";
 const IOP_COLS = { statut: 2, ecu: 3, check: 4 }; // index des colonnes filtrables du tableau
 
 let iop = null;          // dernier export IOP319 lu (indépendant de la DEM)
-let iopCheck = "missing";
+let iopCheck = "gap";
 
 function iopNorm(v) {
   return String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’`]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
@@ -28,7 +33,7 @@ function iopNorm(v) {
 function iopCommentKind(v) {
   const s = status(v).replace(/[\s.]/g, "");
   if (s === "1N") return "1N";
-  if (s === "TSR") return "TSR";
+  if (IOP_TSR_KINDS.includes(s)) return "TSR";
   return s;
 }
 
@@ -86,7 +91,7 @@ function readIOP(wb) {
       return {
         ...t, statut: t.statut || IOP_NO_STATUT, ecu: t.ecu || IOP_NO_ECU, n1, tsr, fin, key: otTotKey(ot || t.ot, n),
         others: t.comments.filter((c) => c.kind !== "1N" && c.kind !== "TSR"),
-        check: n1.length && tsr.length ? "ok" : n1.length ? "noTSR" : tsr.length ? "no1N" : "none",
+        iopCheck: n1.length && tsr.length ? "ok" : n1.length ? "noTSR" : tsr.length ? "no1N" : "none",
       };
     });
     if (!list.length) throw Error(`Aucune TOT trouvée sous l’en-tête (feuille « ${name} », ligne ${firstRow + hi}).`);
@@ -103,6 +108,10 @@ function linkIOP() {
   for (const r of iop.rows) {
     r.task = index.get(r.key) || null;
     r.owner = r.task ? r.task.responsable : "Hors DEM";
+    r.iopOk = r.iopCheck === "ok";
+    r.demTsr = !!r.task && r.task.gerState === "done";
+    r.dem1n = !!r.task && r.task.bpdState === "done";
+    r.check = !r.task ? "out" : !r.iopOk ? "iop" : r.demTsr && r.dem1n ? "ok" : "gap";
   }
 }
 
@@ -114,7 +123,7 @@ async function importIOP(file) {
     const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
     iop = { ...readIOP(wb), fileName: file.name, importedAt: new Date() };
     tableState.iop = { search: "", open: false, filters: {} };
-    iopCheck = "missing";
+    iopCheck = "gap";
     page = 1;
     $("message").innerHTML = iop.missingCols.length ? `<div class="notice">Export IOP319 lu, mais colonnes absentes : ${esc(iop.missingCols.join(", "))}.</div>` : "";
   } catch (e) {
@@ -133,7 +142,10 @@ function openIOP() {
 }
 
 function iopMatches(r, k = iopCheck) {
-  return !k || (k === "missing" ? r.check !== "ok" : r.check === k);
+  if (k === "iop") return !r.iopOk;
+  if (k === "demTsr") return r.check === "gap" && !r.demTsr;
+  if (k === "dem1n") return r.check === "gap" && !r.dem1n;
+  return !k || r.check === k;
 }
 
 function iopScoped() {
@@ -149,11 +161,11 @@ function iopPass(r, except = "") {
   return ["statut", "ecu"].every((f) => { const c = iopChosen(f); return f === except || !c.length || c.includes(r[f]); });
 }
 
-// TOT incomplètes dans le périmètre affiché (chargé, états et ECU choisis) : pour la synthèse.
-function iopMissingCount() {
+// TOT à traiter dans le périmètre affiché (chargé, états et ECU choisis) : pour la synthèse.
+function iopMissingCount(k = "iop") {
   if (!iop?.rows) return 0;
   linkIOP();
-  return iopScoped().filter((r) => r.check !== "ok" && iopPass(r)).length;
+  return iopScoped().filter((r) => iopMatches(r, k) && iopPass(r)).length;
 }
 
 function toggleIopChip(field, value) {
@@ -184,8 +196,22 @@ function iopCommentCell(list, label) {
   return `<td>${badge(label + (list.length > 1 ? ` ×${list.length}` : ""), "good", { icon: true, title: c.resultat })}<small>${esc(c.auteur || "Auteur non renseigné")}${c.date ? " · " + formatDate(c.date) : ""}</small></td>`;
 }
 
+// Ce que dit la DEM pour la TOT : GER/1N (TSR attendu) et BPD (date = 1N fait).
+function iopDemCell(r, key) {
+  if (!r.task) return '<td><span class="muted">—</span></td>';
+  const ok = key === "ger" ? r.demTsr : r.dem1n, value = r.task.raw?.[key] || r.task[key] || "vide";
+  return `<td>${badge(key === "ger" ? (ok ? "TSR" : "Pas TSR") : ok ? "1N fait" : "1N non fait", ok ? "good" : "warn", { icon: true })}<small>${esc(names[key])} : ${esc(value)}</small></td>`;
+}
+
+function iopAnalysis(r) {
+  if (r.check === "gap") return [!r.demTsr && "GER/1N pas TSR", !r.dem1n && "BPD sans date"].filter(Boolean).join(" · ");
+  if (r.check === "iop") return IOP_IOP_LABEL[r.iopCheck];
+  if (r.check === "out") return "OT / TOT absente de la DEM";
+  return "IOP et DEM concordent";
+}
+
 function viewIOP() {
-  const intro = `L’export IOP319 (EAM) liste les commentaires de clôture de chaque TOT. Le contrôle vérifie, pour chaque TOT, la présence d’un commentaire <strong>1N</strong> et d’un commentaire <strong>TSR</strong> dans la colonne « Type Commentaire ».`;
+  const intro = `Pour chaque TOT de l’export IOP319 (EAM) : présence d’un commentaire <strong>1N</strong> et d’un commentaire <strong>TSR</strong> (ou PAR / TAR), puis comparaison avec la DEM, qui doit avoir la TOT en <strong>TSR</strong> dans GER/1N et le <strong>1N fait</strong> (date dans BPD).`;
   if (!iop) {
     $("view").innerHTML = panel("Contrôle 1N / TSR · export IOP319",
       `<div class="drop iopDrop"><h2>Chargez un export IOP319</h2><p class="muted">Fichier Excel exporté d’EAM. Vous pouvez aussi le glisser-déposer sur cette page. Il est lu sur ce PC, jamais modifié ni envoyé.</p>
@@ -201,11 +227,17 @@ function viewIOP() {
   const chips = iopChipGroup(scoped, "statut", { title: "État de la TOT", all: "Tous les états", name: (v) => v, sort: (a, b) => b[1] - a[1] || COLLATOR_FR.compare(a[0], b[0]) })
     + iopChipGroup(scoped, "ecu", { title: "ECU", all: "Tous les ECU", name: (v) => (v === IOP_NO_ECU ? "Sans ECU" : "ECU " + v), sort: (a, b) => ecuSort(a[0], b[0]) });
   const card = (k, label, sub, tone) => {
-    const v = count(k), on = iopCheck === k;
-    return `<button type="button" class="kpi tone-${v && tone !== "good" ? tone : "good"}${on ? " selected" : ""}" data-set="iopCheck:${k}" aria-pressed="${on}">
-      <span class="kpiLabel">${esc(label)}</span><strong class="kpiValue">${fmt(v)}</strong><span class="kpiBar" aria-hidden="true"><span style="width:${(ratio(v, n) * 100).toFixed(1)}%;background:var(--${v && tone !== "good" ? tone : "good"})"></span></span><span class="kpiSub">${esc(sub)} · ${pct(v, n)}</span></button>`;
+    const v = count(k), on = iopCheck === k, t = v && tone !== "good" ? tone : "good";
+    return `<button type="button" class="kpi tone-${t}${on ? " selected" : ""}" data-set="iopCheck:${k}" aria-pressed="${on}">
+      <span class="kpiLabel">${esc(label)}</span><strong class="kpiValue">${fmt(v)}</strong><span class="kpiBar" aria-hidden="true"><span style="width:${(ratio(v, n) * 100).toFixed(1)}%;background:var(--${t === "neutral" ? "neutral" : t})"></span></span><span class="kpiSub">${esc(sub)} · ${pct(v, n)}</span></button>`;
   };
-  const kpis = card("ok", "Complètes", "1N et TSR présents", "good") + card("noTSR", "TSR manquant", "1N présent", "bad") + card("no1N", "1N manquant", "TSR présent", "bad") + card("none", "1N et TSR manquants", "aucun des deux", "bad");
+  const kpis = card("ok", "Conformes", "IOP et DEM concordent", "good") + card("demTsr", "Pas TSR dans la DEM", "GER/1N à passer en TSR", "warn")
+    + card("dem1n", "1N non fait dans la DEM", "BPD sans date", "warn") + card("out", "Hors DEM", "OT / TOT absente de la DEM", "neutral");
+  // Conformité de l'export lui-même : petit indicateur, cliquable s'il y a des TOT non conformes.
+  const bad = count("iop");
+  const conformity = bad
+    ? `<button type="button" class="iopConform bad${iopCheck === "iop" ? " on" : ""}" data-set="iopCheck:iop" aria-pressed="${iopCheck === "iop"}" title="Voir les TOT sans 1N ou sans TSR dans l’IOP319"><span class="iopConformLabel">IOP319</span><strong>Non conforme</strong><span>${plural(bad, "TOT", "TOT")} sans 1N ou sans TSR ›</span></button>`
+    : `<div class="iopConform good"><span class="iopConformLabel">IOP319</span><strong>Conforme</strong><span>chaque TOT a son 1N et son TSR</span></div>`;
   const items = scoped.filter((r) => iopMatches(r));
   const dt = dataTable({
     key: "iop", items,
@@ -215,11 +247,12 @@ function viewIOP() {
       { label: "Description", value: (r) => r.description },
       { label: "État TOT", value: (r) => r.statut, filter: true },
       { label: "ECU", value: (r) => r.ecu, filter: true },
-      { label: "Contrôle", value: (r) => IOP_CHECK_LABEL[r.check], filter: true },
-      { label: "1N", value: (r) => r.n1.map((c) => c.auteur).join(" ") },
-      { label: "TSR", value: (r) => r.tsr.map((c) => c.auteur).join(" ") },
+      { label: "Analyse", value: (r) => IOP_CHECK_LABEL[r.check], filter: true },
+      { label: "IOP · 1N", value: (r) => r.n1.map((c) => c.auteur).join(" ") },
+      { label: "IOP · TSR", value: (r) => r.tsr.map((c) => c.auteur).join(" ") },
+      { label: "DEM · GER/1N", value: (r) => (r.task ? (r.demTsr ? "TSR" : "Pas TSR") : "") },
+      { label: "DEM · BPD", value: (r) => (r.task ? (r.dem1n ? "1N fait" : "1N non fait") : "") },
       { label: "Chargé d’essais (DEM)", value: (r) => r.owner, filter: true },
-      { label: "Fin d’essai", value: (r) => (r.fin ? formatDate(r.fin) : "") },
       { label: "Liens", value: () => "" },
     ],
     row: (r) => `<tr>
@@ -227,27 +260,27 @@ function viewIOP() {
       <td class="cruDesc">${esc(r.description || r.intitule || "—")}${r.others.length ? `<small>Autres commentaires : ${esc(r.others.map((c) => c.kind || "sans type").join(", "))}</small>` : ""}</td>
       <td>${esc(r.statut)}</td>
       <td><span class="ecuTag">${esc(r.ecu === IOP_NO_ECU ? "—" : r.ecu)}</span></td>
-      <td>${badge(IOP_CHECK_LABEL[r.check], IOP_CHECK_TONE[r.check])}</td>
+      <td>${badge(IOP_CHECK_LABEL[r.check], IOP_CHECK_TONE[r.check])}<small>${esc(iopAnalysis(r))}</small></td>
       ${iopCommentCell(r.n1, "1N")}${iopCommentCell(r.tsr, "TSR")}
+      ${iopDemCell(r, "ger")}${iopDemCell(r, "bpd")}
       <td>${r.task ? esc(r.owner) : `<span class="muted" title="OT / TOT non trouvée dans les feuilles techniques de la DEM">Hors DEM</span>`}</td>
-      <td>${r.fin ? formatDate(r.fin) : '<span class="muted">—</span>'}</td>
       <td>${toolLinks(...r.tot.split("-"))}</td></tr>`,
-    empty: iopCheck === "ok" ? "Aucune TOT complète pour ce périmètre." : "Aucune TOT incomplète pour ce périmètre : chaque TOT a son 1N et son TSR.",
+    empty: iopCheck === "ok" ? "Aucune TOT conforme pour ce périmètre." : "Aucune TOT dans ce cas pour ce périmètre.",
   });
   currentRows = dt.rows;
   const checkLabel = IOP_CHECKS.find(([k]) => k === iopCheck)?.[1] || "Toutes";
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Contrôle 1N / TSR</h2>
-      <p class="muted">${esc(iop.fileName)} · ${plural(iop.rows.length, "TOT", "TOT")} · lu le ${formatFrenchDateTime(iop.importedAt)}${owner ? " · " + esc(owner) : ""}</p></div></div>
+      <p class="muted">${esc(iop.fileName)} · ${plural(iop.rows.length, "TOT", "TOT")} · lu le ${formatFrenchDateTime(iop.importedAt)}${owner ? " · " + esc(owner) : ""}</p></div>${conformity}</div>
     <div class="kpis kpis-4">${kpis}</div>
     ${panel(`${esc(checkLabel)} · ${fmt(dt.rows.length)} TOT`,
       `<div class="iopFilters">${chips}</div>
        <div class="controlRow">${segment("iopCheck", IOP_CHECKS, iopCheck, { label: "Contrôle", counts: count })}</div>${dt.html}`,
       { sub: `${intro} Feuille « ${esc(iop.sheet)} », en-tête ligne ${iop.headerRow}.` })}`;
   currentExport = () => downloadMatrix(
-    ["Tranche", "Référence eDIM", "Intitulé", "TOT", "REE", "Description", "État TOT", "ECU", "Contrôle", "1N présent", "Auteur 1N", "Date 1N", "Résultat 1N", "TSR présent", "Auteur TSR", "Date TSR", "Résultat TSR", "Chargé d’essais (DEM)", "Fin d’essai", "Ligne IOP319", "Lien EAM", "Lien eDRT"],
+    ["Tranche", "Référence eDIM", "Intitulé", "TOT", "REE", "Description", "État TOT", "ECU", "Analyse", "Détail", "IOP : 1N présent", "Auteur 1N", "Date 1N", "Résultat 1N", "IOP : TSR présent", "Auteur TSR", "Date TSR", "Résultat TSR", "DEM : GER/1N", "DEM : BPD", "Chargé d’essais (DEM)", "Fin d’essai", "Ligne IOP319", "Lien EAM", "Lien eDRT"],
     dt.rows.map((r) => {
       const ids = totIds(...r.tot.split("-")), a = r.n1[r.n1.length - 1], b = r.tsr[r.tsr.length - 1];
-      return [r.tranche, r.edim, r.intitule, r.tot, r.ree, r.description, r.statut, r.ecu === IOP_NO_ECU ? "" : r.ecu, IOP_CHECK_LABEL[r.check], a ? "Oui" : "Non", a?.auteur || "", a ? formatDate(a.date) : "", a?.resultat || "", b ? "Oui" : "Non", b?.auteur || "", b ? formatDate(b.date) : "", b?.resultat || "", r.owner, r.fin ? formatDate(r.fin) : "", r.row, ids ? eamUrl(ids) : "", ids ? edrtUrl(ids) : ""];
+      return [r.tranche, r.edim, r.intitule, r.tot, r.ree, r.description, r.statut, r.ecu === IOP_NO_ECU ? "" : r.ecu, IOP_CHECK_LABEL[r.check], iopAnalysis(r), a ? "Oui" : "Non", a?.auteur || "", a ? formatDate(a.date) : "", a?.resultat || "", b ? "Oui" : "Non", b?.auteur || "", b ? formatDate(b.date) : "", b?.resultat || "", r.task ? r.task.raw?.ger || r.task.ger : "", r.task ? r.task.raw?.bpd || r.task.bpd : "", r.owner, r.fin ? formatDate(r.fin) : "", r.row, ids ? eamUrl(ids) : "", ids ? edrtUrl(ids) : ""];
     }),
     "Controle_1N_TSR_IOP319.csv");
 }

@@ -82,10 +82,10 @@ function reportModel() {
     title = "Contrôle 1N / TSR (export IOP319) — " + (IOP_CHECKS.find(([k]) => k === iopCheck)?.[1] || "Toutes");
     if (iop) {
       const scope = iopScoped().filter((r) => iopPass(r)), chosen = iopChosen("statut"), ecus = iopChosen("ecu");
-      sections.push(indicatorSection([["Export", iop.fileName], ["États de TOT retenus", chosen.length ? chosen.join(", ") : "Tous"], ["ECU retenus", ecus.length ? ecus.join(", ") : "Tous"], ["TOT", scope.length], ...["ok", "noTSR", "no1N", "none"].map((k) => [IOP_CHECK_LABEL[k], `${scope.filter((r) => r.check === k).length} (${pct(scope.filter((r) => r.check === k).length, scope.length)})`])]));
+      sections.push(indicatorSection([["Export", iop.fileName], ["États de TOT retenus", chosen.length ? chosen.join(", ") : "Tous"], ["ECU retenus", ecus.length ? ecus.join(", ") : "Tous"], ["TOT", scope.length], ...IOP_CHECKS.filter(([k]) => k).map(([k, label]) => { const v = scope.filter((r) => iopMatches(r, k)).length; return [label, `${v} (${pct(v, scope.length)})`]; })]));
       const last = (l) => (l.length ? `${l[l.length - 1].auteur} ${formatDate(l[l.length - 1].date)}` : "MANQUANT");
-      sections.push({ title, headers: ["Affaire / TOT", "Description", "État TOT", "ECU", "Contrôle", "1N", "TSR", "Chargé d’essais (DEM)"], widths: [.15, .24, .07, .05, .12, .13, .13, .11],
-        rows: (currentRows || []).map((r) => [`${r.edim} / ${r.tot}`, r.description || r.intitule, r.statut, r.ecu === IOP_NO_ECU ? "—" : r.ecu, IOP_CHECK_LABEL[r.check], last(r.n1), last(r.tsr), r.owner]) });
+      sections.push({ title, headers: ["Affaire / TOT", "Description", "État TOT", "ECU", "Analyse", "IOP 1N", "IOP TSR", "DEM GER/1N · BPD", "Chargé (DEM)"], widths: [.13, .2, .07, .05, .14, .11, .11, .1, .09],
+        rows: (currentRows || []).map((r) => [`${r.edim} / ${r.tot}`, r.description || r.intitule, r.statut, r.ecu === IOP_NO_ECU ? "—" : r.ecu, `${IOP_CHECK_LABEL[r.check]} : ${iopAnalysis(r)}`, last(r.n1), last(r.tsr), r.task ? `${r.task.raw?.ger || "vide"} · ${r.task.raw?.bpd || "vide"}` : "—", r.owner]) });
     }
   } else if (tab === "documents") {
     title = (docCode === "P" ? "Documents prêts à valider (P)" : "Documents à reprendre (R)") + (documentType ? " — " + names[documentType] : "");
