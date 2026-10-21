@@ -61,18 +61,19 @@ function lireFeuille(ws: ExcelScript.Worksheet): string[][] {
   const textes: string[][] = plage.getTexts();
   const valeurs: (string | number | boolean)[][] = plage.getValues();
   const grille: string[][] = textes.map((ligne: string[], r: number) => ligne.map((txt: string, c: number) => texte(valeurs[r][c], txt, c)));
-  // Cellules fusionnées lues par tranches de 200 lignes (Excel refuse au-delà de 512 zones par appel).
+  // Cellules fusionnées : une seule adresse texte par tranche de 100 lignes (peu d'échanges avec
+  // Excel, et jamais plus de 512 zones par appel).
   let fusionsLues: boolean = true;
-  for (let debut = 2; debut <= derniere; debut += 200) {
-    const zones: ExcelScript.Range[] | undefined = zonesFusionnees(ws.getRange("A" + debut + ":" + DERNIERE_COLONNE + Math.min(debut + 199, derniere)));
+  for (let debut = 2; debut <= derniere; debut += 100) {
+    const zones: number[][] | undefined = zonesFusionnees(ws.getRange("A" + debut + ":" + DERNIERE_COLONNE + Math.min(debut + 99, derniere)));
     if (!zones) { fusionsLues = false; break; }
-    for (const zone of zones) {
-      const r0: number = zone.getRowIndex() - 1;
-      const c0: number = zone.getColumnIndex();
-      if (r0 < 0 || c0 >= NB_COLONNES) continue;
+    for (const z of zones) {
+      const r0: number = z[0] - 1;
+      const c0: number = z[1];
+      if (r0 < 0 || r0 >= grille.length || c0 >= NB_COLONNES) continue;
       const v: string = grille[r0][c0];
-      for (let r = r0; r < Math.min(r0 + zone.getRowCount(), grille.length); r++) {
-        for (let c = c0; c < Math.min(c0 + zone.getColumnCount(), NB_COLONNES); c++) grille[r][c] = v;
+      for (let r = r0; r <= Math.min(z[2] - 1, grille.length - 1); r++) {
+        for (let c = c0; c <= Math.min(z[3], NB_COLONNES - 1); c++) grille[r][c] = v;
       }
     }
   }
@@ -87,14 +88,24 @@ function lireFeuille(ws: ExcelScript.Worksheet): string[][] {
   return grille;
 }
 
-// Zones fusionnées d'une plage ; undefined si Excel ne sait pas les donner.
-function zonesFusionnees(plage: ExcelScript.Range): ExcelScript.Range[] | undefined {
+// Zones fusionnées d'une plage en [ligne début, colonne début, ligne fin, colonne fin]
+// (indices Excel à partir de 0), lues depuis l'adresse ; undefined si Excel ne sait pas les donner.
+function zonesFusionnees(plage: ExcelScript.Range): number[][] | undefined {
   try {
     const zones: ExcelScript.RangeAreas | undefined = plage.getMergedAreas();
-    return zones ? zones.getAreas() : [];
+    if (!zones) return [];
+    const adresse: string = zones.getAddress();
+    return adresse.split(",").map((a: string) => zone(a)).filter((z: number[]) => z.length === 4);
   } catch {
     return undefined;
   }
+}
+
+function zone(adresse: string): number[] {
+  const m: RegExpExecArray | null = /\$?([A-Z]+)\$?(\d+)(?::\$?([A-Z]+)\$?(\d+))?\s*$/.exec(adresse.split("!").pop() ?? "");
+  if (!m) return [];
+  const col = (lettres: string): number => lettres.split("").reduce((n: number, l: string) => n * 26 + l.charCodeAt(0) - 64, 0) - 1;
+  return [Number(m[2]) - 1, col(m[1]), Number(m[4] ?? m[2]) - 1, col(m[3] ?? m[1])];
 }
 
 function texte(valeur: string | number | boolean, affiche: string, colonne: number): string {
@@ -150,8 +161,8 @@ function ecrire(workbook: ExcelScript.Workbook, d: Demande): string {
   const journal: ExcelScript.Worksheet | undefined = workbook.getWorksheet("Journal appli");
   for (const champ of aEcrire) {
     let cellule: ExcelScript.Range = ws.getCell(index + 1, COLONNES[champ.colonne]);
-    const fusion: ExcelScript.Range[] | undefined = zonesFusionnees(cellule);
-    if (fusion && fusion.length) cellule = fusion[0].getCell(0, 0);
+    const fusion: number[][] | undefined = zonesFusionnees(cellule);
+    if (fusion && fusion.length) cellule = ws.getCell(fusion[0][0], fusion[0][1]);
     const serie: number = DATES.includes(champ.colonne) ? dateSerie(champ.nouvelle) : 0;
     if (champ.nouvelle === "") {
       cellule.clear(ExcelScript.ClearApplyTo.contents);
