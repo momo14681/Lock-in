@@ -60,12 +60,11 @@ function audit(tasks) {
       if (key === "j0" || t.cells[key]?.t === "e") continue;
       const s = String(t.raw[key] ?? "").trim().toUpperCase();
       const known = ["P", "R", "ANNULE", "ANNULEE", "ANNULÉ", "ANNULÉE"].includes(s)
-        || (key === "ger" ? [...GER_PRODUCED_CODES, ...GER_SIGNED_CODES].includes(s) : parseExcelDate(t.cells[key]?.v));
+        || (key === "ger" ? [...GER_PRODUCED_CODES, ...GER_SIGNED_CODES].includes(s) : key === "totPrete" ? totPreteDone(t.cells[key]?.v) : parseExcelDate(t.cells[key]?.v));
       if (s && !known) add(t, "Statut à qualifier", [key], "Valeur non reconnue par les règles de lecture. Confirmer la signification.");
     }
 
-    const prep = parseExcelDate(t.cells.totPrete?.v), bpa = parseExcelDate(t.cells.bpa?.v), bpd = parseExcelDate(t.cells.bpd?.v);
-    if (prep && bpa && bpa < prep) add(t, "Chronologie", ["totPrete", "bpa"], "La date BPA précède la date TOT prête. Vérifier les deux dates.");
+    const bpa = parseExcelDate(t.cells.bpa?.v), bpd = parseExcelDate(t.cells.bpd?.v);
     if (bpa && bpd && bpd < bpa) add(t, "Chronologie", ["bpa", "bpd"], "La date BPD précède la date BPA. Vérifier la séquence métier.");
     for (const [key, c] of Object.entries(t.cells)) if (c?.t === "e") add(t, "Erreur Excel", [key], "La cellule contient une erreur Excel. Vérifier la formule dans le classeur.", "À compléter");
   }

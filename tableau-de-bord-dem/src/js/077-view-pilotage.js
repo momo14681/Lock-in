@@ -56,7 +56,7 @@ function docChain(ts) {
     const P = documentRows(ts, "P", key).length, R = documentRows(ts, "R", key).length;
     let done, prod;
     if (key === "totPrete") {
-      done = ts.filter((t) => classifyMilestone(t.cells?.totPrete?.v ?? t.totPrete) === "done").length;
+      done = ts.filter((t) => totPreteDone(t.cells?.totPrete?.v ?? t.totPrete)).length;
       prod = ts.filter((t) => t.totReady).length;
     } else {
       ({ done, produced: prod } = milestoneStats(ts, key + "State"));

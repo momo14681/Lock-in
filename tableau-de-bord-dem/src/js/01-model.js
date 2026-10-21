@@ -90,6 +90,11 @@ function parseExcelDate(value) {
 }
 
 // Équivalences de saisie : « Prêt » en TOT prête vaut P ; une date en GER/1N vaut TSR.
+// « Renseigné » en TOT prête vaut une TOT prête faite, comme une date (totPreteDone).
+function totPreteDone(value) {
+  return Boolean(parseExcelDate(value)) || /^RENSEIGNEE?S?$/.test(status(value));
+}
+
 function normalizeStatus(key, value) {
   if (key === "totPrete" && /^PRETE?S?$/.test(status(value))) return "P";
   if (key === "ger" && parseExcelDate(value)) return "TSR";
@@ -170,7 +175,7 @@ function buildTask(sheet, rowNumber, row, today) {
   // « Non renseigné » : J0 inconnu assumé, ni à compléter ni à corriger.
   const j0Unknown = !j0Date && /^NON RENSEIGNE/.test(status(values.j0));
   const prepDue = j0Date ? addDays(j0Date, -30) : null;
-  const totReady = Boolean(parseExcelDate(values.totPrete)) || status(values.totPrete) === "P";
+  const totReady = totPreteDone(values.totPrete) || status(values.totPrete) === "P";
   // Un RDU manquant n'est pas bloquant : signalé à part, en « À vérifier ».
   const missingPrerequisites = ["mc", "ot", "tot"].filter((key) => !isNonBlank(values[key]));
   // Préparation terminée = TOT prête (date ou P), comme l'indicateur « TOT prête produits ».
