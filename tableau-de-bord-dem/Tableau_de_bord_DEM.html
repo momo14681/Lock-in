@@ -4993,6 +4993,7 @@ function closeWorkbook() {
 
 let excelMode = false, excelReading = false, excelFileName = "";
 const EXCEL_JOURNAL = "Journal appli";
+const EXCEL_CELLS_PER_READ = 5000; // cellules par lecture (réponse Excel limitée à 5 Mo)
 const EXCEL_MERGE_ROWS = 50; // lignes par lecture des cellules fusionnées (Excel refuse au-delà de 512 zones)
 const EXCEL_REFRESH_MS = 5 * 60_000; // relecture au retour sur le volet si la dernière a plus de 5 min
 
@@ -5050,9 +5051,20 @@ async function readExcelWorkbook() {
     await ctx.sync();
     const present = sheets.items.map((s) => s.name);
     const wb = { SheetNames: present, Sheets: {} };
-    for (const name of wanted.filter((n) => present.includes(n))) {
+    for (const name of wanted.filter((n) => present.includes(n) && n !== "Préparation")) {
       await pauseForPaint();
       wb.Sheets[name] = await readExcelSheet(ctx, sheets.getItem(name), name);
+    }
+    // Préparation : seules les cellules désignées par les formules de Pilotage (codes projet).
+    if (present.includes("Préparation") && wb.Sheets.Pilotage) {
+      const prep = { "!ref": "A1:A1" }, ws = sheets.getItem("Préparation"), refs = [];
+      for (const c of Object.values(wb.Sheets.Pilotage)) {
+        const m = String(c?.f || "").match(/Préparation!\$?([A-Z]+)\$?(\d+)/i);
+        if (m) { const r = ws.getRange(m[1] + m[2]); r.load("values,valueTypes,numberFormat"); refs.push([m[1] + m[2], r]); }
+      }
+      await ctx.sync();
+      for (const [addr, r] of refs) { const cell = excelCell(r.values[0][0], r.valueTypes[0][0], r.numberFormat[0][0]); if (cell) prep[addr] = cell; }
+      wb.Sheets["Préparation"] = prep;
     }
     return wb;
   });
@@ -5064,45 +5076,60 @@ async function readExcelSheet(ctx, ws, name) {
   await ctx.sync();
   const sheet = {};
   if (used.isNullObject) { sheet["!ref"] = "A1:A1"; return sheet; }
-  const lastRow = used.rowIndex + used.rowCount, lastCol = used.columnIndex + used.columnCount - 1;
+  const technical = TECHNICAL_SHEETS.includes(name);
+  // Seules les colonnes utiles : A à V des feuilles techniques, B à D des lignes 1 à 30 de
+  // Pilotage, au plus 80 colonnes ailleurs (CRU, Suivi modification IPE).
+  const pilotage = name === "Pilotage";
+  const lastRow = Math.min(used.rowIndex + used.rowCount, pilotage ? 30 : Infinity);
+  const lastCol = technical ? 21 : pilotage ? 3 : Math.min(79, used.columnIndex + used.columnCount - 1);
   const colName = XLSX.utils.encode_col(lastCol);
   sheet["!ref"] = `A1:${colName}${lastRow}`;
-  const keepFormula = name === "Pilotage" || name === "Préparation";
-  // Lecture par tranches : Excel en ligne limite la taille d'une réponse.
-  const step = Math.max(100, Math.floor(40000 / (lastCol + 1)));
-  for (let start = 1; start <= lastRow; start += step) {
-    const end = Math.min(lastRow, start + step - 1);
+  const keepFormula = pilotage;
+  // Lecture par tranches : Excel limite la taille d'une réponse (5 Mo en ligne). Une tranche
+  // refusée est coupée en deux, jusqu'à une ligne.
+  const read = async (start, end) => {
     const range = ws.getRange(`A${start}:${colName}${end}`);
     range.load(keepFormula ? "values,valueTypes,numberFormat,formulas" : "values,valueTypes,numberFormat");
-    await ctx.sync();
+    try { await ctx.sync(); }
+    catch (e) {
+      if (start === end) throw e;
+      const mid = Math.floor((start + end) / 2);
+      await read(start, mid);
+      await read(mid + 1, end);
+      return;
+    }
     range.values.forEach((row, i) => row.forEach((v, c) => {
       const cell = excelCell(v, range.valueTypes[i][c], range.numberFormat[i][c], keepFormula ? range.formulas[i][c] : null);
       if (cell) sheet[XLSX.utils.encode_cell({ r: start - 1 + i, c })] = cell;
     }));
-  }
-  if (TECHNICAL_SHEETS.includes(name)) sheet["!merges"] = await excelMerges(ctx, ws, lastRow, colName);
+  };
+  const step = Math.max(20, Math.floor(EXCEL_CELLS_PER_READ / (lastCol + 1)));
+  for (let start = 1; start <= lastRow; start += step) await read(start, Math.min(lastRow, start + step - 1));
+  if (technical) sheet["!merges"] = await excelMerges(ctx, ws, lastRow, colName);
   return sheet;
 }
 
-// Cellules fusionnées, lues par tranches de 50 lignes en un seul échange ; si Excel refuse
-// (trop de zones), chaque tranche est relue seule et coupée en deux autant que nécessaire.
+// Cellules fusionnées, lues par tranches de 50 lignes, 20 tranches par échange ; si Excel
+// refuse (trop de zones), chaque tranche est relue seule et coupée en deux autant que nécessaire.
 async function excelMerges(ctx, ws, lastRow, colName) {
-  const chunks = [];
+  const chunks = [], out = [];
   for (let start = 1; start <= lastRow; start += EXCEL_MERGE_ROWS) chunks.push([start, Math.min(lastRow, start + EXCEL_MERGE_ROWS - 1)]);
   const queue = (a, b) => { const z = ws.getRange(`A${a}:${colName}${b}`).getMergedAreasOrNullObject(); z.load("address"); return z; };
-  try {
-    const zones = chunks.map(([a, b]) => queue(a, b));
-    await ctx.sync();
-    return zones.flatMap(mergeList);
-  } catch (e) {
-    const out = [];
-    const read = async (a, b) => {
-      try { const z = queue(a, b); await ctx.sync(); out.push(...mergeList(z)); }
-      catch (err) { if (a === b) return; const m = Math.floor((a + b) / 2); await read(a, m); await read(m + 1, b); }
-    };
-    for (const [a, b] of chunks) await read(a, b);
-    return out;
+  const read = async (a, b) => {
+    try { const z = queue(a, b); await ctx.sync(); out.push(...mergeList(z)); }
+    catch (err) { if (a === b) return; const m = Math.floor((a + b) / 2); await read(a, m); await read(m + 1, b); }
+  };
+  for (let i = 0; i < chunks.length; i += 20) {
+    const group = chunks.slice(i, i + 20);
+    try {
+      const zones = group.map(([a, b]) => queue(a, b));
+      await ctx.sync();
+      zones.forEach((z) => out.push(...mergeList(z)));
+    } catch (e) {
+      for (const [a, b] of group) await read(a, b);
+    }
   }
+  return out;
 }
 
 function mergeList(zones) {
