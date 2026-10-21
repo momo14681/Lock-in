@@ -5374,29 +5374,62 @@ function fillPdgTemplate(bytes, cells) {
 }
 
 // --- Modèle mémorisé et commandes ----------------------------------------------------------
+// Une page web ne peut pas ouvrir seule un chemin réseau (\\atlas…) : chacun désigne le modèle
+// une fois. Dans Edge ou Chrome, le lien vers le fichier est mémorisé et le modèle est relu à
+// chaque génération (une mise à jour sur atlas est donc prise en compte) ; ailleurs (volet
+// Excel), une copie est gardée. Si le fichier n'est plus lisible, il faut le choisir de nouveau.
 
 function loadPdgTemplate() {
-  storedSource("get", null, PDG_TEMPLATE_KEY).then((t) => { if (t?.bytes) pdgTemplate = t; }).catch(() => {});
+  storedSource("get", null, PDG_TEMPLATE_KEY).then((t) => { if (t?.bytes || t?.handle) pdgTemplate = t; }).catch(() => {});
 }
 
-function choosePdgTemplate(t = null) {
+async function savePdgTemplate(name, bytes, handle = null) {
+  pdgTemplate = { name, bytes, handle };
+  try { await storedSource("put", pdgTemplate, PDG_TEMPLATE_KEY); } catch (e) { pdgTemplate.handle = handle; /* gardé pour cette session */ }
+  pdgNotice(`Modèle de page de garde enregistré : ${esc(name)}.`);
+  if (pdgPendingTask) generatePdg(pdgPendingTask);
+  pdgPendingTask = null;
+}
+
+async function choosePdgTemplate(t = null) {
   pdgPendingTask = t;
+  // Sélecteur mémorisant le dossier (le prochain choix s'ouvre directement dans le dossier atlas).
+  if (typeof window.showOpenFilePicker === "function") {
+    try {
+      const [handle] = await window.showOpenFilePicker({ id: "dem-modele-pdg", multiple: false, types: [{ description: "Modèle de page de garde", accept: { "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] } }] });
+      const f = await handle.getFile();
+      return savePdgTemplate(f.name, await f.arrayBuffer(), handle);
+    } catch (e) {
+      if (e.name === "AbortError") { pdgPendingTask = null; return; }
+      // Sélecteur refusé (volet Excel…) : choix de fichier classique.
+    }
+  }
   let input = $("pdgFile");
   if (!input) {
     input = Object.assign(document.createElement("input"), { type: "file", id: "pdgFile", accept: ".xlsm,.xlsx", hidden: true });
     input.onchange = async () => {
       const f = input.files[0];
       input.value = "";
-      if (!f) return;
-      pdgTemplate = { name: f.name, bytes: await f.arrayBuffer() };
-      try { await storedSource("put", pdgTemplate, PDG_TEMPLATE_KEY); } catch (e) { /* gardé pour cette session */ }
-      pdgNotice(`Modèle de page de garde enregistré : ${esc(f.name)}.`);
-      if (pdgPendingTask) generatePdg(pdgPendingTask);
-      pdgPendingTask = null;
+      if (f) savePdgTemplate(f.name, await f.arrayBuffer());
     };
     document.body.appendChild(input);
   }
   input.click();
+}
+
+// Contenu actuel du modèle : relu depuis le fichier mémorisé si possible, sinon la copie.
+async function pdgTemplateBytes() {
+  const h = pdgTemplate.handle;
+  if (!h) return pdgTemplate.bytes;
+  let permission = await h.queryPermission({ mode: "read" });
+  if (permission === "prompt") permission = await h.requestPermission({ mode: "read" });
+  if (permission !== "granted") throw Error("lecture du modèle non autorisée");
+  const bytes = await (await h.getFile()).arrayBuffer();
+  if (bytes.byteLength !== pdgTemplate.bytes?.byteLength) {
+    pdgTemplate.bytes = bytes;
+    storedSource("put", pdgTemplate, PDG_TEMPLATE_KEY).catch(() => {});
+  }
+  return bytes;
 }
 
 // Message dans la fiche TOT si elle est ouverte (sinon sous l'en-tête).
@@ -5406,11 +5439,17 @@ function pdgNotice(html, error = false) {
   else $("message").innerHTML = `<div class="notice${error ? " error" : ""}">${html}</div>`;
 }
 
-function generatePdg(t) {
+async function generatePdg(t) {
   if (!pdgTemplate) { choosePdgTemplate(t); return; }
+  let bytes;
+  try { bytes = await pdgTemplateBytes(); }
+  catch (e) {
+    pdgNotice(`Modèle de page de garde introuvable ou illisible (${esc(pdgTemplate.name || "PdG_Type.xlsm")} : ${esc(e.message || e)}). <button type="button" data-pdg-template>Choisir le modèle</button>`, true);
+    return;
+  }
   try {
     const { file, cells } = pdgValues(t);
-    downloadBytes(fillPdgTemplate(pdgTemplate.bytes, cells), "application/vnd.ms-excel.sheet.macroEnabled.12", file);
+    downloadBytes(fillPdgTemplate(bytes, cells), "application/vnd.ms-excel.sheet.macroEnabled.12", file);
     pdgNotice(`Page de garde téléchargée : ${esc(file)}.`);
   } catch (e) {
     pdgNotice(`Page de garde : ${esc(e.message || e)}`, true);
@@ -5419,7 +5458,7 @@ function generatePdg(t) {
 
 function pdgAction(d) {
   if (d.pdg !== undefined) return generatePdg(data.tasks[+d.pdg]), true;
-  if (d.pdgTemplate !== undefined) return choosePdgTemplate(), true;
+  if (d.pdgTemplate !== undefined) return choosePdgTemplate($("detail").open ? data.tasks[+$("detail").dataset.task] : null), true;
   return false;
 }
 
