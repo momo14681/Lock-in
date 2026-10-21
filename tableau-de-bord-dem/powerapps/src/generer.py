@@ -109,11 +109,10 @@ def frac(cond, unit="TOT"):
 
 # --- Accueil ---------------------------------------------------------------------------
 
-CHARGER = """Clear(colSrc);
-ForAll(
-    Sequence(5, 0, 2000) As b,
-    Collect(colSrc, Filter(DEM, Num > b.Value && Num <= b.Value + 2000))
-);
+# Source Excel : le connecteur renvoie Num en texte et ne délègue rien, on charge la table entière
+# (2 000 lignes au plus). Pour une liste SharePoint de plus de 2 000 lignes, charger par tranches :
+# ForAll(Sequence(5, 0, 2000) As b, Collect(colSrc, Filter(DEM, Num > b.Value && Num <= b.Value + 2000)))
+CHARGER = """ClearCollect(colSrc, DEM);
 Set(gMaj, Now());
 If(
     IsBlank(gMoi),

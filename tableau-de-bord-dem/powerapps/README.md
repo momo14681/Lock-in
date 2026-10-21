@@ -84,8 +84,9 @@ saisit.
 - Avec Excel comme source : 2 000 lignes au plus, une écriture peut mettre jusqu’à 30 s à être
   visible des autres, et le fichier peut rester verrouillé quelques minutes après une
   écriture. Power Apps peut ajouter une colonne cachée `__PowerAppsId__` au tableau : c’est
-  normal. Une liste SharePoint lève ces limites (jusqu’à 10 000 lignes avec le chargement par
-  tranches de l’accueil).
+  normal. Une liste SharePoint lève ces limites (pour plus de 2 000 lignes, remplacer dans
+  l’accueil `ClearCollect(colSrc, DEM)` par le chargement par tranches indiqué dans
+  `src/generer.py`).
 - Les écrans et formules n’ont pas pu être testés dans Power Apps Studio : envoyer une capture
   de la première erreur rencontrée pour correction.
 

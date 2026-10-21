@@ -5,11 +5,7 @@ Screens:
         =RGBA(243, 245, 248, 1)
       OnVisible: |-
         =If(CountRows(colSrc) = 0,
-        Clear(colSrc);
-        ForAll(
-            Sequence(5, 0, 2000) As b,
-            Collect(colSrc, Filter(DEM, Num > b.Value && Num <= b.Value + 2000))
-        );
+        ClearCollect(colSrc, DEM);
         Set(gMaj, Now());
         If(
             IsBlank(gMoi),
@@ -280,11 +276,7 @@ Screens:
             Width: =128
             Height: =36
             OnSelect: |-
-              =Clear(colSrc);
-              ForAll(
-                  Sequence(5, 0, 2000) As b,
-                  Collect(colSrc, Filter(DEM, Num > b.Value && Num <= b.Value + 2000))
-              );
+              =ClearCollect(colSrc, DEM);
               Set(gMaj, Now());
               If(
                   IsBlank(gMoi),
