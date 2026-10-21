@@ -5,7 +5,38 @@ Screens:
         =RGBA(243, 245, 248, 1)
       OnVisible: |-
         =If(CountRows(colSrc) = 0,
-        ClearCollect(colSrc, DEM);
+        With(
+            {reponse: ParseJSON(DEM_PowerApps.Run("lire", "").resultat)},
+            ClearCollect(
+                colSrc,
+                ForAll(
+                    Table(reponse.lignes) As x,
+                    {
+                        Num: Value(x.Value.Num),
+                        Ligne: Value(x.Value.Ligne),
+                        Cle: Text(x.Value.Cle),
+                        Feuille: Text(x.Value.Feuille),
+                        Affaire: Text(x.Value.Affaire),
+                        Libelle: Text(x.Value.Libelle),
+                        REE: Text(x.Value.REE),
+                        Titulaire: Text(x.Value.Titulaire),
+                        LibelleREE: Text(x.Value.LibelleREE),
+                        MC: Text(x.Value.MC),
+                        OT: Text(x.Value.OT),
+                        TOT: Text(x.Value.TOT),
+                        RDU: Text(x.Value.RDU),
+                        Charge: Text(x.Value.Charge),
+                        TOTPrete: Text(x.Value.TOTPrete),
+                        J0: Text(x.Value.J0),
+                        Regime: Text(x.Value.Regime),
+                        BPA: Text(x.Value.BPA),
+                        GER1N: Text(x.Value.GER1N),
+                        BPD: Text(x.Value.BPD),
+                        Observations: Text(x.Value.Observations)
+                    }
+                )
+            )
+        );
         Set(gMaj, Now());
         If(
             IsBlank(gMoi),
@@ -276,7 +307,38 @@ Screens:
             Width: =128
             Height: =36
             OnSelect: |-
-              =ClearCollect(colSrc, DEM);
+              =With(
+                  {reponse: ParseJSON(DEM_PowerApps.Run("lire", "").resultat)},
+                  ClearCollect(
+                      colSrc,
+                      ForAll(
+                          Table(reponse.lignes) As x,
+                          {
+                              Num: Value(x.Value.Num),
+                              Ligne: Value(x.Value.Ligne),
+                              Cle: Text(x.Value.Cle),
+                              Feuille: Text(x.Value.Feuille),
+                              Affaire: Text(x.Value.Affaire),
+                              Libelle: Text(x.Value.Libelle),
+                              REE: Text(x.Value.REE),
+                              Titulaire: Text(x.Value.Titulaire),
+                              LibelleREE: Text(x.Value.LibelleREE),
+                              MC: Text(x.Value.MC),
+                              OT: Text(x.Value.OT),
+                              TOT: Text(x.Value.TOT),
+                              RDU: Text(x.Value.RDU),
+                              Charge: Text(x.Value.Charge),
+                              TOTPrete: Text(x.Value.TOTPrete),
+                              J0: Text(x.Value.J0),
+                              Regime: Text(x.Value.Regime),
+                              BPA: Text(x.Value.BPA),
+                              GER1N: Text(x.Value.GER1N),
+                              BPD: Text(x.Value.BPD),
+                              Observations: Text(x.Value.Observations)
+                          }
+                      )
+                  )
+              );
               Set(gMaj, Now());
               If(
                   IsBlank(gMoi),

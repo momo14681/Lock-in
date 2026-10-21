@@ -63,9 +63,8 @@ Source de la macro : `src/vba/AppliquerModifsDEM.bas` (embarquée dans le HTML a
 ## Appli Power Apps
 
 Le dossier `powerapps/` contient une appli canevas (écrans à coller dans Power Apps Studio et
-règles de calcul) qui reprend ce tableau de bord avec saisie directe. Les données viennent de
-l’export **Exporter › Données pour l’appli Power Apps (Excel)**. Mode d’emploi :
-`powerapps/README.md`.
+règles de calcul) qui reprend ce tableau de bord avec saisie directe dans la vraie DEM, via un
+script Office et un flux Power Automate. Mode d’emploi : `powerapps/README.md`.
 
 ## Écran d'équipe (export PNG 1920 × 1080)
 

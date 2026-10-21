@@ -109,10 +109,40 @@ def frac(cond, unit="TOT"):
 
 # --- Accueil ---------------------------------------------------------------------------
 
-# Source Excel : le connecteur renvoie Num en texte et ne délègue rien, on charge la table entière
-# (2 000 lignes au plus). Pour une liste SharePoint de plus de 2 000 lignes, charger par tranches :
-# ForAll(Sequence(5, 0, 2000) As b, Collect(colSrc, Filter(DEM, Num > b.Value && Num <= b.Value + 2000)))
-CHARGER = """ClearCollect(colSrc, DEM);
+# Lecture de la vraie DEM en un seul appel : flux Power Automate « DEM_PowerApps » qui exécute
+# le script Office DEM_PowerApps (cellules fusionnées résolues, dates en jj/mm/aaaa).
+CHARGER = """With(
+    {reponse: ParseJSON(DEM_PowerApps.Run("lire", "").resultat)},
+    ClearCollect(
+        colSrc,
+        ForAll(
+            Table(reponse.lignes) As x,
+            {
+                Num: Value(x.Value.Num),
+                Ligne: Value(x.Value.Ligne),
+                Cle: Text(x.Value.Cle),
+                Feuille: Text(x.Value.Feuille),
+                Affaire: Text(x.Value.Affaire),
+                Libelle: Text(x.Value.Libelle),
+                REE: Text(x.Value.REE),
+                Titulaire: Text(x.Value.Titulaire),
+                LibelleREE: Text(x.Value.LibelleREE),
+                MC: Text(x.Value.MC),
+                OT: Text(x.Value.OT),
+                TOT: Text(x.Value.TOT),
+                RDU: Text(x.Value.RDU),
+                Charge: Text(x.Value.Charge),
+                TOTPrete: Text(x.Value.TOTPrete),
+                J0: Text(x.Value.J0),
+                Regime: Text(x.Value.Regime),
+                BPA: Text(x.Value.BPA),
+                GER1N: Text(x.Value.GER1N),
+                BPD: Text(x.Value.BPD),
+                Observations: Text(x.Value.Observations)
+            }
+        )
+    )
+);
 Set(gMaj, Now());
 If(
     IsBlank(gMoi),
@@ -254,13 +284,46 @@ ENREGISTRER = """With(
             If(
                 !IsBlank(erreurs),
                 Notify("Valeur non reconnue pour : " & erreurs & ". Saisir une date jj/mm/aaaa ou un des codes proposés.", NotificationType.Error),
-                Patch(DEM, LookUp(DEM, Num = gSel.Num), valeurs);
-                If(
-                    IsEmpty(Errors(DEM)),
-                    Patch(colSrc, LookUp(colSrc, Num = gSel.Num), valeurs);
-                    Set(gSel, LookUp(tDEM, Num = gSel.Num));
-                    Notify("Enregistré dans la DEM.", NotificationType.Success),
-                    Notify("Enregistrement impossible : " & First(Errors(DEM)).Message, NotificationType.Error)
+                With(
+                    {
+                        reponse: ParseJSON(
+                            DEM_PowerApps.Run(
+                                "ecrire",
+                                JSON(
+                                    {
+                                        feuille: gSel.Feuille,
+                                        ligne: gSel.Ligne,
+                                        affaire: gSel.Affaire,
+                                        ree: gSel.REE,
+                                        ot: gSel.OT,
+                                        tot: gSel.TOT,
+                                        utilisateur: User().FullName,
+                                        champs: Filter(
+                                            Table(
+                                                {colonne: "TOTPrete", ancienne: gSel.TOTPrete, nouvelle: valeurs.TOTPrete},
+                                                {colonne: "BPA", ancienne: gSel.BPA, nouvelle: valeurs.BPA},
+                                                {colonne: "GER1N", ancienne: gSel.GER1N, nouvelle: valeurs.GER1N},
+                                                {colonne: "BPD", ancienne: gSel.BPD, nouvelle: valeurs.BPD},
+                                                {colonne: "J0", ancienne: gSel.J0, nouvelle: valeurs.J0},
+                                                {colonne: "MC", ancienne: gSel.MC, nouvelle: valeurs.MC},
+                                                {colonne: "RDU", ancienne: gSel.RDU, nouvelle: valeurs.RDU},
+                                                {colonne: "Regime", ancienne: gSel.Regime, nouvelle: valeurs.Regime},
+                                                {colonne: "Observations", ancienne: gSel.Observations, nouvelle: valeurs.Observations}
+                                            ) As c,
+                                            Coalesce(c.ancienne, "") <> Coalesce(c.nouvelle, "")
+                                        )
+                                    }
+                                )
+                            ).resultat
+                        )
+                    },
+                    If(
+                        Boolean(reponse.ok),
+                        Patch(colSrc, LookUp(colSrc, Num = gSel.Num), valeurs);
+                        Set(gSel, LookUp(tDEM, Num = gSel.Num));
+                        Notify(Text(reponse.message), NotificationType.Success),
+                        Notify(Text(reponse.message), NotificationType.Error)
+                    )
                 )
             )
         )
@@ -292,7 +355,7 @@ def fiche():
         button(f"{s}Annuler", '"Annuler les saisies"', 308, 586, 180, 42,
                "Reset(inTOTPrete); Reset(inBPA); Reset(inGER1N); Reset(inBPD); Reset(inJ0); Reset(inMC); Reset(inRDU); Reset(inRegime); Reset(inObservations)",
                WHITE, NAVY, BorderThickness=1, BorderColor=NAVY),
-        label(f"{s}Note", '"Les dates sont enregistrées au format jj/mm/aaaa. Les autres colonnes de la DEM ne sont pas modifiées."', 504, 586, 700, 42, 11, MUTED),
+        label(f"{s}Note", '"Écrit directement dans la DEM (jj/mm/aaaa pour les dates). Si quelqu’un a modifié la ligne entre-temps, rien n’est écrit."', 504, 586, 700, 42, 11, MUTED),
     ]
     return screen("scrFiche", {"Fill": BG}, ctl)
 
@@ -420,4 +483,10 @@ if __name__ == "__main__":
     src = (ROOT / "App.Formulas.txt").read_text(encoding="utf-8")
     fr = vers_francais(src).replace("version séparateurs anglais « , » et « ; »", "version séparateurs français « ; » et « ;; »")
     (ROOT / "App.Formulas.fr.txt").write_text(fr, encoding="utf-8")
+    # Formules à remplacer à la main dans une appli déjà installée (séparateurs français).
+    charge = "If(CountRows(colSrc) = 0,\n" + CHARGER + "\n)"
+    blocs = [("Écran scrAccueil, propriété OnVisible", charge), ("Bouton accActualiser, propriété OnSelect", CHARGER),
+             ("Bouton ficEnregistrer (écran scrFiche), propriété OnSelect", ENREGISTRER)]
+    texte = "\n\n".join(f"// ===== {titre} =====\n{vers_francais(f)}" for titre, f in blocs)
+    (ROOT / "Formules_a_remplacer.fr.txt").write_text(texte + "\n", encoding="utf-8")
     print("ok", sorted(p.name for p in OUT.iterdir()))

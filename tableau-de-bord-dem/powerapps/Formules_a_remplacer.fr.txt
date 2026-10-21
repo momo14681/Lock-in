@@ -1,0 +1,189 @@
+// ===== Écran scrAccueil, propriété OnVisible =====
+If(CountRows(colSrc) = 0;
+With(
+    {reponse: ParseJSON(DEM_PowerApps.Run("lire"; "").resultat)};
+    ClearCollect(
+        colSrc;
+        ForAll(
+            Table(reponse.lignes) As x;
+            {
+                Num: Value(x.Value.Num);
+                Ligne: Value(x.Value.Ligne);
+                Cle: Text(x.Value.Cle);
+                Feuille: Text(x.Value.Feuille);
+                Affaire: Text(x.Value.Affaire);
+                Libelle: Text(x.Value.Libelle);
+                REE: Text(x.Value.REE);
+                Titulaire: Text(x.Value.Titulaire);
+                LibelleREE: Text(x.Value.LibelleREE);
+                MC: Text(x.Value.MC);
+                OT: Text(x.Value.OT);
+                TOT: Text(x.Value.TOT);
+                RDU: Text(x.Value.RDU);
+                Charge: Text(x.Value.Charge);
+                TOTPrete: Text(x.Value.TOTPrete);
+                J0: Text(x.Value.J0);
+                Regime: Text(x.Value.Regime);
+                BPA: Text(x.Value.BPA);
+                GER1N: Text(x.Value.GER1N);
+                BPD: Text(x.Value.BPD);
+                Observations: Text(x.Value.Observations)
+            }
+        )
+    )
+);;
+Set(gMaj; Now());;
+If(
+    IsBlank(gMoi);
+    Set(
+        gMoi;
+        First(
+            Filter(
+                Distinct(Filter(tDEM; !Annulee); Charge) As c;
+                CountRows(Filter(Split(User().FullName; " ") As w; Len(w.Value) > 1 && !(Lower(w.Value) in Lower(c.Value)))) = 0
+            )
+        ).Value
+    )
+)
+)
+
+// ===== Bouton accActualiser, propriété OnSelect =====
+With(
+    {reponse: ParseJSON(DEM_PowerApps.Run("lire"; "").resultat)};
+    ClearCollect(
+        colSrc;
+        ForAll(
+            Table(reponse.lignes) As x;
+            {
+                Num: Value(x.Value.Num);
+                Ligne: Value(x.Value.Ligne);
+                Cle: Text(x.Value.Cle);
+                Feuille: Text(x.Value.Feuille);
+                Affaire: Text(x.Value.Affaire);
+                Libelle: Text(x.Value.Libelle);
+                REE: Text(x.Value.REE);
+                Titulaire: Text(x.Value.Titulaire);
+                LibelleREE: Text(x.Value.LibelleREE);
+                MC: Text(x.Value.MC);
+                OT: Text(x.Value.OT);
+                TOT: Text(x.Value.TOT);
+                RDU: Text(x.Value.RDU);
+                Charge: Text(x.Value.Charge);
+                TOTPrete: Text(x.Value.TOTPrete);
+                J0: Text(x.Value.J0);
+                Regime: Text(x.Value.Regime);
+                BPA: Text(x.Value.BPA);
+                GER1N: Text(x.Value.GER1N);
+                BPD: Text(x.Value.BPD);
+                Observations: Text(x.Value.Observations)
+            }
+        )
+    )
+);;
+Set(gMaj; Now());;
+If(
+    IsBlank(gMoi);
+    Set(
+        gMoi;
+        First(
+            Filter(
+                Distinct(Filter(tDEM; !Annulee); Charge) As c;
+                CountRows(Filter(Split(User().FullName; " ") As w; Len(w.Value) > 1 && !(Lower(w.Value) in Lower(c.Value)))) = 0
+            )
+        ).Value
+    )
+)
+
+// ===== Bouton ficEnregistrer (écran scrFiche), propriété OnSelect =====
+With(
+    {
+        tp: Trim(inTOTPrete.Text);
+        bpa: Trim(inBPA.Text);
+        ger: Trim(inGER1N.Text);
+        bpd: Trim(inBPD.Text);
+        j0: Trim(inJ0.Text)
+    };
+    With(
+        {
+            dtp: IfError(DateValue(tp; "fr-FR"); Blank());
+            dbpa: IfError(DateValue(bpa; "fr-FR"); Blank());
+            dger: IfError(DateValue(ger; "fr-FR"); Blank());
+            dbpd: IfError(DateValue(bpd; "fr-FR"); Blank());
+            dj0: IfError(DateValue(j0; "fr-FR"); Blank())
+        };
+        With(
+            {
+                erreurs: Concat(
+                    Filter(
+                        Table(
+                            {champ: "TOT prête"; ok: IsBlank(tp) || !IsBlank(dtp) || Upper(tp) in ["P"; "R"; "PRÊT"; "PRET"; "RENSEIGNÉ"; "RENSEIGNE"] || StartsWith(Upper(tp); "ANNUL")};
+                            {champ: "BPA"; ok: IsBlank(bpa) || !IsBlank(dbpa) || Upper(bpa) in ["P"; "R"; "F"] || StartsWith(Upper(bpa); "ANNUL")};
+                            {champ: "GER/1N"; ok: IsBlank(ger) || !IsBlank(dger) || Upper(ger) in ["P"; "PS"; "TS"; "PSR"; "TSR"; "TAR"; "R"] || StartsWith(Upper(ger); "ANNUL")};
+                            {champ: "BPD"; ok: IsBlank(bpd) || !IsBlank(dbpd) || Upper(bpd) in ["P"; "R"] || StartsWith(Upper(bpd); "ANNUL")};
+                            {champ: "J0"; ok: IsBlank(j0) || !IsBlank(dj0) || StartsWith(Upper(j0); "NON RENSEIGN")}
+                        ) As e;
+                        !e.ok
+                    );
+                    champ;
+                    ", "
+                );
+                valeurs: {
+                    TOTPrete: If(IsBlank(dtp); tp; Text(dtp; "dd/mm/yyyy"));
+                    BPA: If(IsBlank(dbpa); Upper(bpa); Text(dbpa; "dd/mm/yyyy"));
+                    GER1N: If(IsBlank(dger); Upper(ger); Text(dger; "dd/mm/yyyy"));
+                    BPD: If(IsBlank(dbpd); Upper(bpd); Text(dbpd; "dd/mm/yyyy"));
+                    J0: If(IsBlank(dj0); j0; Text(dj0; "dd/mm/yyyy"));
+                    MC: Trim(inMC.Text);
+                    RDU: Trim(inRDU.Text);
+                    Regime: Trim(inRegime.Text);
+                    Observations: inObservations.Text
+                }
+            };
+            If(
+                !IsBlank(erreurs);
+                Notify("Valeur non reconnue pour : " & erreurs & ". Saisir une date jj/mm/aaaa ou un des codes proposés."; NotificationType.Error);
+                With(
+                    {
+                        reponse: ParseJSON(
+                            DEM_PowerApps.Run(
+                                "ecrire";
+                                JSON(
+                                    {
+                                        feuille: gSel.Feuille;
+                                        ligne: gSel.Ligne;
+                                        affaire: gSel.Affaire;
+                                        ree: gSel.REE;
+                                        ot: gSel.OT;
+                                        tot: gSel.TOT;
+                                        utilisateur: User().FullName;
+                                        champs: Filter(
+                                            Table(
+                                                {colonne: "TOTPrete"; ancienne: gSel.TOTPrete; nouvelle: valeurs.TOTPrete};
+                                                {colonne: "BPA"; ancienne: gSel.BPA; nouvelle: valeurs.BPA};
+                                                {colonne: "GER1N"; ancienne: gSel.GER1N; nouvelle: valeurs.GER1N};
+                                                {colonne: "BPD"; ancienne: gSel.BPD; nouvelle: valeurs.BPD};
+                                                {colonne: "J0"; ancienne: gSel.J0; nouvelle: valeurs.J0};
+                                                {colonne: "MC"; ancienne: gSel.MC; nouvelle: valeurs.MC};
+                                                {colonne: "RDU"; ancienne: gSel.RDU; nouvelle: valeurs.RDU};
+                                                {colonne: "Regime"; ancienne: gSel.Regime; nouvelle: valeurs.Regime};
+                                                {colonne: "Observations"; ancienne: gSel.Observations; nouvelle: valeurs.Observations}
+                                            ) As c;
+                                            Coalesce(c.ancienne; "") <> Coalesce(c.nouvelle; "")
+                                        )
+                                    }
+                                )
+                            ).resultat
+                        )
+                    };
+                    If(
+                        Boolean(reponse.ok);
+                        Patch(colSrc; LookUp(colSrc; Num = gSel.Num); valeurs);;
+                        Set(gSel; LookUp(tDEM; Num = gSel.Num));;
+                        Notify(Text(reponse.message); NotificationType.Success);
+                        Notify(Text(reponse.message); NotificationType.Error)
+                    )
+                )
+            )
+        )
+    )
+)

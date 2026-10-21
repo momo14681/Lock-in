@@ -509,13 +509,46 @@ Screens:
                           If(
                               !IsBlank(erreurs),
                               Notify("Valeur non reconnue pour : " & erreurs & ". Saisir une date jj/mm/aaaa ou un des codes proposés.", NotificationType.Error),
-                              Patch(DEM, LookUp(DEM, Num = gSel.Num), valeurs);
-                              If(
-                                  IsEmpty(Errors(DEM)),
-                                  Patch(colSrc, LookUp(colSrc, Num = gSel.Num), valeurs);
-                                  Set(gSel, LookUp(tDEM, Num = gSel.Num));
-                                  Notify("Enregistré dans la DEM.", NotificationType.Success),
-                                  Notify("Enregistrement impossible : " & First(Errors(DEM)).Message, NotificationType.Error)
+                              With(
+                                  {
+                                      reponse: ParseJSON(
+                                          DEM_PowerApps.Run(
+                                              "ecrire",
+                                              JSON(
+                                                  {
+                                                      feuille: gSel.Feuille,
+                                                      ligne: gSel.Ligne,
+                                                      affaire: gSel.Affaire,
+                                                      ree: gSel.REE,
+                                                      ot: gSel.OT,
+                                                      tot: gSel.TOT,
+                                                      utilisateur: User().FullName,
+                                                      champs: Filter(
+                                                          Table(
+                                                              {colonne: "TOTPrete", ancienne: gSel.TOTPrete, nouvelle: valeurs.TOTPrete},
+                                                              {colonne: "BPA", ancienne: gSel.BPA, nouvelle: valeurs.BPA},
+                                                              {colonne: "GER1N", ancienne: gSel.GER1N, nouvelle: valeurs.GER1N},
+                                                              {colonne: "BPD", ancienne: gSel.BPD, nouvelle: valeurs.BPD},
+                                                              {colonne: "J0", ancienne: gSel.J0, nouvelle: valeurs.J0},
+                                                              {colonne: "MC", ancienne: gSel.MC, nouvelle: valeurs.MC},
+                                                              {colonne: "RDU", ancienne: gSel.RDU, nouvelle: valeurs.RDU},
+                                                              {colonne: "Regime", ancienne: gSel.Regime, nouvelle: valeurs.Regime},
+                                                              {colonne: "Observations", ancienne: gSel.Observations, nouvelle: valeurs.Observations}
+                                                          ) As c,
+                                                          Coalesce(c.ancienne, "") <> Coalesce(c.nouvelle, "")
+                                                      )
+                                                  }
+                                              )
+                                          ).resultat
+                                      )
+                                  },
+                                  If(
+                                      Boolean(reponse.ok),
+                                      Patch(colSrc, LookUp(colSrc, Num = gSel.Num), valeurs);
+                                      Set(gSel, LookUp(tDEM, Num = gSel.Num));
+                                      Notify(Text(reponse.message), NotificationType.Success),
+                                      Notify(Text(reponse.message), NotificationType.Error)
+                                  )
                               )
                           )
                       )
@@ -567,7 +600,7 @@ Screens:
           Control: Label
           Properties:
             Text: |-
-              ="Les dates sont enregistrées au format jj/mm/aaaa. Les autres colonnes de la DEM ne sont pas modifiées."
+              ="Écrit directement dans la DEM (jj/mm/aaaa pour les dates). Si quelqu’un a modifié la ligne entre-temps, rien n’est écrit."
             X: =504
             Y: =586
             Width: =700
