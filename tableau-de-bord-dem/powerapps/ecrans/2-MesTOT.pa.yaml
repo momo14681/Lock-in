@@ -37,6 +37,33 @@ Screens:
             Size: =11
             Color: |-
               =RGBA(200, 210, 235, 1)
+      - totPdf:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              ="PDF"
+            X: =Parent.Width - 736
+            Y: =12
+            Width: =110
+            Height: =40
+            OnSelect: =Print()
+            Fill: |-
+              =RGBA(0, 0, 0, 0)
+            Color: |-
+              =RGBA(255, 255, 255, 1)
+            HoverFill: |-
+              =ColorFade(Self.Fill, -15%)
+            PressedFill: |-
+              =ColorFade(Self.Fill, -25%)
+            HoverColor: =Self.Color
+            BorderThickness: =1
+            Size: =12
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            BorderColor: |-
+              =RGBA(255, 255, 255, 1)
       - totNav0:
           Control: Classic/Button
           Properties:

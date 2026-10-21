@@ -84,6 +84,9 @@ def header(s, active, subtitle=None):
         label(f"{s}Titre", '"Pilotage des essais"', 24, 8, 400, 28, 17, WHITE),
         label(f"{s}SousTitre", subtitle or '"DEM · " & If(gCoordo, "Coordo essais", Coalesce(gMoi, "chargé non choisi"))', 24, 34, 520, 22, 11, "RGBA(200, 210, 235, 1)"),
     ]
+    # Impression de l'écran (le navigateur propose « Enregistrer au format PDF »).
+    ctl.append(button(f"{s}Pdf", '"PDF"', f"Parent.Width - {len(NAV) * 150 + 16 + 120}", 12, 110, 40, "Print()", NONE, WHITE,
+                      BorderThickness=1, BorderColor=WHITE))
     for i, (txt, target) in enumerate(NAV):
         on = target == active
         ctl.append(button(f"{s}Nav{i}", f'"{txt}"', f"Parent.Width - {(len(NAV) - i) * 150 + 16}", 12, 140, 40,
