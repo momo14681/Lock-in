@@ -11,17 +11,17 @@
  * Si la DEM contient une feuille « Journal appli », chaque écriture y est ajoutée.
  */
 
-const FEUILLES = ["CS0M", "CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4A", "CS4M", "CS8M", "CS9M"];
-const DERNIERE_COLONNE = "V";
-const NB_COLONNES = 22;
+const FEUILLES: string[] = ["CS0M", "CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4A", "CS4M", "CS8M", "CS9M"];
+const DERNIERE_COLONNE: string = "V";
+const NB_COLONNES: number = 22;
 // Colonne de la DEM (0 = A) pour chaque champ de l'appli.
 const COLONNES: { [champ: string]: number } = {
   Affaire: 0, Libelle: 1, REE: 3, Titulaire: 4, LibelleREE: 5, MC: 8, OT: 9, TOT: 10, RDU: 11,
   Charge: 12, TOTPrete: 13, J0: 14, Regime: 15, BPA: 16, GER1N: 17, BPD: 18, Observations: 21,
 };
 // Colonnes où un nombre est une date Excel (affichée jj/mm/aaaa quel que soit le format de la cellule).
-const DATES = ["TOTPrete", "J0", "BPA", "GER1N", "BPD"];
-const MODIFIABLES = ["TOTPrete", "BPA", "GER1N", "BPD", "J0", "MC", "RDU", "Regime", "Observations"];
+const DATES: string[] = ["TOTPrete", "J0", "BPA", "GER1N", "BPD"];
+const MODIFIABLES: string[] = ["TOTPrete", "BPA", "GER1N", "BPD", "J0", "MC", "RDU", "Regime", "Observations"];
 
 interface Champ { colonne: string; ancienne: string; nouvelle: string; }
 interface Demande { feuille: string; ligne: number; affaire: string; ree: string; ot: string; tot: string; utilisateur: string; champs: Champ[]; }
@@ -37,11 +37,11 @@ function main(workbook: ExcelScript.Workbook, action: string, donnees: string): 
 function lire(workbook: ExcelScript.Workbook): string {
   const lignes: { [champ: string]: string | number }[] = [];
   for (const nom of FEUILLES) {
-    const ws = workbook.getWorksheet(nom);
+    const ws: ExcelScript.Worksheet | undefined = workbook.getWorksheet(nom);
     if (!ws) continue;
-    const grille = lireFeuille(ws);
-    grille.forEach((t, i) => {
-      if (!["Affaire", "REE", "OT", "TOT"].some((k) => t[COLONNES[k]] !== "")) return;
+    const grille: string[][] = lireFeuille(ws);
+    grille.forEach((t: string[], i: number) => {
+      if (!["Affaire", "REE", "OT", "TOT"].some((k: string) => t[COLONNES[k]] !== "")) return;
       const o: { [champ: string]: string | number } = { Cle: nom + "-" + (i + 2), Num: lignes.length + 1, Feuille: nom, Ligne: i + 2 };
       for (const k of Object.keys(COLONNES)) o[k] = t[COLONNES[k]];
       lignes.push(o);
@@ -53,20 +53,22 @@ function lire(workbook: ExcelScript.Workbook): string {
 // Textes A2:V(dernière ligne) d'une feuille, cellules fusionnées recopiées depuis leur coin
 // supérieur gauche, dates des colonnes de dates en jj/mm/aaaa.
 function lireFeuille(ws: ExcelScript.Worksheet): string[][] {
-  const utilisee = ws.getUsedRange(true);
+  const utilisee: ExcelScript.Range | undefined = ws.getUsedRange(true);
   if (!utilisee) return [];
-  const derniere = utilisee.getRowIndex() + utilisee.getRowCount();
+  const derniere: number = utilisee.getRowIndex() + utilisee.getRowCount();
   if (derniere < 2) return [];
-  const plage = ws.getRange("A2:" + DERNIERE_COLONNE + derniere);
-  const textes = plage.getTexts();
-  const valeurs = plage.getValues();
-  const grille: string[][] = textes.map((ligne, r) => ligne.map((txt, c) => texte(valeurs[r][c], txt, c)));
-  const fusions = plage.getMergedAreasOrNullObject();
+  const plage: ExcelScript.Range = ws.getRange("A2:" + DERNIERE_COLONNE + derniere);
+  const textes: string[][] = plage.getTexts();
+  const valeurs: (string | number | boolean)[][] = plage.getValues();
+  const grille: string[][] = textes.map((ligne: string[], r: number) => ligne.map((txt: string, c: number) => texte(valeurs[r][c], txt, c)));
+  const fusions: ExcelScript.RangeAreas | undefined = plage.getMergedAreasOrNullObject();
   if (fusions) {
-    for (const zone of fusions.getAreas()) {
-      const r0 = zone.getRowIndex() - 1, c0 = zone.getColumnIndex();
+    const zones: ExcelScript.Range[] = fusions.getAreas();
+    for (const zone of zones) {
+      const r0: number = zone.getRowIndex() - 1;
+      const c0: number = zone.getColumnIndex();
       if (r0 < 0 || c0 >= NB_COLONNES) continue;
-      const v = grille[r0][c0];
+      const v: string = grille[r0][c0];
       for (let r = r0; r < Math.min(r0 + zone.getRowCount(), grille.length); r++) {
         for (let c = c0; c < Math.min(c0 + zone.getColumnCount(), NB_COLONNES); c++) grille[r][c] = v;
       }
@@ -76,19 +78,19 @@ function lireFeuille(ws: ExcelScript.Worksheet): string[][] {
 }
 
 function texte(valeur: string | number | boolean, affiche: string, colonne: number): string {
-  const estDate = DATES.some((k) => COLONNES[k] === colonne);
+  const estDate: boolean = DATES.some((k: string) => COLONNES[k] === colonne);
   if (estDate && typeof valeur === "number" && valeur > 0) return dateTexte(valeur);
   return String(affiche ?? "").trim();
 }
 
 function dateTexte(serie: number): string {
-  const d = new Date(Math.round((serie - 25569) * 86400000));
-  const deux = (n: number) => (n < 10 ? "0" : "") + n;
+  const d: Date = new Date(Math.round((serie - 25569) * 86400000));
+  const deux = (n: number): string => (n < 10 ? "0" : "") + n;
   return deux(d.getUTCDate()) + "/" + deux(d.getUTCMonth() + 1) + "/" + d.getUTCFullYear();
 }
 
 function dateSerie(jjmmaaaa: string): number {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(jjmmaaaa);
+  const m: RegExpExecArray | null = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(jjmmaaaa);
   return m ? Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) / 86400000 + 25569 : 0;
 }
 
@@ -99,38 +101,38 @@ function norme(s: string): string {
 // --- Écriture -----------------------------------------------------------------------------
 
 function ecrire(workbook: ExcelScript.Workbook, d: Demande): string {
-  const ws = workbook.getWorksheet(d.feuille);
+  const ws: ExcelScript.Worksheet | undefined = workbook.getWorksheet(d.feuille);
   if (!ws) return reponse(false, "Feuille " + d.feuille + " absente de la DEM.", 0);
-  const grille = lireFeuille(ws);
-  const correspond = (t: string[]) => t !== undefined && norme(t[COLONNES.Affaire]) === norme(d.affaire) && norme(t[COLONNES.REE]) === norme(d.ree)
+  const grille: string[][] = lireFeuille(ws);
+  const correspond = (t: string[]): boolean => t !== undefined && norme(t[COLONNES.Affaire]) === norme(d.affaire) && norme(t[COLONNES.REE]) === norme(d.ree)
     && norme(t[COLONNES.OT]) === norme(d.ot) && norme(t[COLONNES.TOT]) === norme(d.tot);
 
   // Ligne attendue d'abord, sinon recherche dans toute la feuille (lignes insérées depuis la lecture).
-  let index = correspond(grille[d.ligne - 2]) ? d.ligne - 2 : -1;
+  let index: number = correspond(grille[d.ligne - 2]) ? d.ligne - 2 : -1;
   if (index < 0) {
-    const trouvees = grille.map((t, i) => (correspond(t) ? i : -1)).filter((i) => i >= 0);
+    const trouvees: number[] = grille.map((t: string[], i: number) => (correspond(t) ? i : -1)).filter((i: number) => i >= 0);
     if (trouvees.length !== 1) return reponse(false, trouvees.length ? "Plusieurs lignes ont cette affaire, ce REE, cet OT et cette TOT." : "Ligne introuvable dans la DEM : actualisez l'appli.", 0);
     index = trouvees[0];
   }
-  const t = grille[index];
+  const t: string[] = grille[index];
 
   const conflits: string[] = [];
   const aEcrire: Champ[] = [];
   for (const champ of d.champs) {
     if (!MODIFIABLES.includes(champ.colonne)) return reponse(false, "Colonne non modifiable : " + champ.colonne, index + 2);
-    const actuelle = t[COLONNES[champ.colonne]];
+    const actuelle: string = t[COLONNES[champ.colonne]];
     if (norme(actuelle) === norme(champ.nouvelle)) continue;
     if (norme(actuelle) !== norme(champ.ancienne)) conflits.push(champ.colonne + " (" + (actuelle || "vide") + " dans la DEM)");
     else aEcrire.push(champ);
   }
   if (conflits.length) return reponse(false, "Modifié entre-temps par quelqu'un d'autre : " + conflits.join(", ") + ". Rien n'a été écrit, actualisez l'appli.", index + 2);
 
-  const journal = workbook.getWorksheet("Journal appli");
+  const journal: ExcelScript.Worksheet | undefined = workbook.getWorksheet("Journal appli");
   for (const champ of aEcrire) {
-    let cellule = ws.getCell(index + 1, COLONNES[champ.colonne]);
-    const fusion = cellule.getMergedAreasOrNullObject();
+    let cellule: ExcelScript.Range = ws.getCell(index + 1, COLONNES[champ.colonne]);
+    const fusion: ExcelScript.RangeAreas | undefined = cellule.getMergedAreasOrNullObject();
     if (fusion) cellule = fusion.getAreas()[0].getCell(0, 0);
-    const serie = DATES.includes(champ.colonne) ? dateSerie(champ.nouvelle) : 0;
+    const serie: number = DATES.includes(champ.colonne) ? dateSerie(champ.nouvelle) : 0;
     if (champ.nouvelle === "") {
       cellule.clear(ExcelScript.ClearApplyTo.contents);
     } else if (serie > 0) {
@@ -141,7 +143,7 @@ function ecrire(workbook: ExcelScript.Workbook, d: Demande): string {
       cellule.setValue(/^[=+@]/.test(champ.nouvelle) ? "'" + champ.nouvelle : champ.nouvelle);
     }
     if (journal) {
-      const suivante = (journal.getUsedRange(true)?.getRowCount() ?? 0) + 1;
+      const suivante: number = (journal.getUsedRange(true)?.getRowCount() ?? 0) + 1;
       journal.getRange("A" + suivante + ":G" + suivante).setValues([[new Date().toISOString(), d.utilisateur, d.feuille, cellule.getAddress(), champ.colonne, champ.ancienne, champ.nouvelle]]);
     }
   }
