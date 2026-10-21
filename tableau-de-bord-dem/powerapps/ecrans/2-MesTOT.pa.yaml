@@ -275,7 +275,6 @@ Screens:
                   OnSelect: =Select(Parent)
             - totLigneFleche:
                 Control: Classic/Icon
-                Variant: ChevronRight
                 Properties:
                   Icon: =Icon.ChevronRight
                   X: =Parent.TemplateWidth - 48

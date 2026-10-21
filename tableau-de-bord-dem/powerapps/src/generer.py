@@ -180,7 +180,7 @@ def liste_tot():
         label("totLigneJ0", '"J0 " & If(IsBlank(ThisItem.J0Date), Coalesce(ThisItem.J0, "—"), Text(ThisItem.J0Date, "dd/mm/yyyy"))', 590, 8, 170, 24, 12, INK, OnSelect="Select(Parent)"),
         label("totLigneEtat", "ThisItem.Etat", 590, 34, 170, 22, 11, ETAT_COLOR, OnSelect="Select(Parent)"),
         label("totLigneDocs", '"TOT prête " & Coalesce(ThisItem.TOTPrete, "—") & "    BPA " & Coalesce(ThisItem.BPA, "—") & "    GER/1N " & Coalesce(ThisItem.GER1N, "—") & "    BPD " & Coalesce(ThisItem.BPD, "—")', 780, 8, "Parent.TemplateWidth - 840", 48, 11, MUTED, OnSelect="Select(Parent)"),
-        C("totLigneFleche", "Classic/Icon", "ChevronRight", Icon="Icon.ChevronRight", X="Parent.TemplateWidth - 48", Y=16, Width=32, Height=32, Color=MUTED, OnSelect="Select(Parent)"),
+        C("totLigneFleche", "Classic/Icon", None, Icon="Icon.ChevronRight", X="Parent.TemplateWidth - 48", Y=16, Width=32, Height=32, Color=MUTED, OnSelect="Select(Parent)"),
     ]
     ctl = header(s, "scrTOT")
     ctl += [
