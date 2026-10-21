@@ -75,10 +75,12 @@ async function load(file, { preserveView = false, resetIgnored = true } = {}) {
       t.merges = sheet["!merges"] || [];
       t.cells = {};
       t.raw = {};
+      t.orig = {}; // valeur telle qu'écrite dans la DEM (avant équivalences), pour la saisie
       for (const k of Object.keys(fields)) {
         const loc = address(t, k).split(":")[0], cell = sheet[loc], v = cell && cell.t !== "e" ? normalizeStatus(k, cell.v) : cell?.v;
         const c = v === cell?.v ? cell : { t: "s", v };
         t.cells[k] = c;
+        t.orig[k] = cell?.t === "e" ? (cell.w || "Erreur Excel") : cell?.v instanceof Date ? formatDate(cell.v) : String(cell?.v ?? "").trim();
         t.raw[k] = c?.t === "e" ? (c.w || "Erreur Excel") : c?.v instanceof Date ? formatDate(c.v) : String(c?.v ?? "");
       }
     }
