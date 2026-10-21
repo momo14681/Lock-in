@@ -109,6 +109,7 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
     result.tasks.forEach((t, i) => { t.duplicate = !t.cancelled && (liveCounts.get(t.id) || 0) > 1; t.index = i; });
     await pauseForPaint();
     result.cru = readCRU(wb.Sheets[CRU_SHEET]);
+    result.pdg = readPdgSource(wb.Sheets[CRU_SHEET]);
     result.projectCodes = readProjectCodes(wb.Sheets.Pilotage, wb.Sheets["Préparation"]);
     await pauseForPaint();
     linkCRU(result.cru, result.tasks.filter((t) => !t.cancelled));

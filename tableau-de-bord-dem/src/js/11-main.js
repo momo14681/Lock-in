@@ -70,7 +70,8 @@ function detail(t) {
   const controls = (data.audit || []).filter((i) => i.t === t);
   $("detail").classList.remove("wideDialog");
   $("detailTitle").textContent = `${t.affaire || "Affaire manquante"} · REE ${t.ree || "absent"}`;
-  $("detailBody").innerHTML = editMode ? editForm(t) : `<p class="detailIntro">${stateBadge(t)} <span class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${esc(t.responsable)}</span> ${toolLinks(t.ot, t.tot)} <button type="button" class="editStart" data-edit-start="${t.index}">Modifier cette ligne</button></p>
+  $("detailBody").innerHTML = editMode ? editForm(t) : `<p class="detailIntro">${stateBadge(t)} <span class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${esc(t.responsable)}</span> ${toolLinks(t.ot, t.tot)} <button type="button" class="editStart" data-edit-start="${t.index}">Modifier cette ligne</button> <button type="button" class="editStart" data-pdg="${t.index}" title="Remplit le modèle PdG_Type à partir de la feuille CRU">Page de garde</button></p>
+    <p id="pdgNote" hidden></p>
     ${editPendingNote(t)}
     ${t.libelle || t.reeLibelle ? `<p class="muted">${esc([t.libelle, t.reeLibelle].filter(Boolean).join(" — "))}</p>` : ""}
     <div class="detailGrid">${Object.keys(fields).map((k) => `<div class="${k === "observations" ? "full" : ""}"><span>${names[k]} <span class="loc">${esc(address(t, k))}</span></span><strong>${esc(t.raw[k] || "—")}</strong></div>`).join("")}
@@ -178,6 +179,7 @@ function onClick(e) {
   const d = el.dataset;
   if (d.task !== undefined) { editMode = false; editError = ""; return detail(data.tasks[+d.task]); }
   if (editAction(d)) return;
+  if (pdgAction(d)) return;
   if (d.back !== undefined) return goBack();
   if (d.go !== undefined) { if ($("detail").open) $("detail").close(); pushNav(); return go(d.go); }
   if (d.set !== undefined) {
@@ -318,6 +320,7 @@ function init() {
 
   renderChrome();
   updateSourceControls();
+  loadPdgTemplate();
   // Version complément : office.js est chargé ; dans Excel, la DEM ouverte remplace le fichier.
   if (window.Office?.onReady) Office.onReady((info) => (info?.host === Office.HostType.Excel ? startExcel() : restoreSource()));
   else restoreSource();
