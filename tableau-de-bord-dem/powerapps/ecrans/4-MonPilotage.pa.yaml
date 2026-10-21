@@ -344,7 +344,7 @@ Screens:
           Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
           Properties:
             Items: |-
-              =SortByColumns(Filter(AddColumns(GroupBy(Filter(tMes, !Gelee && !IsBlank(GelM0)), Affaire, REE, Lignes), Gel, Min(Lignes, GelM0), Libelle1, First(Lignes).LibelleREE, Manque, First(Lignes).ManqueGel, NbLignes, CountRows(Lignes)), Switch(ddFenetre.Selected.Value, "Moins de 30 jours", Gel < DateAdd(Today(), 30), "30 à 90 jours", Gel >= DateAdd(Today(), 30) && Gel < DateAdd(Today(), 90), "Plus tard", Gel >= DateAdd(Today(), 90), true)), Gel, SortOrder.Ascending)
+              =Sort(Filter(AddColumns(GroupBy(Filter(tMes, !Gelee && !IsBlank(GelM0)), Affaire, REE, Lignes), Gel, Min(Lignes, GelM0), Libelle1, First(Lignes).LibelleREE, Manque, First(Lignes).ManqueGel, NbLignes, CountRows(Lignes)), Switch(ddFenetre.Selected.Value, "Moins de 30 jours", Gel < DateAdd(Today(), 30), "30 à 90 jours", Gel >= DateAdd(Today(), 30) && Gel < DateAdd(Today(), 90), "Plus tard", Gel >= DateAdd(Today(), 90), true)), Gel, SortOrder.Ascending)
             TemplateSize: =58
             TemplatePadding: =0
             X: =40
@@ -418,7 +418,7 @@ Screens:
           Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
           Properties:
             Items: |-
-              =SortByColumns(Filter(AddColumns(GroupBy(Filter(tMes, !BpaFait && !IsBlank(J0Date)), Affaire, REE, Lignes), J0Min, Min(Lignes, J0Date), Libelle1, First(Lignes).LibelleREE, NbLignes, CountRows(Lignes), ParMoi, CountRows(Filter(Lignes, APreparerParMoi)) > 0), Switch(ddFenetre.Selected.Value, "Moins de 30 jours", J0Min < DateAdd(Today(), 30), "30 à 90 jours", J0Min >= DateAdd(Today(), 30) && J0Min < DateAdd(Today(), 90), "Plus tard", J0Min >= DateAdd(Today(), 90), true)), J0Min, SortOrder.Ascending)
+              =Sort(Filter(AddColumns(GroupBy(Filter(tMes, !BpaFait && !IsBlank(J0Date)), Affaire, REE, Lignes), J0Min, Min(Lignes, J0Date), Libelle1, First(Lignes).LibelleREE, NbLignes, CountRows(Lignes), ParMoi, CountRows(Filter(Lignes, APreparerParMoi)) > 0), Switch(ddFenetre.Selected.Value, "Moins de 30 jours", J0Min < DateAdd(Today(), 30), "30 à 90 jours", J0Min >= DateAdd(Today(), 30) && J0Min < DateAdd(Today(), 90), "Plus tard", J0Min >= DateAdd(Today(), 90), true)), J0Min, SortOrder.Ascending)
             TemplateSize: =58
             TemplatePadding: =0
             X: =64 + (Parent.Width - 104) / 2

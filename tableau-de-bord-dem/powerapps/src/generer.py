@@ -169,7 +169,7 @@ ETATS = ["Tous les états", "Prépa en retard", "Infos manquantes", "En prépara
 
 def liste_tot():
     s = "tot"
-    items = ('SortByColumns(Filter(tMes, (ddEtat.Selected.Value = "Tous les états" || Etat = ddEtat.Selected.Value) && '
+    items = ('Sort(Filter(tMes, (ddEtat.Selected.Value = "Tous les états" || Etat = ddEtat.Selected.Value) && '
              '(IsBlank(txtRecherche.Text) || txtRecherche.Text in Affaire || txtRecherche.Text in REE || txtRecherche.Text in OT || '
              'txtRecherche.Text in Libelle || txtRecherche.Text in LibelleREE)), J0Date, SortOrder.Ascending)')
     rowctl = [
@@ -326,10 +326,10 @@ def pilotage():
           OnChange="Set(gFenetre, Self.Selected.Value)", X=140, Y=212, Width=240, Height=36, Size=12),
     ]
     half = "(Parent.Width - 104) / 2"
-    gel_items = (f'SortByColumns(Filter(AddColumns(GroupBy(Filter(tMes, !Gelee && !IsBlank(GelM0)), Affaire, REE, Lignes), '
+    gel_items = (f'Sort(Filter(AddColumns(GroupBy(Filter(tMes, !Gelee && !IsBlank(GelM0)), Affaire, REE, Lignes), '
                  f'Gel, Min(Lignes, GelM0), Libelle1, First(Lignes).LibelleREE, Manque, First(Lignes).ManqueGel, NbLignes, CountRows(Lignes)), '
                  f'{dans_fenetre("Gel")}), Gel, SortOrder.Ascending)')
-    bpa_items = (f'SortByColumns(Filter(AddColumns(GroupBy(Filter(tMes, !BpaFait && !IsBlank(J0Date)), Affaire, REE, Lignes), '
+    bpa_items = (f'Sort(Filter(AddColumns(GroupBy(Filter(tMes, !BpaFait && !IsBlank(J0Date)), Affaire, REE, Lignes), '
                  f'J0Min, Min(Lignes, J0Date), Libelle1, First(Lignes).LibelleREE, NbLignes, CountRows(Lignes), '
                  f'ParMoi, CountRows(Filter(Lignes, APreparerParMoi)) > 0), {dans_fenetre("J0Min")}), J0Min, SortOrder.Ascending)')
 
@@ -358,7 +358,7 @@ def pilotage():
 def equipe():
     s = "equ"
     ctl = header(s, "scrEquipe", '"DEM · vue équipe"')
-    items = ('SortByColumns(AddColumns(GroupBy(Filter(tDEM, !Annulee), Charge, Lignes), NbTot, CountRows(Lignes), '
+    items = ('Sort(AddColumns(GroupBy(Filter(tDEM, !Annulee), Charge, Lignes), NbTot, CountRows(Lignes), '
              'NbPrepa, CountRows(Filter(Lignes, TotPreteOk)), NbReal, CountRows(Filter(Lignes, Realise)), '
              'NbRetard, CountRows(Filter(Lignes, Retard)), NbInfos, CountRows(Filter(Lignes, InfosManquantes))), NbTot, SortOrder.Descending)')
     bar = 260

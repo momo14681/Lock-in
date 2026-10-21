@@ -182,7 +182,7 @@ Screens:
           Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
           Properties:
             Items: |-
-              =SortByColumns(AddColumns(GroupBy(Filter(tDEM, !Annulee), Charge, Lignes), NbTot, CountRows(Lignes), NbPrepa, CountRows(Filter(Lignes, TotPreteOk)), NbReal, CountRows(Filter(Lignes, Realise)), NbRetard, CountRows(Filter(Lignes, Retard)), NbInfos, CountRows(Filter(Lignes, InfosManquantes))), NbTot, SortOrder.Descending)
+              =Sort(AddColumns(GroupBy(Filter(tDEM, !Annulee), Charge, Lignes), NbTot, CountRows(Lignes), NbPrepa, CountRows(Filter(Lignes, TotPreteOk)), NbReal, CountRows(Filter(Lignes, Realise)), NbRetard, CountRows(Filter(Lignes, Retard)), NbInfos, CountRows(Filter(Lignes, InfosManquantes))), NbTot, SortOrder.Descending)
             OnSelect: |-
               =Set(gMoi, ThisItem.Charge); Set(gCoordo, false); Set(gFiltre, "Tous les états"); Navigate(scrTOT, ScreenTransition.None)
             TemplateSize: =58

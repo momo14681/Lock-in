@@ -186,7 +186,7 @@ Screens:
           Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
           Properties:
             Items: |-
-              =SortByColumns(Filter(tMes, (ddEtat.Selected.Value = "Tous les états" || Etat = ddEtat.Selected.Value) && (IsBlank(txtRecherche.Text) || txtRecherche.Text in Affaire || txtRecherche.Text in REE || txtRecherche.Text in OT || txtRecherche.Text in Libelle || txtRecherche.Text in LibelleREE)), J0Date, SortOrder.Ascending)
+              =Sort(Filter(tMes, (ddEtat.Selected.Value = "Tous les états" || Etat = ddEtat.Selected.Value) && (IsBlank(txtRecherche.Text) || txtRecherche.Text in Affaire || txtRecherche.Text in REE || txtRecherche.Text in OT || txtRecherche.Text in Libelle || txtRecherche.Text in LibelleREE)), J0Date, SortOrder.Ascending)
             OnSelect: |-
               =Set(gSel, ThisItem); Navigate(scrFiche, ScreenTransition.None)
             TemplateSize: =64
