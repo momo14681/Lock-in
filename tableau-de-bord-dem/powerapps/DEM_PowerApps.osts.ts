@@ -61,9 +61,11 @@ function lireFeuille(ws: ExcelScript.Worksheet): string[][] {
   const textes: string[][] = plage.getTexts();
   const valeurs: (string | number | boolean)[][] = plage.getValues();
   const grille: string[][] = textes.map((ligne: string[], r: number) => ligne.map((txt: string, c: number) => texte(valeurs[r][c], txt, c)));
-  const fusions: ExcelScript.RangeAreas | undefined = plage.getMergedAreasOrNullObject();
-  if (fusions) {
-    const zones: ExcelScript.Range[] = fusions.getAreas();
+  // Cellules fusionnées lues par tranches de 200 lignes (Excel refuse au-delà de 512 zones par appel).
+  let fusionsLues: boolean = true;
+  for (let debut = 2; debut <= derniere; debut += 200) {
+    const zones: ExcelScript.Range[] | undefined = zonesFusionnees(ws.getRange("A" + debut + ":" + DERNIERE_COLONNE + Math.min(debut + 199, derniere)));
+    if (!zones) { fusionsLues = false; break; }
     for (const zone of zones) {
       const r0: number = zone.getRowIndex() - 1;
       const c0: number = zone.getColumnIndex();
@@ -74,7 +76,25 @@ function lireFeuille(ws: ExcelScript.Worksheet): string[][] {
       }
     }
   }
+  // Secours si Excel ne donne pas les fusions : Affaire, libellés, REE et titulaire (A à F)
+  // recopiés depuis la ligne du dessus sur les lignes de TOT où ils sont vides.
+  if (!fusionsLues) {
+    for (let r = 1; r < grille.length; r++) {
+      if (grille[r][COLONNES.OT] === "" && grille[r][COLONNES.TOT] === "") continue;
+      for (let c = 0; c <= 5; c++) if (grille[r][c] === "") grille[r][c] = grille[r - 1][c];
+    }
+  }
   return grille;
+}
+
+// Zones fusionnées d'une plage ; undefined si Excel ne sait pas les donner.
+function zonesFusionnees(plage: ExcelScript.Range): ExcelScript.Range[] | undefined {
+  try {
+    const zones: ExcelScript.RangeAreas | undefined = plage.getMergedAreas();
+    return zones ? zones.getAreas() : [];
+  } catch {
+    return undefined;
+  }
 }
 
 function texte(valeur: string | number | boolean, affiche: string, colonne: number): string {
@@ -130,8 +150,8 @@ function ecrire(workbook: ExcelScript.Workbook, d: Demande): string {
   const journal: ExcelScript.Worksheet | undefined = workbook.getWorksheet("Journal appli");
   for (const champ of aEcrire) {
     let cellule: ExcelScript.Range = ws.getCell(index + 1, COLONNES[champ.colonne]);
-    const fusion: ExcelScript.RangeAreas | undefined = cellule.getMergedAreasOrNullObject();
-    if (fusion) cellule = fusion.getAreas()[0].getCell(0, 0);
+    const fusion: ExcelScript.Range[] | undefined = zonesFusionnees(cellule);
+    if (fusion && fusion.length) cellule = fusion[0].getCell(0, 0);
     const serie: number = DATES.includes(champ.colonne) ? dateSerie(champ.nouvelle) : 0;
     if (champ.nouvelle === "") {
       cellule.clear(ExcelScript.ClearApplyTo.contents);
