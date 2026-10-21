@@ -100,7 +100,7 @@ def tile(s, i, x, y, w, value, caption, onselect, color=INK):
 
 
 def pct(cond):
-    return f'Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, {cond})) / CountRows(tMes)), "0%")'
+    return f'Text(Round(100 * If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, {cond})) / CountRows(tMes)), 0)) & " %"'
 
 
 def frac(cond, unit="TOT"):
@@ -247,11 +247,11 @@ ENREGISTRER = """With(
     },
     With(
         {
-            dtp: IfError(DateValue(tp, "fr-FR"), Blank()),
-            dbpa: IfError(DateValue(bpa, "fr-FR"), Blank()),
-            dger: IfError(DateValue(ger, "fr-FR"), Blank()),
-            dbpd: IfError(DateValue(bpd, "fr-FR"), Blank()),
-            dj0: IfError(DateValue(j0, "fr-FR"), Blank())
+            dtp: If(IsMatch(tp, "\\d{1,2}/\\d{1,2}/\\d{4}"), With({p: Split(tp, "/")}, IfError(Date(Value(Last(p).Value), Value(Index(p, 2).Value), Value(First(p).Value)), Blank())), Blank()),
+            dbpa: If(IsMatch(bpa, "\\d{1,2}/\\d{1,2}/\\d{4}"), With({p: Split(bpa, "/")}, IfError(Date(Value(Last(p).Value), Value(Index(p, 2).Value), Value(First(p).Value)), Blank())), Blank()),
+            dger: If(IsMatch(ger, "\\d{1,2}/\\d{1,2}/\\d{4}"), With({p: Split(ger, "/")}, IfError(Date(Value(Last(p).Value), Value(Index(p, 2).Value), Value(First(p).Value)), Blank())), Blank()),
+            dbpd: If(IsMatch(bpd, "\\d{1,2}/\\d{1,2}/\\d{4}"), With({p: Split(bpd, "/")}, IfError(Date(Value(Last(p).Value), Value(Index(p, 2).Value), Value(First(p).Value)), Blank())), Blank()),
+            dj0: If(IsMatch(j0, "\\d{1,2}/\\d{1,2}/\\d{4}"), With({p: Split(j0, "/")}, IfError(Date(Value(Last(p).Value), Value(Index(p, 2).Value), Value(First(p).Value)), Blank())), Blank())
         },
         With(
             {
@@ -430,7 +430,7 @@ def equipe():
         return [
             rect(f"{prefix}Piste", x, 22, bar, 12, LINE, OnSelect="Select(Parent)"),
             rect(f"{prefix}Plein", x, 22, f"{bar} * ThisItem.{champ} / Max(1, ThisItem.NbTot)", 12, couleur, OnSelect="Select(Parent)"),
-            label(f"{prefix}Txt", f'Text(ThisItem.{champ} / Max(1, ThisItem.NbTot), "0%")', x + bar + 8, 12, 60, 32, 12, INK, OnSelect="Select(Parent)"),
+            label(f"{prefix}Txt", f'Text(Round(100 * ThisItem.{champ} / Max(1, ThisItem.NbTot), 0)) & " %"', x + bar + 8, 12, 60, 32, 12, INK, OnSelect="Select(Parent)"),
         ]
 
     rows = [

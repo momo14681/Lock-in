@@ -255,7 +255,7 @@ Screens:
                 Control: Label
                 Properties:
                   Text: |-
-                    =Text(ThisItem.NbPrepa / Max(1, ThisItem.NbTot), "0%")
+                    =Text(Round(100 * ThisItem.NbPrepa / Max(1, ThisItem.NbTot), 0)) & " %"
                   X: =568
                   Y: =12
                   Width: =60
@@ -289,7 +289,7 @@ Screens:
                 Control: Label
                 Properties:
                   Text: |-
-                    =Text(ThisItem.NbReal / Max(1, ThisItem.NbTot), "0%")
+                    =Text(Round(100 * ThisItem.NbReal / Max(1, ThisItem.NbTot), 0)) & " %"
                   X: =918
                   Y: =12
                   Width: =60

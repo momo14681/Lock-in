@@ -9,11 +9,12 @@ tDEM =
         colSrc As r;
         With(
             {
-                j0: IfError(DateValue(r.J0; "fr-FR"); Blank());
-                dTP: IfError(DateValue(r.TOTPrete; "fr-FR"); Blank());
-                dBPA: IfError(DateValue(r.BPA; "fr-FR"); Blank());
-                dGER: IfError(DateValue(r.GER1N; "fr-FR"); Blank());
-                dBPD: IfError(DateValue(r.BPD; "fr-FR"); Blank());
+                // Dates lues en jj/mm/aaaa (format renvoyé par le script), sans dépendre de la langue.
+                j0: If(IsMatch(Trim(r.J0); "\d{1,2}/\d{1,2}/\d{4}"); With({p: Split(Trim(r.J0); "/")}; IfError(Date(Value(Last(p).Value); Value(Index(p; 2).Value); Value(First(p).Value)); Blank())); Blank());
+                dTP: If(IsMatch(Trim(r.TOTPrete); "\d{1,2}/\d{1,2}/\d{4}"); With({p: Split(Trim(r.TOTPrete); "/")}; IfError(Date(Value(Last(p).Value); Value(Index(p; 2).Value); Value(First(p).Value)); Blank())); Blank());
+                dBPA: If(IsMatch(Trim(r.BPA); "\d{1,2}/\d{1,2}/\d{4}"); With({p: Split(Trim(r.BPA); "/")}; IfError(Date(Value(Last(p).Value); Value(Index(p; 2).Value); Value(First(p).Value)); Blank())); Blank());
+                dGER: If(IsMatch(Trim(r.GER1N); "\d{1,2}/\d{1,2}/\d{4}"); With({p: Split(Trim(r.GER1N); "/")}; IfError(Date(Value(Last(p).Value); Value(Index(p; 2).Value); Value(First(p).Value)); Blank())); Blank());
+                dBPD: If(IsMatch(Trim(r.BPD); "\d{1,2}/\d{1,2}/\d{4}"); With({p: Split(Trim(r.BPD); "/")}; IfError(Date(Value(Last(p).Value); Value(Index(p; 2).Value); Value(First(p).Value)); Blank())); Blank());
                 tp: Upper(Trim(r.TOTPrete));
                 ger: Upper(Trim(r.GER1N));
                 bpa: Upper(Trim(r.BPA));

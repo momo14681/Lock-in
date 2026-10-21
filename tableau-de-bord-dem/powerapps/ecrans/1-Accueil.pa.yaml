@@ -429,7 +429,7 @@ Screens:
           Control: Label
           Properties:
             Text: |-
-              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, TotPreteOk)) / CountRows(tMes)), "0%")
+              =Text(Round(100 * If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, TotPreteOk)) / CountRows(tMes)), 0)) & " %"
             X: =384
             Y: =192
             Width: =260
@@ -472,7 +472,7 @@ Screens:
           Control: Label
           Properties:
             Text: |-
-              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, Realise)) / CountRows(tMes)), "0%")
+              =Text(Round(100 * If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, Realise)) / CountRows(tMes)), 0)) & " %"
             X: =708
             Y: =192
             Width: =260
@@ -515,7 +515,7 @@ Screens:
           Control: Label
           Properties:
             Text: |-
-              =Text(If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, BpdSigne)) / CountRows(tMes)), "0%")
+              =Text(Round(100 * If(CountRows(tMes) = 0, 0, CountRows(Filter(tMes, BpdSigne)) / CountRows(tMes)), 0)) & " %"
             X: =1032
             Y: =192
             Width: =260

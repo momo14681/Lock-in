@@ -3,7 +3,8 @@
  * Script Office appelé par le flux Power Automate « DEM_PowerApps » (action Exécuter un script).
  * Fonctionne sur la DEM telle quelle (.xlsm accepté, cellules fusionnées, mise en forme intacte).
  *
- *   action "lire"   : renvoie {lu, lignes: [...]}, une ligne par TOT des feuilles CSxx.
+ *   action "lire"   : renvoie {lu, feuilles, lignes: [...]}, une ligne par TOT des feuilles CSxx
+ *                     (feuilles : nombre de lignes lues par feuille, -1 si absente).
  *   action "ecrire" : donnees = {feuille, ligne, affaire, ree, ot, tot, utilisateur,
  *                     champs: [{colonne, ancienne, nouvelle}]}. Retrouve la ligne par
  *                     Affaire / REE / OT / TOT, n'écrit que si chaque cellule contient encore
@@ -36,9 +37,12 @@ function main(workbook: ExcelScript.Workbook, action: string, donnees: string): 
 
 function lire(workbook: ExcelScript.Workbook): string {
   const lignes: { [champ: string]: string | number }[] = [];
+  // Nombre de lignes lues par feuille (visible dans l'historique du flux, pour contrôle).
+  const feuilles: { [nom: string]: number } = {};
   for (const nom of FEUILLES) {
     const ws: ExcelScript.Worksheet | undefined = workbook.getWorksheet(nom);
-    if (!ws) continue;
+    if (!ws) { feuilles[nom] = -1; continue; }
+    const avant: number = lignes.length;
     const grille: string[][] = lireFeuille(ws);
     grille.forEach((t: string[], i: number) => {
       if (!["Affaire", "REE", "OT", "TOT"].some((k: string) => t[COLONNES[k]] !== "")) return;
@@ -46,8 +50,9 @@ function lire(workbook: ExcelScript.Workbook): string {
       for (const k of Object.keys(COLONNES)) o[k] = t[COLONNES[k]];
       lignes.push(o);
     });
+    feuilles[nom] = lignes.length - avant;
   }
-  return JSON.stringify({ lu: new Date().toISOString(), lignes: lignes });
+  return JSON.stringify({ lu: new Date().toISOString(), feuilles: feuilles, lignes: lignes });
 }
 
 // Textes A2:V(dernière ligne) d'une feuille, cellules fusionnées recopiées depuis leur coin
@@ -61,31 +66,30 @@ function lireFeuille(ws: ExcelScript.Worksheet): string[][] {
   const textes: string[][] = plage.getTexts();
   const valeurs: (string | number | boolean)[][] = plage.getValues();
   const grille: string[][] = textes.map((ligne: string[], r: number) => ligne.map((txt: string, c: number) => texte(valeurs[r][c], txt, c)));
-  // Cellules fusionnées : une seule adresse texte par tranche de 100 lignes (peu d'échanges avec
-  // Excel, et jamais plus de 512 zones par appel).
-  let fusionsLues: boolean = true;
-  for (let debut = 2; debut <= derniere; debut += 100) {
-    const zones: number[][] | undefined = zonesFusionnees(ws.getRange("A" + debut + ":" + DERNIERE_COLONNE + Math.min(debut + 99, derniere)));
-    if (!zones) { fusionsLues = false; break; }
-    for (const z of zones) {
-      const r0: number = z[0] - 1;
-      const c0: number = z[1];
-      if (r0 < 0 || r0 >= grille.length || c0 >= NB_COLONNES) continue;
-      const v: string = grille[r0][c0];
-      for (let r = r0; r <= Math.min(z[2] - 1, grille.length - 1); r++) {
-        for (let c = c0; c <= Math.min(z[3], NB_COLONNES - 1); c++) grille[r][c] = v;
-      }
-    }
-  }
-  // Secours si Excel ne donne pas les fusions : Affaire, libellés, REE et titulaire (A à F)
-  // recopiés depuis la ligne du dessus sur les lignes de TOT où ils sont vides.
-  if (!fusionsLues) {
-    for (let r = 1; r < grille.length; r++) {
-      if (grille[r][COLONNES.OT] === "" && grille[r][COLONNES.TOT] === "") continue;
-      for (let c = 0; c <= 5; c++) if (grille[r][c] === "") grille[r][c] = grille[r - 1][c];
-    }
-  }
+  // Cellules fusionnées : une adresse texte par tranche de 50 lignes. Excel refuse au-delà de
+  // 512 zones par appel : la tranche est alors coupée en deux, jusqu'à une ligne si besoin.
+  for (let debut = 2; debut <= derniere; debut += 50) appliquerFusions(ws, grille, debut, Math.min(debut + 49, derniere));
   return grille;
+}
+
+function appliquerFusions(ws: ExcelScript.Worksheet, grille: string[][], debut: number, fin: number): void {
+  const zones: number[][] | undefined = zonesFusionnees(ws.getRange("A" + debut + ":" + DERNIERE_COLONNE + fin));
+  if (!zones) {
+    if (debut === fin) return;
+    const milieu: number = Math.floor((debut + fin) / 2);
+    appliquerFusions(ws, grille, debut, milieu);
+    appliquerFusions(ws, grille, milieu + 1, fin);
+    return;
+  }
+  for (const z of zones) {
+    const r0: number = z[0] - 1;
+    const c0: number = z[1];
+    if (r0 < 0 || r0 >= grille.length || c0 >= NB_COLONNES) continue;
+    const v: string = grille[r0][c0];
+    for (let r = r0; r <= Math.min(z[2] - 1, grille.length - 1); r++) {
+      for (let c = c0; c <= Math.min(z[3], NB_COLONNES - 1); c++) grille[r][c] = v;
+    }
+  }
 }
 
 // Zones fusionnées d'une plage en [ligne début, colonne début, ligne fin, colonne fin]
