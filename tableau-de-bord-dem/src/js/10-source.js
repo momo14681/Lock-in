@@ -13,7 +13,9 @@ function fillOwnerSelect(selected = "") {
 // Lecture du classeur dans un Worker (fil séparé) : sur une grosse DEM, la lecture prend
 // plusieurs secondes et le navigateur affichait « Cette page ne répond pas ». Si le Worker
 // est indisponible, lecture directe comme avant.
-const WORKBOOK_OPTIONS = { type: "array", cellDates: true, cellFormula: true, sheets: [...TECHNICAL_SHEETS, IPE_SHEET, CRU_SHEET, "Pilotage", "Préparation"] };
+// Feuille masquée de la DEM qui contient le modèle de page de garde (voir 106-pdg.js).
+const PDG_STORE_SHEET = "Modele_PdG";
+const WORKBOOK_OPTIONS = { type: "array", cellDates: true, cellFormula: true, sheets: [...TECHNICAL_SHEETS, IPE_SHEET, CRU_SHEET, "Pilotage", "Préparation", PDG_STORE_SHEET] };
 // Le Worker ne renvoie que l'utile (valeur, type, formule de Pilotage / Préparation, texte des
 // erreurs) : la recopie vers la page est d'autant plus courte.
 const WORKER_HANDLER = `
@@ -110,6 +112,7 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
     await pauseForPaint();
     result.cru = readCRU(wb.Sheets[CRU_SHEET]);
     result.pdg = readPdgSource(wb.Sheets[CRU_SHEET]);
+    result.pdgEmbedded = readEmbeddedPdg(wb.Sheets[PDG_STORE_SHEET]);
     result.projectCodes = readProjectCodes(wb.Sheets.Pilotage, wb.Sheets["Préparation"]);
     await pauseForPaint();
     linkCRU(result.cru, result.tasks.filter((t) => !t.cancelled));

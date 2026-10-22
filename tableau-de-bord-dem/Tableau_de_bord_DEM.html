@@ -4446,7 +4446,9 @@ function fillOwnerSelect(selected = "") {
 // Lecture du classeur dans un Worker (fil séparé) : sur une grosse DEM, la lecture prend
 // plusieurs secondes et le navigateur affichait « Cette page ne répond pas ». Si le Worker
 // est indisponible, lecture directe comme avant.
-const WORKBOOK_OPTIONS = { type: "array", cellDates: true, cellFormula: true, sheets: [...TECHNICAL_SHEETS, IPE_SHEET, CRU_SHEET, "Pilotage", "Préparation"] };
+// Feuille masquée de la DEM qui contient le modèle de page de garde (voir 106-pdg.js).
+const PDG_STORE_SHEET = "Modele_PdG";
+const WORKBOOK_OPTIONS = { type: "array", cellDates: true, cellFormula: true, sheets: [...TECHNICAL_SHEETS, IPE_SHEET, CRU_SHEET, "Pilotage", "Préparation", PDG_STORE_SHEET] };
 // Le Worker ne renvoie que l'utile (valeur, type, formule de Pilotage / Préparation, texte des
 // erreurs) : la recopie vers la page est d'autant plus courte.
 const WORKER_HANDLER = `
@@ -4543,6 +4545,7 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
     await pauseForPaint();
     result.cru = readCRU(wb.Sheets[CRU_SHEET]);
     result.pdg = readPdgSource(wb.Sheets[CRU_SHEET]);
+    result.pdgEmbedded = readEmbeddedPdg(wb.Sheets[PDG_STORE_SHEET]);
     result.projectCodes = readProjectCodes(wb.Sheets.Pilotage, wb.Sheets["Préparation"]);
     await pauseForPaint();
     linkCRU(result.cru, result.tasks.filter((t) => !t.cancelled));
@@ -5387,11 +5390,51 @@ function fillPdgTemplate(bytes, cells) {
   return XLSX.CFB.write(cfb, { fileType: "zip", type: "array", compression: true });
 }
 
-// --- Modèle mémorisé et commandes ----------------------------------------------------------
-// Une page web ne peut pas ouvrir seule un chemin réseau (\\atlas…) : chacun désigne le modèle
-// une fois. Dans Edge ou Chrome, le lien vers le fichier est mémorisé et le modèle est relu à
-// chaque génération (une mise à jour sur atlas est donc prise en compte) ; ailleurs (volet
-// Excel), une copie est gardée. Si le fichier n'est plus lisible, il faut le choisir de nouveau.
+// --- Modèle : dans la DEM (feuille masquée), sinon mémorisé dans ce navigateur -------------
+// Le modèle est rangé dans la DEM, feuille très masquée « Modele_PdG » : en A1 un en-tête,
+// puis le fichier en base64 par morceaux de 30 000 caractères (une cellule en accepte 32 767).
+// Toute l'équipe l'a donc sans rien choisir. Il s'y enregistre depuis le volet Excel
+// (Fichier › Modèle de page de garde). Sans cette feuille, chacun désigne le modèle une fois :
+// dans Edge ou Chrome, le fichier est relu à chaque génération ; ailleurs, une copie est gardée.
+
+const PDG_STORE_HEAD = "PDG_TEMPLATE|1|", PDG_STORE_CHUNK = 30000;
+
+function readEmbeddedPdg(sh) {
+  const head = String(sh?.A1?.v ?? "");
+  if (!head.startsWith(PDG_STORE_HEAD)) return null;
+  let b64 = "";
+  for (let r = 2; sh["A" + r]; r++) b64 += String(sh["A" + r].v).replace(/^b64:/, "");
+  try {
+    const bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { name: head.slice(PDG_STORE_HEAD.length) || "PdG_Type.xlsm", bytes: bytes.buffer };
+  } catch (e) { return null; }
+}
+
+function toBase64(bytes) {
+  const u = new Uint8Array(bytes);
+  let bin = "";
+  for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+// Enregistre le modèle dans la DEM ouverte (volet Excel seulement).
+async function storePdgInDEM(name, bytes) {
+  const b64 = toBase64(bytes), rows = [[PDG_STORE_HEAD + name]];
+  for (let i = 0; i < b64.length; i += PDG_STORE_CHUNK) rows.push(["b64:" + b64.slice(i, i + PDG_STORE_CHUNK)]);
+  await Excel.run(async (ctx) => {
+    let ws = ctx.workbook.worksheets.getItemOrNullObject(PDG_STORE_SHEET);
+    await ctx.sync();
+    if (ws.isNullObject) ws = ctx.workbook.worksheets.add(PDG_STORE_SHEET);
+    ws.getRange("A:A").clear("Contents");
+    const range = ws.getRange(`A1:A${rows.length}`);
+    range.numberFormat = rows.map(() => ["@"]);
+    range.values = rows;
+    ws.visibility = "VeryHidden";
+    await ctx.sync();
+  });
+  data.pdgEmbedded = { name, bytes };
+}
 
 function loadPdgTemplate() {
   storedSource("get", null, PDG_TEMPLATE_KEY).then((t) => { if (t?.bytes || t?.handle) pdgTemplate = t; }).catch(() => {});
@@ -5400,7 +5443,14 @@ function loadPdgTemplate() {
 async function savePdgTemplate(name, bytes, handle = null) {
   pdgTemplate = { name, bytes, handle };
   try { await storedSource("put", pdgTemplate, PDG_TEMPLATE_KEY); } catch (e) { pdgTemplate.handle = handle; /* gardé pour cette session */ }
-  pdgNotice(`Modèle de page de garde enregistré : ${esc(name)}.`);
+  if (excelMode && data) {
+    try {
+      await storePdgInDEM(name, bytes);
+      pdgNotice(`Modèle de page de garde enregistré dans la DEM (feuille masquée ${PDG_STORE_SHEET}) : toute l’équipe l’utilise désormais.`);
+    } catch (e) {
+      pdgNotice(`Modèle gardé pour vous seul : enregistrement dans la DEM impossible (${esc(e.message || e)}).`, true);
+    }
+  } else pdgNotice(`Modèle de page de garde enregistré${data?.pdgEmbedded ? " pour vous (la DEM contient déjà un modèle, utilisé en priorité)" : ""} : ${esc(name)}.`);
   if (pdgPendingTask) generatePdg(pdgPendingTask);
   pdgPendingTask = null;
 }
@@ -5454,9 +5504,9 @@ function pdgNotice(html, error = false) {
 }
 
 async function generatePdg(t) {
-  if (!pdgTemplate) { choosePdgTemplate(t); return; }
-  let bytes;
-  try { bytes = await pdgTemplateBytes(); }
+  let bytes = data?.pdgEmbedded?.bytes;
+  if (!bytes && !pdgTemplate) { choosePdgTemplate(t); return; }
+  try { bytes ||= await pdgTemplateBytes(); }
   catch (e) {
     pdgNotice(`Modèle de page de garde introuvable ou illisible (${esc(pdgTemplate.name || "PdG_Type.xlsm")} : ${esc(e.message || e)}). <button type="button" data-pdg-template>Choisir le modèle</button>`, true);
     return;
