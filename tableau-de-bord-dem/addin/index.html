@@ -5503,7 +5503,19 @@ function pdgNotice(html, error = false) {
   else $("message").innerHTML = `<div class="notice${error ? " error" : ""}">${html}</div>`;
 }
 
+// Volet Excel : relit la feuille du modèle dans la DEM (elle a pu être ajoutée depuis la lecture).
+async function readEmbeddedPdgNow() {
+  try {
+    return await Excel.run(async (ctx) => {
+      const ws = ctx.workbook.worksheets.getItemOrNullObject(PDG_STORE_SHEET);
+      await ctx.sync();
+      return ws.isNullObject ? null : readEmbeddedPdg(await readExcelSheet(ctx, ws, PDG_STORE_SHEET));
+    });
+  } catch (e) { return null; }
+}
+
 async function generatePdg(t) {
+  if (excelMode && !data.pdgEmbedded) data.pdgEmbedded = await readEmbeddedPdgNow();
   let bytes = data?.pdgEmbedded?.bytes;
   if (!bytes && !pdgTemplate) { choosePdgTemplate(t); return; }
   try { bytes ||= await pdgTemplateBytes(); }
@@ -5511,6 +5523,8 @@ async function generatePdg(t) {
     pdgNotice(`Modèle de page de garde introuvable ou illisible (${esc(pdgTemplate.name || "PdG_Type.xlsm")} : ${esc(e.message || e)}). <button type="button" data-pdg-template>Choisir le modèle</button>`, true);
     return;
   }
+  // Modèle choisi sur ce poste mais absent de la DEM : il y est rangé pour toute l'équipe.
+  if (excelMode && !data.pdgEmbedded) storePdgInDEM(pdgTemplate.name || "PdG_Type.xlsm", bytes).catch(() => {});
   try {
     const { file, cells } = pdgValues(t);
     downloadBytes(fillPdgTemplate(bytes, cells), "application/vnd.ms-excel.sheet.macroEnabled.12", file);
