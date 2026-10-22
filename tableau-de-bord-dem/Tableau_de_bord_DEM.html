@@ -5231,6 +5231,8 @@ const PDG_HEADERS = {
   ree: "REE", edim: "Référence eDIM", intitule: "Intitulé", projet: "Code Projet", mc: "N°de la MC", tot: "TOT concernée",
   ot: "N° de l'OT", rdu: "RDU", ecu: "ECU", pee: "PEE", indicePee: "Indice PEE", indiceRee: "Indice REE",
 };
+// REE communs : fin CS8 ou CS9 acceptée pour ces feuilles (en plus du préfixe de la feuille).
+const PDG_SHARED_SUFFIX = { CS8: ["CS4M", "CS4A", "CS3M", "CS3A", "CS8M"], CS9: ["CS1M", "CS1A", "CS2M", "CS2A", "CS9M"] };
 let pdgTemplate = null, pdgPendingTask = null;
 
 // --- Fonctions texte des macros ---------------------------------------------------------
@@ -5286,12 +5288,17 @@ function pdgValues(t) {
   const code = pdgTrim(t.orig?.ree ?? t.ree), refEDIM = pdgTrim(t.orig?.affaire ?? t.affaire), suffix = t.sheet.toUpperCase().slice(0, 3);
   if (!code) throw Error("REE vide sur cette ligne.");
   const sameEdim = (r) => vbLeft(pdgClean(r.edim), 9) === vbLeft(pdgClean(refEDIM), 9);
-  const candidates = src.rows.filter((r) => r.ree.toUpperCase().includes(code.toUpperCase()));
-  const row = candidates.find((r) => r.ree.toUpperCase().endsWith(suffix) && sameEdim(r));
+  // REE comparé sans espaces (LLA 300 = LLA300) ; fin du REE : préfixe de la feuille, ou CS8 / CS9
+  // pour les feuilles qu'ils couvrent.
+  const compact = (v) => String(v).replace(/\s+/g, "").toUpperCase();
+  const endings = [suffix, ...Object.entries(PDG_SHARED_SUFFIX).filter(([, sheets]) => sheets.includes(t.sheet.toUpperCase())).map(([s]) => s)];
+  const goodEnd = (r) => endings.some((e) => compact(r.ree).endsWith(e));
+  const candidates = src.rows.filter((r) => compact(r.ree).includes(compact(code)));
+  const row = candidates.find((r) => goodEnd(r) && sameEdim(r));
   if (!row) {
     // Détail des lignes CRU qui contiennent le REE, avec la règle qui les écarte.
     const why = candidates.slice(0, 5).map((r) => {
-      const reasons = [...(r.ree.toUpperCase().endsWith(suffix) ? [] : [`REE ne finit pas par ${suffix}`]), ...(sameEdim(r) ? [] : [`eDIM « ${r.edim || "vide"} » ≠ affaire`])];
+      const reasons = [...(goodEnd(r) ? [] : [`REE ne finit pas par ${endings.join(" ou ")}`]), ...(sameEdim(r) ? [] : [`eDIM « ${r.edim || "vide"} » ≠ affaire`])];
       return `ligne ${r.row} : « ${r.ree} » (${reasons.join(", ")})`;
     });
     throw Error(`Aucune ligne de CRU pour le REE « ${code} » avec l’affaire « ${refEDIM} » (feuille ${t.sheet}).`
