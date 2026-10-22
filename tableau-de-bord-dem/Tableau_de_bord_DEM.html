@@ -5285,11 +5285,18 @@ function pdgValues(t) {
   if (!src || src.error) throw Error(src?.error || "Feuille CRU non lue : actualisez la DEM.");
   const code = pdgTrim(t.orig?.ree ?? t.ree), refEDIM = pdgTrim(t.orig?.affaire ?? t.affaire), suffix = t.sheet.toUpperCase().slice(0, 3);
   if (!code) throw Error("REE vide sur cette ligne.");
-  const row = src.rows.find((r) => {
-    const ree = r.ree.toUpperCase();
-    return ree.includes(code.toUpperCase()) && ree.endsWith(suffix) && vbLeft(pdgClean(r.edim), 9) === vbLeft(pdgClean(refEDIM), 9);
-  });
-  if (!row) throw Error(`Aucune ligne de CRU pour le REE « ${code} » avec l’affaire « ${refEDIM} ».`);
+  const sameEdim = (r) => vbLeft(pdgClean(r.edim), 9) === vbLeft(pdgClean(refEDIM), 9);
+  const candidates = src.rows.filter((r) => r.ree.toUpperCase().includes(code.toUpperCase()));
+  const row = candidates.find((r) => r.ree.toUpperCase().endsWith(suffix) && sameEdim(r));
+  if (!row) {
+    // Détail des lignes CRU qui contiennent le REE, avec la règle qui les écarte.
+    const why = candidates.slice(0, 5).map((r) => {
+      const reasons = [...(r.ree.toUpperCase().endsWith(suffix) ? [] : [`REE ne finit pas par ${suffix}`]), ...(sameEdim(r) ? [] : [`eDIM « ${r.edim || "vide"} » ≠ affaire`])];
+      return `ligne ${r.row} : « ${r.ree} » (${reasons.join(", ")})`;
+    });
+    throw Error(`Aucune ligne de CRU pour le REE « ${code} » avec l’affaire « ${refEDIM} » (feuille ${t.sheet}).`
+      + (why.length ? ` Lignes CRU contenant ${code} : ${why.join(" ; ")}${candidates.length > 5 ? "…" : ""}.` : ` Aucune cellule de la colonne REE de CRU ne contient « ${code} ».`));
+  }
   const reeKey = pdgClean(row.ree);
   const totList = pdgDistinct(src.rows.filter((r) => pdgClean(r.ree) === reeKey).map((r) => r.tot));
   const tot2 = totList ? pdgDistinct(totList.split(",").map((p) => vbRight(p.trim(), 2))) : "";
