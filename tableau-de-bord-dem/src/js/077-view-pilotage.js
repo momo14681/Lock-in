@@ -253,7 +253,7 @@ function pilotReportSections() {
   }];
   for (const m of models) {
     sections.push({ title: `${m.label} — avancement ${m.timeline.weekly ? "par semaine" : "par mois"} de J0`, headers: ["Période", "TOT", ...TEAM_ORDER, "% réalisés"],
-      rows: m.timeline.columns.filter((c) => c.total).map((c) => [c.long, c.total, ...TEAM_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized], c.total)]) });
+      rows: m.timeline.columns.filter((c) => c.total).map((c) => [c.long, c.total, ...TEAM_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized] + c.counts[STATE.archived], c.total)]) });
     sections.push({ title: `${m.label} — par chargé d’essais`, headers: ["Chargé", "TOT", "Réalisées", "Prépa en retard"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, o.overdue]) });
   }
   return sections;

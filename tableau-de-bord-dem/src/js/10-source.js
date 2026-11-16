@@ -97,6 +97,7 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
     }
     await pauseForPaint();
     result.tasks.forEach(applyMissingInfo);
+    applyReeMilestones(result.tasks);
     if (!result.tasks.length) throw Error("Aucune TOT exploitable trouvée dans les feuilles techniques.");
     // Colonnes attendues : refuser un modèle décalé plutôt que publier des indicateurs faux.
     for (const name of result.availableSheets) {

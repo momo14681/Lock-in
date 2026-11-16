@@ -646,6 +646,7 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .brand { overflow: hidden; }
 .brand > div { min-width: 0; }
 @media (max-width: 400px) { .brand svg { display: none; } .headerSub { font-size: 11.5px; } }
+.msTrack .msLabel small { font-size: 11.5px; color: var(--muted); margin-left: 2px; }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -1211,26 +1212,54 @@ function produced(t, key) {
     : code === "P" || code === "R" || t[key] === "done";
 }
 
+// Un REE dont le BPD est daté est archivé : ses TOT comptent aussi comme réalisées.
 function isRealized(t) {
-  return !t.cancelled && t.gerState === "done";
+  return !t.cancelled && (t.gerState === "done" || !!t.archived);
+}
+
+// BPA et BPD se font par REE (affaire + REE, dans une feuille), qui peut porter plusieurs TOT.
+function reeKey(t) {
+  return !t.cancelled && t.ree ? `${t.sheet}|${t.affaire}|${status(t.ree).replace(/\s+/g, "")}` : "";
+}
+
+// Regroupe les TOT par REE et marque « archivée » chaque TOT d'un REE dont une ligne a une date en BPD.
+function applyReeMilestones(tasks) {
+  const groups = new Map();
+  for (const t of tasks) {
+    t.reeTasks = [t];
+    t.archived = false;
+    const k = reeKey(t);
+    if (!k) continue;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(t);
+  }
+  for (const ts of groups.values()) {
+    const archived = ts.some((t) => !!parseExcelDate(t.cells?.bpd?.v ?? t.bpd));
+    for (const t of ts) {
+      t.reeTasks = ts;
+      t.archived = archived;
+      if (archived) { t.overdue = false; t.dueSoon = false; t.softLate = false; }
+    }
+  }
 }
 
 // Statut d'avancement d'une TOT (ordre d'évaluation de la V1.3).
-const STATE = { realized: "Réalisé", missing: "Infos manquantes", ready: "Prépa terminée", late: "Prépa en retard", ongoing: "En préparation", cancelled: "Annulée" };
+const STATE = { archived: "BPD (archivée)", realized: "Réalisé", missing: "Infos manquantes", ready: "Prépa terminée", late: "Prépa en retard", ongoing: "En préparation", cancelled: "Annulée" };
 function state(t) {
-  return t.cancelled ? STATE.cancelled : isRealized(t) ? STATE.realized : t.infoMissing ? STATE.missing : t.prepComplete ? STATE.ready : t.overdue ? STATE.late : STATE.ongoing;
+  return t.cancelled ? STATE.cancelled : t.archived ? STATE.archived : isRealized(t) ? STATE.realized : t.infoMissing ? STATE.missing : t.prepComplete ? STATE.ready : t.overdue ? STATE.late : STATE.ongoing;
 }
 
 // Ordre d'empilement des graphiques : de l'acquis vers ce qui bloque.
-const STATE_ORDER = [STATE.realized, STATE.ready, STATE.ongoing, STATE.missing, STATE.late];
+const STATE_ORDER = [STATE.archived, STATE.realized, STATE.ready, STATE.ongoing, STATE.missing, STATE.late];
 const STATE_COLORS = {
+  [STATE.archived]: "#2B6620",
   [STATE.realized]: "#509E2F",
   [STATE.ready]: "#1057C8",
   [STATE.ongoing]: "#b9c6d4",
   [STATE.missing]: "#EBA000",
   [STATE.late]: "#E3262D",
 };
-const STATE_TONE = { [STATE.realized]: "good", [STATE.ready]: "info", [STATE.ongoing]: "neutral", [STATE.missing]: "warn", [STATE.late]: "warn", [STATE.cancelled]: "neutral" };
+const STATE_TONE = { [STATE.archived]: "good", [STATE.realized]: "good", [STATE.ready]: "info", [STATE.ongoing]: "neutral", [STATE.missing]: "warn", [STATE.late]: "warn", [STATE.cancelled]: "neutral" };
 const PHASE_COLORS = { TEM: "#1057C8", AT: "#FE5815", "Non précisé": "#b9c6d4" };
 
 function observations(t) {
@@ -1798,6 +1827,7 @@ const AFFAIRE_STATUS = {
   ongoing: { label: "En préparation", tone: "neutral", rank: 2 },
   ready: { label: "Prépa terminée", tone: "info", rank: 3 },
   done: { label: "Réalisée", tone: "good", rank: 4 },
+  archived: { label: "BPD (archivée)", tone: "good", rank: 5 },
 };
 
 function milestoneStats(ts, key) {
@@ -1849,7 +1879,7 @@ function affaireGroups(tasks, issueList = issues) {
     g.gel = ts.filter(gelDone).length;
     g.bpaRee = ds.filter((d) => d.bpaDone).length;
     g.bpdRee = ds.filter((d) => d.bpdSigned).length;
-    g.status = g.overdue ? "late" : g.missing ? "missing" : g.realized === n ? "done" : g.prep === n ? "ready" : "ongoing";
+    g.status = ts.every((t) => t.archived) ? "archived" : g.overdue ? "late" : g.missing ? "missing" : g.realized === n ? "done" : g.prep === n ? "ready" : "ongoing";
     return g;
   }).sort((a, b) => AFFAIRE_STATUS[a.status].rank - AFFAIRE_STATUS[b.status].rank
     || (a.nextDue || a.nextJ0 || Infinity) - (b.nextDue || b.nextJ0 || Infinity)
@@ -3214,7 +3244,7 @@ function pilotReportSections() {
   }];
   for (const m of models) {
     sections.push({ title: `${m.label} — avancement ${m.timeline.weekly ? "par semaine" : "par mois"} de J0`, headers: ["Période", "TOT", ...TEAM_ORDER, "% réalisés"],
-      rows: m.timeline.columns.filter((c) => c.total).map((c) => [c.long, c.total, ...TEAM_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized], c.total)]) });
+      rows: m.timeline.columns.filter((c) => c.total).map((c) => [c.long, c.total, ...TEAM_ORDER.map((s) => c.counts[s]), pct(c.counts[STATE.realized] + c.counts[STATE.archived], c.total)]) });
     sections.push({ title: `${m.label} — par chargé d’essais`, headers: ["Chargé", "TOT", "Réalisées", "Prépa en retard"], rows: m.owners.map((o) => [o.name, o.n, `${o.realized} (${pct(o.realized, o.n)})`, o.overdue]) });
   }
   return sections;
@@ -3550,8 +3580,19 @@ const MILESTONE_CHOICES = {
 };
 let milestoneChoice = {};
 
-function milestoneDone(t, key) {
+// BPA et BPD : jalons du REE. Fait quand toutes ses TOT l'ont ; l'action écrit sur chacune.
+const REE_MILESTONES = new Set(["bpa", "bpd"]);
+
+function lineDone(t, key) {
   return key === "totPrete" ? totPreteDone(t.raw[key]) : t[key + "State"] === "done";
+}
+
+function milestoneLines(t, key) {
+  return REE_MILESTONES.has(key) ? (t.reeTasks || [t]).filter((x) => !x.cancelled) : [t];
+}
+
+function milestoneDone(t, key) {
+  return milestoneLines(t, key).every((x) => lineDone(x, key));
 }
 
 function choiceValue(c) {
@@ -3576,7 +3617,8 @@ function milestoneTrack(t) {
   const steps = MILESTONES.map(([k, label]) => {
     const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim(), options = milestoneOptions(t, k);
     const action = options.length ? `<span class="msSplit"><button type="button" data-milestone="${k}" data-value="${esc(choiceValue(options[0]))}">${esc(choiceLabel(options[0]))}</button><label class="msMore" title="Choisir une autre valeur"><span aria-hidden="true">▾</span><select data-ms-choice="${k}" aria-label="Autre valeur pour ${label}">${MILESTONE_CHOICES[k].filter((c) => options.includes(c)).map((c) => `<option value="${esc(c)}"${c === options[0] ? " selected" : ""}>${esc(c === TODAY_CHOICE ? `Date du jour (${formatDate(data.today)})` : c)}</option>`).join("")}</select></label></span>` : "";
-    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
+    const n = milestoneLines(t, k).length;
+    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}${n > 1 ? ` <small>REE · ${n} TOT</small>` : ""}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }
@@ -3584,7 +3626,12 @@ function milestoneTrack(t) {
 function milestoneSet(t, key, value) {
   const parsed = parseEditValue(key, value);
   if (parsed.error) return;
-  editConfirm = [makeEdit(t, key, parsed)];
+  // Par REE : toutes les TOT du REE qui n'ont pas encore ce jalon, ou dont la cellule diffère.
+  const lines = milestoneLines(t, key).filter((x) => status(x.orig?.[key] ?? "") !== status(parsed.label) && (x === t || !lineDone(x, key)));
+  // Cellule fusionnée sur plusieurs lignes du REE : une seule écriture.
+  const seen = new Set();
+  editConfirm = lines.map((x) => makeEdit(x, key, parsed)).filter((e) => !seen.has(e.sheet + "!" + e.cell) && seen.add(e.sheet + "!" + e.cell));
+  if (!editConfirm.length) return;
   detail(t);
 }
 
@@ -3628,7 +3675,7 @@ function saveEditForm(t) {
 function editConfirmPanel(t) {
   const n = editConfirm.length;
   return `<div class="editIntro"><strong>Écrire dans la DEM ?</strong>
-      <p class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${plural(n, "cellule")}</p></div>
+      <p class="muted">${esc(t.sheet)} · ${new Set(editConfirm.map((e) => e.row)).size > 1 ? `REE ${esc(t.ree)} · ${plural(new Set(editConfirm.map((e) => e.row)).size, "ligne")}` : `ligne ${t.rowNumber}`} · ${plural(n, "cellule")}</p></div>
     <ul class="confirmList">${editConfirm.map((e) => `<li><span>${esc(names[e.key])} <span class="loc">${esc(e.cell)}</span></span>
       <span class="confirmChange"><span class="muted">${esc(e.old || "vide")}</span> → <strong>${esc(e.label || "vide")}</strong></span></li>`).join("")}</ul>
     <div class="editActions"><button type="button" class="accent" data-edit-confirm>Écrire dans la DEM</button><button type="button" class="ghost" data-edit-back>Annuler</button></div>`;
@@ -3661,8 +3708,8 @@ const MONTHS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "jui
 // Sur l'écran d'équipe, « Prépa en retard » et « Infos manquantes » sont regroupées :
 // ce sont surtout des lignes Excel à mettre à jour, pas des retards d'essais.
 const TEAM_INCOMPLETE = "DEM à compléter";
-const TEAM_ORDER = [STATE.realized, STATE.ready, STATE.ongoing, TEAM_INCOMPLETE];
-const TEAM_COLORS = { [STATE.realized]: STATE_COLORS[STATE.realized], [STATE.ready]: STATE_COLORS[STATE.ready], [STATE.ongoing]: STATE_COLORS[STATE.ongoing], [TEAM_INCOMPLETE]: STATE_COLORS[STATE.missing] };
+const TEAM_ORDER = [STATE.archived, STATE.realized, STATE.ready, STATE.ongoing, TEAM_INCOMPLETE];
+const TEAM_COLORS = { [STATE.archived]: STATE_COLORS[STATE.archived], [STATE.realized]: STATE_COLORS[STATE.realized], [STATE.ready]: STATE_COLORS[STATE.ready], [STATE.ongoing]: STATE_COLORS[STATE.ongoing], [TEAM_INCOMPLETE]: STATE_COLORS[STATE.missing] };
 function teamState(t) {
   const s = state(t);
   return s === STATE.missing || s === STATE.late ? TEAM_INCOMPLETE : s;
@@ -3802,7 +3849,7 @@ function timelineSvg(tl) {
         : `<rect x="${x}" y="${y + gap}" width="${barW}" height="${hh}"`;
       parts.push(`${shape} fill="${TEAM_COLORS[s]}" data-tip="${fmt(c.counts[s])} TOT · ${pct(c.counts[s], c.total)}\n${esc(s)} · ${esc(c.long)}" tabindex="0"/>`);
     });
-    const done = c.counts[STATE.realized], doneH = c.total ? done / c.total * plotH : 0;
+    const done = c.counts[STATE.realized] + c.counts[STATE.archived], doneH = c.total ? done / c.total * plotH : 0;
     if (doneH >= 22 && c.total) parts.push(`<text x="${cx}" y="${top + plotH - doneH / 2 + 5}" class="tlIn">${Math.round(done / c.total * 100)}%</text>`);
     parts.push(`<text x="${cx}" y="${top - 10}" class="tlN">${c.total ? fmt(c.total) : "–"}</text>`);
     parts.push(`<text x="${cx}" y="${top + plotH + 22}" class="tlLabel${c.current ? " now" : ""}">${esc(c.label)}</text>`);
@@ -3934,7 +3981,7 @@ function drawPNGTimeline(k, tl, left, width, plotTop, plotH) {
       if (isTop) roundRect(x, y, barW, Math.max(1, h - gap), Math.min(5, h / 2), TEAM_COLORS[s]);
       else c.fillRect(x, y + gap, barW, Math.max(0.5, h - gap));
     });
-    const done = col.counts[STATE.realized], doneH = col.total ? done / col.total * plotH : 0;
+    const done = col.counts[STATE.realized] + col.counts[STATE.archived], doneH = col.total ? done / col.total * plotH : 0;
     if (doneH >= 30) text(`${Math.round(done / col.total * 100)}%`, cx, plotTop + plotH - doneH / 2 - 11, { size: 19, weight: 700, color: "#ffffff", align: "center", width: barW + 6, min: 13 });
     text(col.total ? fmt(col.total) : "–", cx, plotTop - 32, { size: 21, weight: 600, color: PNG.ink2, align: "center", width: slot - 4, min: 13 });
     text(col.label, cx, plotTop + plotH + 12, { size: 21, weight: col.current ? 700 : 500, color: col.current ? PNG.ink : PNG.muted, align: "center", width: slot - 2, min: 12 });
@@ -4441,6 +4488,7 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
     }
     await pauseForPaint();
     result.tasks.forEach(applyMissingInfo);
+    applyReeMilestones(result.tasks);
     if (!result.tasks.length) throw Error("Aucune TOT exploitable trouvée dans les feuilles techniques.");
     // Colonnes attendues : refuser un modèle décalé plutôt que publier des indicateurs faux.
     for (const name of result.availableSheets) {

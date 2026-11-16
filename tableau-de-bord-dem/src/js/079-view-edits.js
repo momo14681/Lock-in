@@ -67,8 +67,19 @@ const MILESTONE_CHOICES = {
 };
 let milestoneChoice = {};
 
-function milestoneDone(t, key) {
+// BPA et BPD : jalons du REE. Fait quand toutes ses TOT l'ont ; l'action écrit sur chacune.
+const REE_MILESTONES = new Set(["bpa", "bpd"]);
+
+function lineDone(t, key) {
   return key === "totPrete" ? totPreteDone(t.raw[key]) : t[key + "State"] === "done";
+}
+
+function milestoneLines(t, key) {
+  return REE_MILESTONES.has(key) ? (t.reeTasks || [t]).filter((x) => !x.cancelled) : [t];
+}
+
+function milestoneDone(t, key) {
+  return milestoneLines(t, key).every((x) => lineDone(x, key));
 }
 
 function choiceValue(c) {
@@ -93,7 +104,8 @@ function milestoneTrack(t) {
   const steps = MILESTONES.map(([k, label]) => {
     const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim(), options = milestoneOptions(t, k);
     const action = options.length ? `<span class="msSplit"><button type="button" data-milestone="${k}" data-value="${esc(choiceValue(options[0]))}">${esc(choiceLabel(options[0]))}</button><label class="msMore" title="Choisir une autre valeur"><span aria-hidden="true">▾</span><select data-ms-choice="${k}" aria-label="Autre valeur pour ${label}">${MILESTONE_CHOICES[k].filter((c) => options.includes(c)).map((c) => `<option value="${esc(c)}"${c === options[0] ? " selected" : ""}>${esc(c === TODAY_CHOICE ? `Date du jour (${formatDate(data.today)})` : c)}</option>`).join("")}</select></label></span>` : "";
-    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
+    const n = milestoneLines(t, k).length;
+    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}${n > 1 ? ` <small>REE · ${n} TOT</small>` : ""}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }
@@ -101,7 +113,12 @@ function milestoneTrack(t) {
 function milestoneSet(t, key, value) {
   const parsed = parseEditValue(key, value);
   if (parsed.error) return;
-  editConfirm = [makeEdit(t, key, parsed)];
+  // Par REE : toutes les TOT du REE qui n'ont pas encore ce jalon, ou dont la cellule diffère.
+  const lines = milestoneLines(t, key).filter((x) => status(x.orig?.[key] ?? "") !== status(parsed.label) && (x === t || !lineDone(x, key)));
+  // Cellule fusionnée sur plusieurs lignes du REE : une seule écriture.
+  const seen = new Set();
+  editConfirm = lines.map((x) => makeEdit(x, key, parsed)).filter((e) => !seen.has(e.sheet + "!" + e.cell) && seen.add(e.sheet + "!" + e.cell));
+  if (!editConfirm.length) return;
   detail(t);
 }
 
@@ -145,7 +162,7 @@ function saveEditForm(t) {
 function editConfirmPanel(t) {
   const n = editConfirm.length;
   return `<div class="editIntro"><strong>Écrire dans la DEM ?</strong>
-      <p class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${plural(n, "cellule")}</p></div>
+      <p class="muted">${esc(t.sheet)} · ${new Set(editConfirm.map((e) => e.row)).size > 1 ? `REE ${esc(t.ree)} · ${plural(new Set(editConfirm.map((e) => e.row)).size, "ligne")}` : `ligne ${t.rowNumber}`} · ${plural(n, "cellule")}</p></div>
     <ul class="confirmList">${editConfirm.map((e) => `<li><span>${esc(names[e.key])} <span class="loc">${esc(e.cell)}</span></span>
       <span class="confirmChange"><span class="muted">${esc(e.old || "vide")}</span> → <strong>${esc(e.label || "vide")}</strong></span></li>`).join("")}</ul>
     <div class="editActions"><button type="button" class="accent" data-edit-confirm>Écrire dans la DEM</button><button type="button" class="ghost" data-edit-back>Annuler</button></div>`;

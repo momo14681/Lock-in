@@ -324,26 +324,54 @@ function produced(t, key) {
     : code === "P" || code === "R" || t[key] === "done";
 }
 
+// Un REE dont le BPD est daté est archivé : ses TOT comptent aussi comme réalisées.
 function isRealized(t) {
-  return !t.cancelled && t.gerState === "done";
+  return !t.cancelled && (t.gerState === "done" || !!t.archived);
+}
+
+// BPA et BPD se font par REE (affaire + REE, dans une feuille), qui peut porter plusieurs TOT.
+function reeKey(t) {
+  return !t.cancelled && t.ree ? `${t.sheet}|${t.affaire}|${status(t.ree).replace(/\s+/g, "")}` : "";
+}
+
+// Regroupe les TOT par REE et marque « archivée » chaque TOT d'un REE dont une ligne a une date en BPD.
+function applyReeMilestones(tasks) {
+  const groups = new Map();
+  for (const t of tasks) {
+    t.reeTasks = [t];
+    t.archived = false;
+    const k = reeKey(t);
+    if (!k) continue;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(t);
+  }
+  for (const ts of groups.values()) {
+    const archived = ts.some((t) => !!parseExcelDate(t.cells?.bpd?.v ?? t.bpd));
+    for (const t of ts) {
+      t.reeTasks = ts;
+      t.archived = archived;
+      if (archived) { t.overdue = false; t.dueSoon = false; t.softLate = false; }
+    }
+  }
 }
 
 // Statut d'avancement d'une TOT (ordre d'évaluation de la V1.3).
-const STATE = { realized: "Réalisé", missing: "Infos manquantes", ready: "Prépa terminée", late: "Prépa en retard", ongoing: "En préparation", cancelled: "Annulée" };
+const STATE = { archived: "BPD (archivée)", realized: "Réalisé", missing: "Infos manquantes", ready: "Prépa terminée", late: "Prépa en retard", ongoing: "En préparation", cancelled: "Annulée" };
 function state(t) {
-  return t.cancelled ? STATE.cancelled : isRealized(t) ? STATE.realized : t.infoMissing ? STATE.missing : t.prepComplete ? STATE.ready : t.overdue ? STATE.late : STATE.ongoing;
+  return t.cancelled ? STATE.cancelled : t.archived ? STATE.archived : isRealized(t) ? STATE.realized : t.infoMissing ? STATE.missing : t.prepComplete ? STATE.ready : t.overdue ? STATE.late : STATE.ongoing;
 }
 
 // Ordre d'empilement des graphiques : de l'acquis vers ce qui bloque.
-const STATE_ORDER = [STATE.realized, STATE.ready, STATE.ongoing, STATE.missing, STATE.late];
+const STATE_ORDER = [STATE.archived, STATE.realized, STATE.ready, STATE.ongoing, STATE.missing, STATE.late];
 const STATE_COLORS = {
+  [STATE.archived]: "#2B6620",
   [STATE.realized]: "#509E2F",
   [STATE.ready]: "#1057C8",
   [STATE.ongoing]: "#b9c6d4",
   [STATE.missing]: "#EBA000",
   [STATE.late]: "#E3262D",
 };
-const STATE_TONE = { [STATE.realized]: "good", [STATE.ready]: "info", [STATE.ongoing]: "neutral", [STATE.missing]: "warn", [STATE.late]: "warn", [STATE.cancelled]: "neutral" };
+const STATE_TONE = { [STATE.archived]: "good", [STATE.realized]: "good", [STATE.ready]: "info", [STATE.ongoing]: "neutral", [STATE.missing]: "warn", [STATE.late]: "warn", [STATE.cancelled]: "neutral" };
 const PHASE_COLORS = { TEM: "#1057C8", AT: "#FE5815", "Non précisé": "#b9c6d4" };
 
 function observations(t) {

@@ -8,6 +8,7 @@ const AFFAIRE_STATUS = {
   ongoing: { label: "En préparation", tone: "neutral", rank: 2 },
   ready: { label: "Prépa terminée", tone: "info", rank: 3 },
   done: { label: "Réalisée", tone: "good", rank: 4 },
+  archived: { label: "BPD (archivée)", tone: "good", rank: 5 },
 };
 
 function milestoneStats(ts, key) {
@@ -59,7 +60,7 @@ function affaireGroups(tasks, issueList = issues) {
     g.gel = ts.filter(gelDone).length;
     g.bpaRee = ds.filter((d) => d.bpaDone).length;
     g.bpdRee = ds.filter((d) => d.bpdSigned).length;
-    g.status = g.overdue ? "late" : g.missing ? "missing" : g.realized === n ? "done" : g.prep === n ? "ready" : "ongoing";
+    g.status = ts.every((t) => t.archived) ? "archived" : g.overdue ? "late" : g.missing ? "missing" : g.realized === n ? "done" : g.prep === n ? "ready" : "ongoing";
     return g;
   }).sort((a, b) => AFFAIRE_STATUS[a.status].rank - AFFAIRE_STATUS[b.status].rank
     || (a.nextDue || a.nextJ0 || Infinity) - (b.nextDue || b.nextJ0 || Infinity)

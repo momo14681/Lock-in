@@ -9,8 +9,8 @@ const MONTHS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "jui
 // Sur l'écran d'équipe, « Prépa en retard » et « Infos manquantes » sont regroupées :
 // ce sont surtout des lignes Excel à mettre à jour, pas des retards d'essais.
 const TEAM_INCOMPLETE = "DEM à compléter";
-const TEAM_ORDER = [STATE.realized, STATE.ready, STATE.ongoing, TEAM_INCOMPLETE];
-const TEAM_COLORS = { [STATE.realized]: STATE_COLORS[STATE.realized], [STATE.ready]: STATE_COLORS[STATE.ready], [STATE.ongoing]: STATE_COLORS[STATE.ongoing], [TEAM_INCOMPLETE]: STATE_COLORS[STATE.missing] };
+const TEAM_ORDER = [STATE.archived, STATE.realized, STATE.ready, STATE.ongoing, TEAM_INCOMPLETE];
+const TEAM_COLORS = { [STATE.archived]: STATE_COLORS[STATE.archived], [STATE.realized]: STATE_COLORS[STATE.realized], [STATE.ready]: STATE_COLORS[STATE.ready], [STATE.ongoing]: STATE_COLORS[STATE.ongoing], [TEAM_INCOMPLETE]: STATE_COLORS[STATE.missing] };
 function teamState(t) {
   const s = state(t);
   return s === STATE.missing || s === STATE.late ? TEAM_INCOMPLETE : s;
@@ -150,7 +150,7 @@ function timelineSvg(tl) {
         : `<rect x="${x}" y="${y + gap}" width="${barW}" height="${hh}"`;
       parts.push(`${shape} fill="${TEAM_COLORS[s]}" data-tip="${fmt(c.counts[s])} TOT · ${pct(c.counts[s], c.total)}\n${esc(s)} · ${esc(c.long)}" tabindex="0"/>`);
     });
-    const done = c.counts[STATE.realized], doneH = c.total ? done / c.total * plotH : 0;
+    const done = c.counts[STATE.realized] + c.counts[STATE.archived], doneH = c.total ? done / c.total * plotH : 0;
     if (doneH >= 22 && c.total) parts.push(`<text x="${cx}" y="${top + plotH - doneH / 2 + 5}" class="tlIn">${Math.round(done / c.total * 100)}%</text>`);
     parts.push(`<text x="${cx}" y="${top - 10}" class="tlN">${c.total ? fmt(c.total) : "–"}</text>`);
     parts.push(`<text x="${cx}" y="${top + plotH + 22}" class="tlLabel${c.current ? " now" : ""}">${esc(c.label)}</text>`);
@@ -282,7 +282,7 @@ function drawPNGTimeline(k, tl, left, width, plotTop, plotH) {
       if (isTop) roundRect(x, y, barW, Math.max(1, h - gap), Math.min(5, h / 2), TEAM_COLORS[s]);
       else c.fillRect(x, y + gap, barW, Math.max(0.5, h - gap));
     });
-    const done = col.counts[STATE.realized], doneH = col.total ? done / col.total * plotH : 0;
+    const done = col.counts[STATE.realized] + col.counts[STATE.archived], doneH = col.total ? done / col.total * plotH : 0;
     if (doneH >= 30) text(`${Math.round(done / col.total * 100)}%`, cx, plotTop + plotH - doneH / 2 - 11, { size: 19, weight: 700, color: "#ffffff", align: "center", width: barW + 6, min: 13 });
     text(col.total ? fmt(col.total) : "–", cx, plotTop - 32, { size: 21, weight: 600, color: PNG.ink2, align: "center", width: slot - 4, min: 13 });
     text(col.label, cx, plotTop + plotH + 12, { size: 21, weight: col.current ? 700 : 500, color: col.current ? PNG.ink : PNG.muted, align: "center", width: slot - 2, min: 12 });
