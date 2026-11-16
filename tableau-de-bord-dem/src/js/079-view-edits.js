@@ -59,6 +59,45 @@ function parseEditValue(key, input) {
   return { type: "texte", value: v, label: v };
 }
 
+// --- Frise des quatre jalons (fiche d'une TOT) ---------------------------------------
+// « Fait aujourd'hui » écrit la date du jour (TSR pour le GER/1N, qui ne prend pas de date) :
+// directement dans la DEM depuis Excel, sinon dans « Modifications à appliquer ».
+const MILESTONES = [["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER / 1N"], ["bpd", "BPD"]];
+
+function milestoneDone(t, key) {
+  return key === "totPrete" ? t.totReady : t[key + "State"] === "done";
+}
+
+function milestoneTrack(t) {
+  const steps = MILESTONES.map(([k, label]) => {
+    const done = milestoneDone(t, k), p = pendingEdit(t, k), value = String(t.raw[k] ?? "").trim();
+    const action = t.cancelled ? "" : p
+      ? `<small class="muted">en attente : ${esc(p.label || "vide")}</small>`
+      : done ? "" : `<button type="button" data-milestone="${k}">${k === "ger" ? "Réalisé (TSR)" : "Fait aujourd’hui"}</button>`;
+    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
+  }).join("");
+  return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
+}
+
+function makeEdit(t, key, parsed) {
+  return {
+    id: editId(t, key), taskId: t.id, key, sheet: t.sheet, row: t.rowNumber, cell: editCell(t, key),
+    affaire: t.affaire, ree: t.ree, ot: t.orig?.ot ?? t.ot, tot: t.orig?.tot ?? t.tot, owner: t.responsable,
+    old: t.orig?.[key] ?? "", type: parsed.type, value: parsed.value, label: parsed.label, at: new Date().toISOString(),
+  };
+}
+
+function milestoneToday(t, key) {
+  const parsed = parseEditValue(key, key === "ger" ? "TSR" : formatDate(data.today));
+  if (parsed.error) return;
+  const entry = makeEdit(t, key, parsed);
+  if (excelMode) { applyExcelEdits([entry], t); return; }
+  saveEdits([...editList().filter((e) => e.id !== entry.id), entry]);
+  render();
+  detail(t);
+  $("message").innerHTML = `<div class="notice">${esc(names[key])} : ${esc(parsed.label)} ajouté à « Modifications à appliquer ».</div>`;
+}
+
 function editCell(t, key) {
   return address(t, key).split(":")[0];
 }
@@ -121,11 +160,7 @@ function saveEditForm(t) {
     const i = list.findIndex((e) => e.id === id);
     const same = status(parsed.label) === status(current);
     if (same) { if (i >= 0) list.splice(i, 1); return; }
-    const entry = {
-      id, taskId: t.id, key, sheet: t.sheet, row: t.rowNumber, cell: editCell(t, key),
-      affaire: t.affaire, ree: t.ree, ot: t.orig?.ot ?? t.ot, tot: t.orig?.tot ?? t.tot, owner: t.responsable,
-      old: current, type: parsed.type, value: parsed.value, label: parsed.label, at: new Date().toISOString(),
-    };
+    const entry = makeEdit(t, key, parsed);
     if (i >= 0) list[i] = entry; else list.push(entry);
     added++;
   });
@@ -207,6 +242,7 @@ function exportEdits() {
 function editAction(d) {
   if (d.editStart !== undefined) { editMode = true; editError = ""; return detail(data.tasks[+d.editStart]), true; }
   if (d.editCancel !== undefined) { editMode = false; editError = ""; return detail(data.tasks[+$("detail").dataset.task]), true; }
+  if (d.milestone !== undefined) return milestoneToday(data.tasks[+$("detail").dataset.task], d.milestone), true;
   if (d.editSave !== undefined) return saveEditForm(data.tasks[+$("detail").dataset.task]), true;
   if (d.editRemove !== undefined) { saveEdits(editList().filter((e) => e.id !== d.editRemove)); render(); return true; }
   if (d.editsPurge !== undefined) { saveEdits(editList().filter((e) => editState(e).code !== "done")); render(); return true; }

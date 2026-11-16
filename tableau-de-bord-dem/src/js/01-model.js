@@ -297,6 +297,14 @@ function applyMissingInfo(t) {
     t.dueSoon = false;
     t.prepState = t.infoMissing ? "missing-info" : "realized";
   }
+  // Arrêts de tranche (feuilles CSxA) : le J0 y est indicatif. L'échéance dépassée
+  // reste visible, en gris, mais ne compte pas comme un retard.
+  t.softLate = false;
+  if (t.overdue && dossierPhase(t) === "AT") {
+    t.overdue = false;
+    t.softLate = true;
+    t.prepState = "ongoing";
+  }
   return t;
 }
 

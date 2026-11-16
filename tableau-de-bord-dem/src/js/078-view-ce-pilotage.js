@@ -98,11 +98,12 @@ function cepTag(sheet) {
   return `<span class="pilotTag phase-${dossierPhase({ sheet })}">${esc(trancheLabel(sheet))}</span>`;
 }
 
-function cepDue(date, today) {
+// Sur un arrêt de tranche (feuille CSxA) le J0 est indicatif : une date dépassée reste grise.
+function cepDue(date, today, sheet = "") {
   if (!date) return '<span class="muted">J0 absent</span>';
-  const d = daysBetween(today, date);
+  const d = daysBetween(today, date), soft = dossierPhase({ sheet }) === "AT";
   const when = d < 0 ? `dépassé de ${fmt(-d)} j` : d === 0 ? "aujourd’hui" : `dans ${fmt(d)} j`;
-  return `<span class="cepDate">${formatDate(date)}</span><small class="${d < 0 ? "cepLate" : "muted"}">${when}</small>`;
+  return `<span class="cepDate">${formatDate(date)}</span><small class="${d < 0 && !soft ? "cepLate" : "muted"}"${d < 0 && soft ? ' title="Arrêt de tranche : J0 indicatif"' : ""}>${when}</small>`;
 }
 
 function cepDossierCell(d) {
@@ -119,7 +120,7 @@ function cepList(kind, items, current, today) {
   const rows = chosen.map(({ d, date }) => `<tr>
       <td>${cepDossierCell(d)}</td>
       <td>${cepTag(d.sheet)}</td>
-      <td>${cepDue(date, today)}</td>
+      <td>${cepDue(date, today, d.sheet)}</td>
       <td>${kind === "gel"
         ? `<span class="missingKeys">${esc(d.missing.map((k) => names[k]).join(", "))}</span>`
         : `${esc(d.entreprise || "—")}<small class="muted">${d.bpaPreparable ? "à préparer" : "fait par le titulaire"}</small>`}</td></tr>`);
@@ -144,37 +145,6 @@ function cepSheets(m) {
   return table(["Tranche", { label: "REE", cls: "num" }, { label: "TOT", cls: "num" }, "Gel M0", "BPA", "Réalisés", "BPD signés"], rows, { cls: "compact cepSheets", free: true });
 }
 
-function cepAffaires(m) {
-  const groups = new Map();
-  for (const d of m.dossiers) {
-    const key = `${d.sheet}|${d.affaire}`;
-    if (!groups.has(key)) groups.set(key, { sheet: d.sheet, affaire: d.affaire, libelle: d.libelle, ds: [] });
-    groups.get(key).ds.push(d);
-  }
-  const items = [...groups.values()].map((g) => {
-    const ts = g.ds.flatMap((d) => d.ts), j0s = ts.map((t) => t.j0).filter(Boolean).sort((a, b) => a - b);
-    return { ...g, ts, j0: j0s.find((x) => x >= m.today) || j0s[j0s.length - 1] || null, gel: ts.filter(gelDone).length, bpa: g.ds.filter((d) => d.bpaDone).length, realized: ts.filter(isRealized).length, bpd: g.ds.filter((d) => d.bpdSigned).length };
-  }).sort((a, b) => PILOT_ORDER.indexOf(a.sheet) - PILOT_ORDER.indexOf(b.sheet) || (a.j0 || Infinity) - (b.j0 || Infinity) || COLLATOR_FR_NUM.compare(a.affaire, b.affaire));
-  const frac = (a, b) => `<span class="cepFrac${a === b ? " full" : ""}">${fmt(a)}<span class="muted">/${fmt(b)}</span></span>`;
-  return dataTable({
-    key: "cep-affaires", items, paged: false, cls: "compact cepAffaires", free: true, empty: "Aucune affaire affectée.",
-    columns: [
-      { label: "Affaire", value: (g) => `${g.affaire} ${g.libelle} ${g.ds.map((d) => d.ree).join(" ")}` },
-      { label: "Tranche", value: (g) => trancheLabel(g.sheet), filter: true },
-      { label: "REE", value: (g) => g.ds.map((d) => d.ree).join(" ") },
-      { label: "J0", value: (g) => (g.j0 ? formatDate(g.j0) : "") },
-      { label: "Gel M0", cls: "num" }, { label: "BPA", cls: "num" }, { label: "Réalisés", cls: "num" }, { label: "BPD", cls: "num" },
-    ],
-    row: (g) => `<tr>
-      <td><button type="button" class="linkbutton" data-go="${esc("affaire:" + g.affaire)}">${esc(g.affaire || "Affaire manquante")}</button><small>${esc(g.libelle || "")}</small></td>
-      <td>${cepTag(g.sheet)}</td>
-      <td class="cepRees">${g.ds.map((d) => `<button type="button" class="cepRee" data-task="${d.ts[0].index}" title="${esc(d.reeLibelle || "REE " + d.ree)}">${esc(d.ree)}</button>`).join("")}</td>
-      <td>${g.j0 ? formatDate(g.j0) : '<span class="muted">—</span>'}</td>
-      <td class="num">${frac(g.gel, g.ts.length)}</td><td class="num">${frac(g.bpa, g.ds.length)}</td>
-      <td class="num">${frac(g.realized, g.ts.length)}</td><td class="num">${frac(g.bpd, g.ds.length)}</td></tr>`,
-  });
-}
-
 function viewCePilotage() {
   if (!me) { $("view").innerHTML = chooseMePanel(); return; }
   const m = cepModel(), t = m.total;
@@ -182,18 +152,16 @@ function viewCePilotage() {
   const kpis = [
     kpi({ label: "Gel M0 passé", value: pct(t.gel, t.n), sub: `${fmt(t.gel)} / ${fmt(t.n)} TOT`, bar: { ratio: ratio(t.gel, t.n), color: CEP_COLORS.gel }, hint: "MC, OT, TOT, RDU et Régime renseignés" }),
     kpi({ label: "BPA faits", value: pct(t.bpa, t.ree), sub: `${fmt(t.bpa)} / ${fmt(t.ree)} REE · ${fmt(prep)} à préparer`, bar: { ratio: ratio(t.bpa, t.ree), color: CEP_COLORS.bpa }, hint: "BPA daté ou en P. À préparer : titulaire EDF ou BPA en F" }),
-    kpi({ label: "Essais réalisés", value: pct(t.realized, t.n), sub: `${fmt(t.realized)} / ${fmt(t.n)} TOT`, bar: { ratio: ratio(t.realized, t.n), color: CEP_COLORS.realized }, go: "tasks:realized" }),
     kpi({ label: "BPD signés", value: pct(t.bpd, t.ree), sub: `${fmt(t.bpd)} / ${fmt(t.ree)} REE`, bar: { ratio: ratio(t.bpd, t.ree), color: CEP_COLORS.bpd } }),
   ].join("");
   const affaires = countUnique(m.ts, (x) => x.affaire);
   const head = `<div class="viewHead"><div><h2 class="viewTitle">Mon pilotage</h2><p class="muted">${plural(affaires, "affaire")} · ${fmt(t.ree)} REE · ${plural(t.n, "TOT", "TOT")}</p></div>${meSelector()}</div>`;
-  $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
+  $("view").innerHTML = `${head}<div class="kpis kpis-3">${kpis}</div>
     <div class="split even cepSplit">
       ${panel("Gel M0 à passer", cepList("gel", m.gel, cepGelWindow, m.today), { sub: "Gel M0 = J0 − 70 j · court terme : moins de 30 j, moyen terme : 30 à 90 j" })}
       ${panel("BPA à faire", cepList("bpa", m.bpa, cepBpaWindow, m.today), { sub: "selon le J0 · court terme : moins de 30 j, moyen terme : 30 à 90 j" })}
     </div>
-    ${panel("Avancement par tranche", cepSheets(m))}
-    ${panel("Mes affaires et REE", cepAffaires(m).html)}`;
+    ${panel("Avancement par tranche", cepSheets(m), { actions: `<button type="button" data-go="tab:mine">Détail par affaire ›</button>` })}`;
   currentExport = () => downloadMatrix(
     ["Tranche", "Affaire", "Libellé DI", "REE", "Titulaire", "J0", "TOT", "Gel M0 (date)", "TOT gelées", "Manque pour le Gel M0", "BPA fait", "BPD signé"],
     m.dossiers.map((d) => [trancheLabel(d.sheet), d.affaire, d.libelle, d.ree, d.entreprise, formatDate(d.j0), d.ts.length, formatDate(d.gelDate), d.ts.length - d.pendingGel.length, d.missing.map((k) => names[k]).join(", "), d.bpaDone ? "oui" : "non", d.bpdSigned ? "oui" : "non"]),

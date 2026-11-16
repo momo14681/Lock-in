@@ -182,6 +182,7 @@ footer { padding: 10px 2px 0; font-size: 13px; }
 
 /* --- Indicateurs --------------------------------------------------------------------- */
 .kpis { display: grid; gap: 12px; margin-bottom: 18px; }
+.kpis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .kpis-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .kpis-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .kpis-8 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
@@ -604,6 +605,37 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .editsChip { margin-left: auto; border: 0; border-radius: 999px; padding: 4px 12px; background: var(--info-bg); color: var(--info-ink); font-size: 13px; cursor: pointer; }
 .editsChip.active, .editsChip:hover { box-shadow: 0 0 0 2px var(--info-ink) inset; }
 @media (max-width: 900px) { .editGrid { grid-template-columns: minmax(0, 1fr); } }
+
+/* --- V28 : état d'une affaire, frise des jalons, en-tête compact -------------------- */
+.stateCell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.detailEmpty { font-size: 13px; margin: -6px 0 12px; }
+.msTrack { list-style: none; margin: 14px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.msTrack li { border-top: 4px solid var(--line); background: var(--surface-2); border-radius: 0 0 8px 8px; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.msTrack li.started { border-top-color: #FE5815; }
+.msTrack li.done { border-top-color: #1057C8; }
+.msTrack .msLabel { font-size: 12.5px; color: var(--muted); }
+.msTrack strong { font-weight: 400; font-size: 15px; overflow-wrap: anywhere; }
+.msTrack li:not(.done):not(.started) strong { color: var(--muted); }
+.msTrack button { margin-top: 4px; padding: 4px 8px; font-size: 12.5px; align-self: flex-start; }
+@media (max-width: 1100px) { .kpis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis-3 { grid-template-columns: minmax(0, 1fr); } .msTrack { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Volet Excel et petits écrans : tout l'en-tête sur une ligne. */
+@media (max-width: 900px) {
+  .appHeader { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 6px 10px; }
+  .brand { gap: 8px; flex: 1 1 auto; }
+  .brand svg { width: 22px; height: 22px; }
+  .brand h1 { display: none; }
+  .headerSub { margin: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .modeSwitch { width: auto; padding: 2px; gap: 2px; border-radius: 9px; flex: 0 0 auto; }
+  .modeSwitch button { flex: 0 0 auto; padding: 4px 9px; font-size: 12.5px; border-radius: 7px; }
+  .headerActions { flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+  .headerActions select { min-width: 0; padding: 4px 6px; font-size: 12.5px; }
+  .headerRefresh { padding: 4px 9px; font-size: 14px; }
+  .appHeader .long { display: none; }
+  .tabBar { margin-bottom: 12px; }
+  .tabs button { padding: 8px 10px 7px; font-size: 14.5px; }
+  .viewTitle { font-size: 22px; }
+}
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -712,11 +744,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     </div>
   </div>
   <div class="modeSwitch" role="group" aria-label="Profil d’affichage">
-    <button type="button" data-mode="ce" aria-pressed="true">Chargé d’essais</button>
-    <button type="button" data-mode="coordo" aria-pressed="false">Coordo essais</button>
+    <button type="button" data-mode="ce" aria-pressed="true"><span>Chargé<span class="long"> d’essais</span></span></button>
+    <button type="button" data-mode="coordo" aria-pressed="false"><span>Coordo<span class="long"> essais</span></span></button>
   </div>
   <div class="headerActions">
-    <button id="sourceRefresh" class="headerRefresh" disabled title="Relire le fichier Excel maintenant">⟳ Actualiser</button>
+    <button id="sourceRefresh" class="headerRefresh" disabled title="Relire le fichier Excel maintenant">⟳<span class="long"> Actualiser</span></button>
     <select id="demSelector" aria-label="Classeur DEM"><option value="2026">DEM 2026</option><option value="2027">DEM 2027</option></select>
   </div>
 </header>
@@ -763,7 +795,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <button id="pngRhythm" disabled>Rythme de signature (PNG)</button>
             <button id="pdfExport" disabled>Cette vue en PDF</button>
             <button id="csvExport" data-export="csv">Ce tableau en CSV (Excel)</button>
-            <button id="paExport" disabled>Données pour l’appli Power Apps (Excel)</button>
           </div>
         </details>
       </div>
@@ -1142,6 +1173,14 @@ function applyMissingInfo(t) {
     t.overdue = false;
     t.dueSoon = false;
     t.prepState = t.infoMissing ? "missing-info" : "realized";
+  }
+  // Arrêts de tranche (feuilles CSxA) : le J0 y est indicatif. L'échéance dépassée
+  // reste visible, en gris, mais ne compte pas comme un retard.
+  t.softLate = false;
+  if (t.overdue && dossierPhase(t) === "AT") {
+    t.overdue = false;
+    t.softLate = true;
+    t.prepState = "ongoing";
   }
   return t;
 }
@@ -1779,6 +1818,7 @@ function affaireGroups(tasks, issueList = issues) {
       prep: ts.filter((t) => t.prepComplete).length,
       realized: ts.filter(isRealized).length,
       overdue: ts.filter((t) => t.overdue).length,
+      softLate: ts.filter((t) => t.softLate).length,
       dueSoon: ts.filter((t) => t.dueSoon).length,
       missing: ts.filter((t) => t.infoMissing).length,
       noJ0: ts.filter((t) => !t.j0).length,
@@ -1792,6 +1832,12 @@ function affaireGroups(tasks, issueList = issues) {
       nextDue: pendingDue[0] || null,
       owners: [...new Set(ts.map((t) => t.responsable))],
     });
+    // Jalons de la feuille Pilotage : Gel M0 par TOT, BPA et BPD par REE.
+    const ds = cepDossiers(ts);
+    g.nRee = ds.length;
+    g.gel = ts.filter(gelDone).length;
+    g.bpaRee = ds.filter((d) => d.bpaDone).length;
+    g.bpdRee = ds.filter((d) => d.bpdSigned).length;
     g.status = g.overdue ? "late" : g.missing ? "missing" : g.realized === n ? "done" : g.prep === n ? "ready" : "ongoing";
     return g;
   }).sort((a, b) => AFFAIRE_STATUS[a.status].rank - AFFAIRE_STATUS[b.status].rank
@@ -1814,12 +1860,18 @@ function stateBar(ts, { width = "" } = {}) {
   return `<span class="stateBar"${width ? ` style="width:${width}"` : ""} data-tip="${fmt(n)} TOT\n${esc(tipText)}" tabindex="0">${counts.map(([s, c]) => `<span style="flex:${c} 1 0;background:${STATE_COLORS[s]}"></span>`).join("")}</span>`;
 }
 
-function attentionBadges(g) {
-  const out = [];
-  if (g.overdue) out.push(badge(`${fmt(g.overdue)} prépa${g.overdue > 1 ? "s" : ""} en retard`, "warn"));
+// Colonne « État » : le statut de l'affaire, puis ce qui reste à surveiller (sans le redire).
+function affaireStateCell(g) {
+  const st = AFFAIRE_STATUS[g.status], out = [badge(st.label, st.tone)];
+  if (g.overdue) out.push(`<span class="softCount">${plural(g.overdue, "TOT", "TOT")}</span>`);
   else if (g.dueSoon) out.push(badge(`${fmt(g.dueSoon)} à boucler sous 30 j`, "warn"));
+  if (g.softLate) out.push(`<span class="softCount" title="Arrêt de tranche : J0 indicatif, non compté en retard">${fmt(g.softLate)} échéance${g.softLate > 1 ? "s" : ""} J0 passée${g.softLate > 1 ? "s" : ""}</span>`);
   if (g.issues) out.push(`<span class="softCount">${plural(g.issues, "correction")}</span>`);
-  return out.join(" ") || '<span class="muted">—</span>';
+  return `<div class="stateCell">${out.join("")}</div>`;
+}
+
+function fracCell(a, b) {
+  return b ? `<span class="cepFrac${a === b ? " full" : ""}">${fmt(a)}<span class="muted">/${fmt(b)}</span></span>` : '<span class="muted">—</span>';
 }
 
 function milestoneLine(t) {
@@ -1829,13 +1881,12 @@ function milestoneLine(t) {
 function affaireRow(g) {
   {
     const open = expandedAffaires.has(g.affaire);
-    const st = AFFAIRE_STATUS[g.status];
     const row = `<tr class="affaireRow${open ? " open" : ""}">
       <td><button type="button" class="expander" data-expand="${esc(g.affaire)}" aria-expanded="${open}"><span class="chev" aria-hidden="true">›</span><span><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>${esc(g.libelle || g.sheets.join(", "))}</small></span></button></td>
       <td>${j0Range(g)}</td>
       <td><div class="progressCell">${stateBar(g.ts)}<span>${fmt(g.realized)}/${fmt(g.n)} réalisées</span></div></td>
-      <td>${attentionBadges(g)}</td>
-      <td>${badge(st.label, st.tone)}</td></tr>`;
+      <td class="num">${fracCell(g.gel, g.n)}</td><td class="num">${fracCell(g.bpaRee, g.nRee)}</td><td class="num">${fracCell(g.bpdRee, g.nRee)}</td>
+      <td>${affaireStateCell(g)}</td></tr>`;
     if (!open) return row;
     const sub = g.ts.slice().sort((a, b) => COLLATOR_FR_NUM.compare(a.ree, b.ree) || a.rowNumber - b.rowNumber).map((t) => `<tr>
       <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
@@ -1844,12 +1895,8 @@ function affaireRow(g) {
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td>
       <td>${toolLinks(t.ot, t.tot)}</td></tr>`);
-    return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens"], sub, { cls: "compact", free: true })}</td></tr>`;
+    return row + `<tr class="subRow"><td colspan="7">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens"], sub, { cls: "compact", free: true })}</td></tr>`;
   }
-}
-
-function attentionLabel(g) {
-  return g.overdue ? "Prépa en retard" : g.dueSoon ? "À boucler sous 30 j" : g.issues ? "Corrections DEM" : "Rien";
 }
 
 function chooseMePanel() {
@@ -1864,26 +1911,6 @@ function meSelector() {
   const owners = ownersList();
   const options = (me && !owners.includes(me) ? [me, ...owners] : owners).map((n) => `<option ${n === me ? "selected" : ""} value="${esc(n)}">${esc(n)}</option>`).join("");
   return `<label class="meSelect"><span>Vue de</span><select data-change="me" aria-label="Chargé d’essais"><option value="">— Choisir —</option>${options}</select></label>`;
-}
-
-function todoItems(ts, myIssues) {
-  const overdue = ts.filter((t) => t.overdue), dueSoon = ts.filter((t) => t.dueSoon), missing = ts.filter((t) => t.infoMissing);
-  const rework = documentRows(ts, "R");
-  return [
-    { n: dueSoon.length, tone: "warn", title: "préparations à boucler sous 30 jours", go: "tasks:dueSoon" },
-    { n: rework.length, tone: "warn", title: "documents à reprendre (R)", go: "documents:R" },
-    { n: myIssues.length, tone: "info", title: "corrections à faire dans la DEM", go: "tab:issues" },
-    { n: overdue.length, tone: "warn", title: "prépas en retard (échéance dépassée)", go: "tasks:overdue" },
-    { n: missing.length, tone: "neutral", title: "TOT avec des informations manquantes", go: "tasks:missing" },
-  ].filter((item) => item.n > 0);
-}
-
-function todoPanel(ts, myIssues) {
-  const items = todoItems(ts, myIssues);
-  const body = items.length
-    ? `<ul class="todo">${items.map((i) => `<li><button type="button" data-go="${i.go}" class="todoItem tone-${i.tone}"><span class="todoCount">${fmt(i.n)}</span><span class="todoText">${esc(i.title)}</span><span class="todoGo" aria-hidden="true">›</span></button></li>`).join("")}</ul>`
-    : emptyState("Rien à traiter", "Toutes vos TOT sont à jour.");
-  return panel("À faire", body, { cls: "todoPanel" });
 }
 
 function viewMine() {
@@ -1907,19 +1934,18 @@ function viewMine() {
         { label: "Affaire", value: (g) => `${g.affaire} ${g.libelle} ${g.ts.map((t) => t.ree).join(" ")}` },
         { label: "J0", value: (g) => (g.nextJ0 ? `${MONTHS_LONG[g.nextJ0.getMonth()]} ${g.nextJ0.getFullYear()}` : "J0 absent"), filter: true },
         { label: "Avancement", value: (g) => `${g.realized}/${g.n}` },
-        { label: "À surveiller", value: attentionLabel, filter: true },
-        { label: "Statut", value: (g) => AFFAIRE_STATUS[g.status].label, filter: true },
+        { label: "Gel M0", cls: "num", value: (g) => ratio(g.gel, g.n), hint: "TOT gelées : MC, OT, TOT, RDU et Régime renseignés" },
+        { label: "BPA", cls: "num", value: (g) => ratio(g.bpaRee, g.nRee), hint: "REE dont le BPA est daté ou en P" },
+        { label: "BPD", cls: "num", value: (g) => ratio(g.bpdRee, g.nRee), hint: "REE dont le BPD est signé" },
+        { label: "État", value: (g) => AFFAIRE_STATUS[g.status].label, filter: true },
       ],
     }).html
     : emptyState("Aucune TOT pour ce chargé", "Vérifiez les filtres.");
   $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
-    <div class="split mineSplit">
-      ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`)}
-      ${todoPanel(ts, issues)}
-    </div>`;
+    ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`, { sub: "Gel M0 par TOT · BPA et BPD par REE" })}`;
   currentExport = () => downloadMatrix(
-    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "BPA signés", "GER/1N signés", "BPD signés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
-    groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.realized, g.bpa.done, g.ger.done, g.bpd.done, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
+    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "TOT gelées (Gel M0)", "REE avec BPA", "REE avec BPD signé", "BPA signés", "GER/1N signés", "BPD signés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
+    groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.realized, g.gel, g.bpaRee, g.bpdRee, g.bpa.done, g.ger.done, g.bpd.done, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
     `Mes_affaires_${me.replace(/[^\p{L}\p{N}_-]+/gu, "_")}.csv`);
 }
 
@@ -2244,15 +2270,6 @@ function milestoneCards(ts) {
 
 // --- BPA / BPD : indicateurs globaux et tableau par tranche (comme la feuille Pilotage) ---
 
-function docKpi(label, ts, key) {
-  const n = ts.length, { done, produced: prod } = milestoneStats(ts, key);
-  return `<div class="kpi docKpi">
-    <span class="kpiLabel">${label}</span>
-    <div class="docKpiFigures"><span><strong class="kpiValue">${pct(prod, n)}</strong><small>produits · ${fmt(prod)}</small></span><span><strong class="kpiValue signedValue">${pct(done, n)}</strong><small>signés · ${fmt(done)}</small></span></div>
-    <span class="docBar" data-tip="${fmt(done)} signés · ${fmt(Math.max(0, prod - done))} à signer · ${fmt(Math.max(0, n - prod))} non produits\nsur ${fmt(n)} TOT" tabindex="0"><span style="flex:${done} 1 0;background:${DOC_COLORS.signed}"></span><span style="flex:${Math.max(0, prod - done)} 1 0;background:${DOC_COLORS.waiting}"></span><span style="flex:${Math.max(0, n - prod)} 1 0;background:${DOC_COLORS.none}"></span></span>
-  </div>`;
-}
-
 // Code projet de chaque feuille, lu dans la feuille « Pilotage » : chaque ligne
 // (B5:B15) pointe vers sa feuille technique via une formule « Préparation!ANxx ».
 function readProjectCodes(pilotage, preparation) {
@@ -2330,7 +2347,6 @@ function viewOverview() {
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse</h2>
       <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
     <div class="kpis kpis-4">${kpis}</div>
-    <div class="kpis kpis-2">${docKpi("BPA", ts, "bpaState")}${docKpi("BPD", ts, "bpdState")}</div>
     ${coordoTodo(ts)}
     ${panel("BPA / BPD par tranche", trancheTable(ts), { cls: "tranchePanel", actions: `<button type="button" data-go="tab:pilotage">Pilotage par tranche ›</button>` })}
     <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { cls: "chargePanel" })}${signalPanel()}</div>`;
@@ -3368,11 +3384,12 @@ function cepTag(sheet) {
   return `<span class="pilotTag phase-${dossierPhase({ sheet })}">${esc(trancheLabel(sheet))}</span>`;
 }
 
-function cepDue(date, today) {
+// Sur un arrêt de tranche (feuille CSxA) le J0 est indicatif : une date dépassée reste grise.
+function cepDue(date, today, sheet = "") {
   if (!date) return '<span class="muted">J0 absent</span>';
-  const d = daysBetween(today, date);
+  const d = daysBetween(today, date), soft = dossierPhase({ sheet }) === "AT";
   const when = d < 0 ? `dépassé de ${fmt(-d)} j` : d === 0 ? "aujourd’hui" : `dans ${fmt(d)} j`;
-  return `<span class="cepDate">${formatDate(date)}</span><small class="${d < 0 ? "cepLate" : "muted"}">${when}</small>`;
+  return `<span class="cepDate">${formatDate(date)}</span><small class="${d < 0 && !soft ? "cepLate" : "muted"}"${d < 0 && soft ? ' title="Arrêt de tranche : J0 indicatif"' : ""}>${when}</small>`;
 }
 
 function cepDossierCell(d) {
@@ -3389,7 +3406,7 @@ function cepList(kind, items, current, today) {
   const rows = chosen.map(({ d, date }) => `<tr>
       <td>${cepDossierCell(d)}</td>
       <td>${cepTag(d.sheet)}</td>
-      <td>${cepDue(date, today)}</td>
+      <td>${cepDue(date, today, d.sheet)}</td>
       <td>${kind === "gel"
         ? `<span class="missingKeys">${esc(d.missing.map((k) => names[k]).join(", "))}</span>`
         : `${esc(d.entreprise || "—")}<small class="muted">${d.bpaPreparable ? "à préparer" : "fait par le titulaire"}</small>`}</td></tr>`);
@@ -3414,37 +3431,6 @@ function cepSheets(m) {
   return table(["Tranche", { label: "REE", cls: "num" }, { label: "TOT", cls: "num" }, "Gel M0", "BPA", "Réalisés", "BPD signés"], rows, { cls: "compact cepSheets", free: true });
 }
 
-function cepAffaires(m) {
-  const groups = new Map();
-  for (const d of m.dossiers) {
-    const key = `${d.sheet}|${d.affaire}`;
-    if (!groups.has(key)) groups.set(key, { sheet: d.sheet, affaire: d.affaire, libelle: d.libelle, ds: [] });
-    groups.get(key).ds.push(d);
-  }
-  const items = [...groups.values()].map((g) => {
-    const ts = g.ds.flatMap((d) => d.ts), j0s = ts.map((t) => t.j0).filter(Boolean).sort((a, b) => a - b);
-    return { ...g, ts, j0: j0s.find((x) => x >= m.today) || j0s[j0s.length - 1] || null, gel: ts.filter(gelDone).length, bpa: g.ds.filter((d) => d.bpaDone).length, realized: ts.filter(isRealized).length, bpd: g.ds.filter((d) => d.bpdSigned).length };
-  }).sort((a, b) => PILOT_ORDER.indexOf(a.sheet) - PILOT_ORDER.indexOf(b.sheet) || (a.j0 || Infinity) - (b.j0 || Infinity) || COLLATOR_FR_NUM.compare(a.affaire, b.affaire));
-  const frac = (a, b) => `<span class="cepFrac${a === b ? " full" : ""}">${fmt(a)}<span class="muted">/${fmt(b)}</span></span>`;
-  return dataTable({
-    key: "cep-affaires", items, paged: false, cls: "compact cepAffaires", free: true, empty: "Aucune affaire affectée.",
-    columns: [
-      { label: "Affaire", value: (g) => `${g.affaire} ${g.libelle} ${g.ds.map((d) => d.ree).join(" ")}` },
-      { label: "Tranche", value: (g) => trancheLabel(g.sheet), filter: true },
-      { label: "REE", value: (g) => g.ds.map((d) => d.ree).join(" ") },
-      { label: "J0", value: (g) => (g.j0 ? formatDate(g.j0) : "") },
-      { label: "Gel M0", cls: "num" }, { label: "BPA", cls: "num" }, { label: "Réalisés", cls: "num" }, { label: "BPD", cls: "num" },
-    ],
-    row: (g) => `<tr>
-      <td><button type="button" class="linkbutton" data-go="${esc("affaire:" + g.affaire)}">${esc(g.affaire || "Affaire manquante")}</button><small>${esc(g.libelle || "")}</small></td>
-      <td>${cepTag(g.sheet)}</td>
-      <td class="cepRees">${g.ds.map((d) => `<button type="button" class="cepRee" data-task="${d.ts[0].index}" title="${esc(d.reeLibelle || "REE " + d.ree)}">${esc(d.ree)}</button>`).join("")}</td>
-      <td>${g.j0 ? formatDate(g.j0) : '<span class="muted">—</span>'}</td>
-      <td class="num">${frac(g.gel, g.ts.length)}</td><td class="num">${frac(g.bpa, g.ds.length)}</td>
-      <td class="num">${frac(g.realized, g.ts.length)}</td><td class="num">${frac(g.bpd, g.ds.length)}</td></tr>`,
-  });
-}
-
 function viewCePilotage() {
   if (!me) { $("view").innerHTML = chooseMePanel(); return; }
   const m = cepModel(), t = m.total;
@@ -3452,18 +3438,16 @@ function viewCePilotage() {
   const kpis = [
     kpi({ label: "Gel M0 passé", value: pct(t.gel, t.n), sub: `${fmt(t.gel)} / ${fmt(t.n)} TOT`, bar: { ratio: ratio(t.gel, t.n), color: CEP_COLORS.gel }, hint: "MC, OT, TOT, RDU et Régime renseignés" }),
     kpi({ label: "BPA faits", value: pct(t.bpa, t.ree), sub: `${fmt(t.bpa)} / ${fmt(t.ree)} REE · ${fmt(prep)} à préparer`, bar: { ratio: ratio(t.bpa, t.ree), color: CEP_COLORS.bpa }, hint: "BPA daté ou en P. À préparer : titulaire EDF ou BPA en F" }),
-    kpi({ label: "Essais réalisés", value: pct(t.realized, t.n), sub: `${fmt(t.realized)} / ${fmt(t.n)} TOT`, bar: { ratio: ratio(t.realized, t.n), color: CEP_COLORS.realized }, go: "tasks:realized" }),
     kpi({ label: "BPD signés", value: pct(t.bpd, t.ree), sub: `${fmt(t.bpd)} / ${fmt(t.ree)} REE`, bar: { ratio: ratio(t.bpd, t.ree), color: CEP_COLORS.bpd } }),
   ].join("");
   const affaires = countUnique(m.ts, (x) => x.affaire);
   const head = `<div class="viewHead"><div><h2 class="viewTitle">Mon pilotage</h2><p class="muted">${plural(affaires, "affaire")} · ${fmt(t.ree)} REE · ${plural(t.n, "TOT", "TOT")}</p></div>${meSelector()}</div>`;
-  $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
+  $("view").innerHTML = `${head}<div class="kpis kpis-3">${kpis}</div>
     <div class="split even cepSplit">
       ${panel("Gel M0 à passer", cepList("gel", m.gel, cepGelWindow, m.today), { sub: "Gel M0 = J0 − 70 j · court terme : moins de 30 j, moyen terme : 30 à 90 j" })}
       ${panel("BPA à faire", cepList("bpa", m.bpa, cepBpaWindow, m.today), { sub: "selon le J0 · court terme : moins de 30 j, moyen terme : 30 à 90 j" })}
     </div>
-    ${panel("Avancement par tranche", cepSheets(m))}
-    ${panel("Mes affaires et REE", cepAffaires(m).html)}`;
+    ${panel("Avancement par tranche", cepSheets(m), { actions: `<button type="button" data-go="tab:mine">Détail par affaire ›</button>` })}`;
   currentExport = () => downloadMatrix(
     ["Tranche", "Affaire", "Libellé DI", "REE", "Titulaire", "J0", "TOT", "Gel M0 (date)", "TOT gelées", "Manque pour le Gel M0", "BPA fait", "BPD signé"],
     m.dossiers.map((d) => [trancheLabel(d.sheet), d.affaire, d.libelle, d.ree, d.entreprise, formatDate(d.j0), d.ts.length, formatDate(d.gelDate), d.ts.length - d.pendingGel.length, d.missing.map((k) => names[k]).join(", "), d.bpaDone ? "oui" : "non", d.bpdSigned ? "oui" : "non"]),
@@ -3547,6 +3531,45 @@ function parseEditValue(key, input) {
   return { type: "texte", value: v, label: v };
 }
 
+// --- Frise des quatre jalons (fiche d'une TOT) ---------------------------------------
+// « Fait aujourd'hui » écrit la date du jour (TSR pour le GER/1N, qui ne prend pas de date) :
+// directement dans la DEM depuis Excel, sinon dans « Modifications à appliquer ».
+const MILESTONES = [["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER / 1N"], ["bpd", "BPD"]];
+
+function milestoneDone(t, key) {
+  return key === "totPrete" ? t.totReady : t[key + "State"] === "done";
+}
+
+function milestoneTrack(t) {
+  const steps = MILESTONES.map(([k, label]) => {
+    const done = milestoneDone(t, k), p = pendingEdit(t, k), value = String(t.raw[k] ?? "").trim();
+    const action = t.cancelled ? "" : p
+      ? `<small class="muted">en attente : ${esc(p.label || "vide")}</small>`
+      : done ? "" : `<button type="button" data-milestone="${k}">${k === "ger" ? "Réalisé (TSR)" : "Fait aujourd’hui"}</button>`;
+    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
+  }).join("");
+  return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
+}
+
+function makeEdit(t, key, parsed) {
+  return {
+    id: editId(t, key), taskId: t.id, key, sheet: t.sheet, row: t.rowNumber, cell: editCell(t, key),
+    affaire: t.affaire, ree: t.ree, ot: t.orig?.ot ?? t.ot, tot: t.orig?.tot ?? t.tot, owner: t.responsable,
+    old: t.orig?.[key] ?? "", type: parsed.type, value: parsed.value, label: parsed.label, at: new Date().toISOString(),
+  };
+}
+
+function milestoneToday(t, key) {
+  const parsed = parseEditValue(key, key === "ger" ? "TSR" : formatDate(data.today));
+  if (parsed.error) return;
+  const entry = makeEdit(t, key, parsed);
+  if (excelMode) { applyExcelEdits([entry], t); return; }
+  saveEdits([...editList().filter((e) => e.id !== entry.id), entry]);
+  render();
+  detail(t);
+  $("message").innerHTML = `<div class="notice">${esc(names[key])} : ${esc(parsed.label)} ajouté à « Modifications à appliquer ».</div>`;
+}
+
 function editCell(t, key) {
   return address(t, key).split(":")[0];
 }
@@ -3609,11 +3632,7 @@ function saveEditForm(t) {
     const i = list.findIndex((e) => e.id === id);
     const same = status(parsed.label) === status(current);
     if (same) { if (i >= 0) list.splice(i, 1); return; }
-    const entry = {
-      id, taskId: t.id, key, sheet: t.sheet, row: t.rowNumber, cell: editCell(t, key),
-      affaire: t.affaire, ree: t.ree, ot: t.orig?.ot ?? t.ot, tot: t.orig?.tot ?? t.tot, owner: t.responsable,
-      old: current, type: parsed.type, value: parsed.value, label: parsed.label, at: new Date().toISOString(),
-    };
+    const entry = makeEdit(t, key, parsed);
     if (i >= 0) list[i] = entry; else list.push(entry);
     added++;
   });
@@ -3695,6 +3714,7 @@ function exportEdits() {
 function editAction(d) {
   if (d.editStart !== undefined) { editMode = true; editError = ""; return detail(data.tasks[+d.editStart]), true; }
   if (d.editCancel !== undefined) { editMode = false; editError = ""; return detail(data.tasks[+$("detail").dataset.task]), true; }
+  if (d.milestone !== undefined) return milestoneToday(data.tasks[+$("detail").dataset.task], d.milestone), true;
   if (d.editSave !== undefined) return saveEditForm(data.tasks[+$("detail").dataset.task]), true;
   if (d.editRemove !== undefined) { saveEdits(editList().filter((e) => e.id !== d.editRemove)); render(); return true; }
   if (d.editsPurge !== undefined) { saveEdits(editList().filter((e) => editState(e).code !== "done")); render(); return true; }
@@ -4405,31 +4425,6 @@ async function exportPDF() {
   }
 }
 
-// --- Données pour l'appli Power Apps ---------------------------------------------
-// Une ligne par TOT, cellules fusionnées résolues, valeurs telles qu'écrites dans la DEM
-// (dates jj/mm/aaaa en texte). À mettre en tableau « DEM » (Ctrl+T) ou à importer en liste SharePoint.
-const PA_COLUMNS = ["Cle", "Num", "Feuille", "Ligne", "Affaire", "Libelle", "REE", "LibelleREE", "Titulaire", "MC", "OT", "TOT", "RDU", "Charge", "TOTPrete", "J0", "Regime", "BPA", "GER1N", "BPD", "Observations"];
-
-function exportPowerApps() {
-  if (!data) return;
-  const o = (t, k) => t.orig?.[k] ?? "";
-  const rows = data.tasks.map((t, i) => [
-    `${t.sheet}-${t.rowNumber}`, i + 1, t.sheet, t.rowNumber, o(t, "affaire") || t.affaire, t.libelle, o(t, "ree") || t.ree, t.reeLibelle, t.entreprise,
-    o(t, "mc"), o(t, "ot"), o(t, "tot"), o(t, "rdu"), o(t, "responsable"), o(t, "totPrete"), o(t, "j0"), o(t, "regime"),
-    o(t, "bpa"), o(t, "ger"), o(t, "bpd"), o(t, "observations"),
-  ]);
-  // Tout en texte sauf Num et Ligne : OT « 01 », dates et codes restent tels quels.
-  const ws = XLSX.utils.aoa_to_sheet([PA_COLUMNS, ...rows]);
-  for (const [addr, cell] of Object.entries(ws)) {
-    if (addr[0] === "!" || /^[BD]\d+$/.test(addr) && !/^[BD]1$/.test(addr)) continue;
-    if (cell.t !== "s") { cell.v = String(cell.v ?? ""); cell.t = "s"; }
-  }
-  ws["!cols"] = PA_COLUMNS.map((c) => ({ wch: ["Libelle", "LibelleREE", "Observations"].includes(c) ? 40 : 12 }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "DEM");
-  downloadBytes(XLSX.write(wb, { type: "array", bookType: "xlsx" }), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", `DEM_${activeDEM}_PowerApps.xlsx`);
-}
-
 // ---- 10-source.js ----
 // =============================================================================
 // Chargement du classeur et fichier source mémorisé (repris de la V1.3).
@@ -4629,7 +4624,6 @@ function applyProfile(profile) {
   $("drop").classList.toggle("hidden", !!data);
   $("view").innerHTML = "";
   $("pdfExport").disabled = !data;
-  $("paExport").disabled = !data;
   $("pngExport").disabled = !data;
   $("pngRhythm").disabled = !data;
   renderChrome();
@@ -4965,7 +4959,6 @@ function closeWorkbook() {
   sourcePaused = true;
   stopSchedule();
   $("pdfExport").disabled = true;
-  $("paExport").disabled = true;
   $("pngExport").disabled = true;
   $("pngRhythm").disabled = true;
   data = null; issues = []; allIssues = []; visible = [];
@@ -5210,10 +5203,11 @@ async function applyExcelEdits(entries, t = null) {
   const done = new Set(entries.map((e) => e.id));
   saveEdits(editList().filter((e) => !done.has(e.id)));
   editError = ""; editMode = false;
-  const taskId = t?.id;
+  // La relecture ferme la fiche : on la rouvre sur la ligne à jour.
+  const taskId = t?.id, wasOpen = $("detail").open;
   await readFromExcel({ preserveView: true });
   const fresh = taskId && data?.tasks.find((x) => x.id === taskId);
-  if (fresh && $("detail").open) detail(fresh);
+  if (fresh && wasOpen) detail(fresh);
   $("message").innerHTML = `<div class="notice">${res.written ? `${plural(res.written, "cellule")} écrite${res.written > 1 ? "s" : ""} dans la DEM.` : "Rien à écrire : la DEM contient déjà ces valeurs."}</div>`;
   return true;
 }
@@ -5569,10 +5563,11 @@ function renderChrome() {
     const count = t.count ? t.count() : null;
     return `<button type="button" data-tab="${t.id}" class="${active ? "active" : ""}" aria-current="${active ? "page" : "false"}">${esc(t.label)}${count ? ` <span class="count">${fmt(count)}</span>` : ""}</button>`;
   }).join("");
-  const moreActive = MORE_TABS[mode].some((t) => t.id === tab);
+  const moreTabs = MORE_TABS[mode].filter((t) => t.id !== EDITS_TAB || !excelMode || editList().length || tab === EDITS_TAB);
+  const moreActive = moreTabs.some((t) => t.id === tab);
   const more = `<select class="moreTabs${moreActive ? " active" : ""}" data-change="moreTab" aria-label="Autres listes">
       <option value="">${mode === "ce" ? "Mes listes…" : "Autres listes…"}</option>
-      ${MORE_TABS[mode].map((t) => `<option value="${t.id}" ${t.id === tab ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`;
+      ${moreTabs.map((t) => `<option value="${t.id}" ${t.id === tab ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`;
   const edits = editCount();
   const chip = edits ? `<button type="button" class="editsChip${tab === EDITS_TAB ? " active" : ""}" data-tab="${EDITS_TAB}" title="Modifications saisies, pas encore appliquées dans la DEM">✎ ${plural(edits, "modification")} à appliquer</button>` : "";
   $("tabs").innerHTML = main + more + chip;
@@ -5596,7 +5591,6 @@ function render() {
   renderChrome();
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
-  $("paExport").disabled = false;
   $("pngExport").disabled = false;
   $("pngRhythm").disabled = false;
   $("pngExport").textContent = pngMenuLabel();
@@ -5609,6 +5603,16 @@ function render() {
   positionColMenus();
 }
 
+// Fiche en lecture : seuls les champs renseignés, sans adresse de cellule (réservée à « Modifier »).
+// Les quatre jalons sont dans la frise au-dessus.
+function detailFields(t) {
+  const keys = Object.keys(fields).filter((k) => !MILESTONES.some(([m]) => m === k));
+  const filled = keys.filter((k) => String(t.raw[k] ?? "").trim()), empty = keys.filter((k) => !filled.includes(k));
+  return `<div class="detailGrid">${filled.map((k) => `<div class="${k === "observations" ? "full" : ""}"><span>${names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
+      <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>
+    ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${esc(empty.map((k) => names[k]).join(", "))}</p>` : ""}`;
+}
+
 function detail(t) {
   const controls = (data.audit || []).filter((i) => i.t === t);
   $("detail").classList.remove("wideDialog");
@@ -5617,8 +5621,8 @@ function detail(t) {
     <p id="pdgNote" hidden></p>
     ${editPendingNote(t)}
     ${t.libelle || t.reeLibelle ? `<p class="muted">${esc([t.libelle, t.reeLibelle].filter(Boolean).join(" — "))}</p>` : ""}
-    <div class="detailGrid">${Object.keys(fields).map((k) => `<div class="${k === "observations" ? "full" : ""}"><span>${names[k]} <span class="loc">${esc(address(t, k))}</span></span><strong>${esc(t.raw[k] || "—")}</strong></div>`).join("")}
-      <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>
+    ${milestoneTrack(t)}
+    ${detailFields(t)}
     <h3>Contrôles sur cette TOT</h3>
     ${controls.map((i) => `<div class="detailIssue">${badge(i.level, LEVEL_TONE[i.level])} <strong>${esc(i.kind)}</strong><p>${esc(i.reason)}</p><span class="loc">${esc(t.sheet)}!${esc(i.cells)}</span> ${ignoreButton(i)}</div>`).join("") || "<p class=\"muted\">Aucun signalement dans le périmètre actuel.</p>"}`;
   $("detail").dataset.task = t.index;
@@ -5836,7 +5840,6 @@ function init() {
   $("closeDetail").onclick = () => $("detail").close();
   $("detail").addEventListener("close", () => { delete $("detail").dataset.task; editMode = false; editError = ""; });
   $("pdfExport").onclick = exportPDF;
-  $("paExport").onclick = exportPowerApps;
   $("pngExport").onclick = () => exportPNG();
   $("pngRhythm").onclick = () => exportPNG("rythme");
 

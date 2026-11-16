@@ -219,10 +219,11 @@ async function applyExcelEdits(entries, t = null) {
   const done = new Set(entries.map((e) => e.id));
   saveEdits(editList().filter((e) => !done.has(e.id)));
   editError = ""; editMode = false;
-  const taskId = t?.id;
+  // La relecture ferme la fiche : on la rouvre sur la ligne à jour.
+  const taskId = t?.id, wasOpen = $("detail").open;
   await readFromExcel({ preserveView: true });
   const fresh = taskId && data?.tasks.find((x) => x.id === taskId);
-  if (fresh && $("detail").open) detail(fresh);
+  if (fresh && wasOpen) detail(fresh);
   $("message").innerHTML = `<div class="notice">${res.written ? `${plural(res.written, "cellule")} écrite${res.written > 1 ? "s" : ""} dans la DEM.` : "Rien à écrire : la DEM contient déjà ces valeurs."}</div>`;
   return true;
 }

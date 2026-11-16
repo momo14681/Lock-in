@@ -39,6 +39,7 @@ function affaireGroups(tasks, issueList = issues) {
       prep: ts.filter((t) => t.prepComplete).length,
       realized: ts.filter(isRealized).length,
       overdue: ts.filter((t) => t.overdue).length,
+      softLate: ts.filter((t) => t.softLate).length,
       dueSoon: ts.filter((t) => t.dueSoon).length,
       missing: ts.filter((t) => t.infoMissing).length,
       noJ0: ts.filter((t) => !t.j0).length,
@@ -52,6 +53,12 @@ function affaireGroups(tasks, issueList = issues) {
       nextDue: pendingDue[0] || null,
       owners: [...new Set(ts.map((t) => t.responsable))],
     });
+    // Jalons de la feuille Pilotage : Gel M0 par TOT, BPA et BPD par REE.
+    const ds = cepDossiers(ts);
+    g.nRee = ds.length;
+    g.gel = ts.filter(gelDone).length;
+    g.bpaRee = ds.filter((d) => d.bpaDone).length;
+    g.bpdRee = ds.filter((d) => d.bpdSigned).length;
     g.status = g.overdue ? "late" : g.missing ? "missing" : g.realized === n ? "done" : g.prep === n ? "ready" : "ongoing";
     return g;
   }).sort((a, b) => AFFAIRE_STATUS[a.status].rank - AFFAIRE_STATUS[b.status].rank
@@ -74,12 +81,18 @@ function stateBar(ts, { width = "" } = {}) {
   return `<span class="stateBar"${width ? ` style="width:${width}"` : ""} data-tip="${fmt(n)} TOT\n${esc(tipText)}" tabindex="0">${counts.map(([s, c]) => `<span style="flex:${c} 1 0;background:${STATE_COLORS[s]}"></span>`).join("")}</span>`;
 }
 
-function attentionBadges(g) {
-  const out = [];
-  if (g.overdue) out.push(badge(`${fmt(g.overdue)} prépa${g.overdue > 1 ? "s" : ""} en retard`, "warn"));
+// Colonne « État » : le statut de l'affaire, puis ce qui reste à surveiller (sans le redire).
+function affaireStateCell(g) {
+  const st = AFFAIRE_STATUS[g.status], out = [badge(st.label, st.tone)];
+  if (g.overdue) out.push(`<span class="softCount">${plural(g.overdue, "TOT", "TOT")}</span>`);
   else if (g.dueSoon) out.push(badge(`${fmt(g.dueSoon)} à boucler sous 30 j`, "warn"));
+  if (g.softLate) out.push(`<span class="softCount" title="Arrêt de tranche : J0 indicatif, non compté en retard">${fmt(g.softLate)} échéance${g.softLate > 1 ? "s" : ""} J0 passée${g.softLate > 1 ? "s" : ""}</span>`);
   if (g.issues) out.push(`<span class="softCount">${plural(g.issues, "correction")}</span>`);
-  return out.join(" ") || '<span class="muted">—</span>';
+  return `<div class="stateCell">${out.join("")}</div>`;
+}
+
+function fracCell(a, b) {
+  return b ? `<span class="cepFrac${a === b ? " full" : ""}">${fmt(a)}<span class="muted">/${fmt(b)}</span></span>` : '<span class="muted">—</span>';
 }
 
 function milestoneLine(t) {
@@ -89,13 +102,12 @@ function milestoneLine(t) {
 function affaireRow(g) {
   {
     const open = expandedAffaires.has(g.affaire);
-    const st = AFFAIRE_STATUS[g.status];
     const row = `<tr class="affaireRow${open ? " open" : ""}">
       <td><button type="button" class="expander" data-expand="${esc(g.affaire)}" aria-expanded="${open}"><span class="chev" aria-hidden="true">›</span><span><strong>${esc(g.affaire || "Affaire manquante")}</strong><small>${esc(g.libelle || g.sheets.join(", "))}</small></span></button></td>
       <td>${j0Range(g)}</td>
       <td><div class="progressCell">${stateBar(g.ts)}<span>${fmt(g.realized)}/${fmt(g.n)} réalisées</span></div></td>
-      <td>${attentionBadges(g)}</td>
-      <td>${badge(st.label, st.tone)}</td></tr>`;
+      <td class="num">${fracCell(g.gel, g.n)}</td><td class="num">${fracCell(g.bpaRee, g.nRee)}</td><td class="num">${fracCell(g.bpdRee, g.nRee)}</td>
+      <td>${affaireStateCell(g)}</td></tr>`;
     if (!open) return row;
     const sub = g.ts.slice().sort((a, b) => COLLATOR_FR_NUM.compare(a.ree, b.ree) || a.rowNumber - b.rowNumber).map((t) => `<tr>
       <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
@@ -104,12 +116,8 @@ function affaireRow(g) {
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td>
       <td>${toolLinks(t.ot, t.tot)}</td></tr>`);
-    return row + `<tr class="subRow"><td colspan="5">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens"], sub, { cls: "compact", free: true })}</td></tr>`;
+    return row + `<tr class="subRow"><td colspan="7">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens"], sub, { cls: "compact", free: true })}</td></tr>`;
   }
-}
-
-function attentionLabel(g) {
-  return g.overdue ? "Prépa en retard" : g.dueSoon ? "À boucler sous 30 j" : g.issues ? "Corrections DEM" : "Rien";
 }
 
 function chooseMePanel() {
@@ -124,26 +132,6 @@ function meSelector() {
   const owners = ownersList();
   const options = (me && !owners.includes(me) ? [me, ...owners] : owners).map((n) => `<option ${n === me ? "selected" : ""} value="${esc(n)}">${esc(n)}</option>`).join("");
   return `<label class="meSelect"><span>Vue de</span><select data-change="me" aria-label="Chargé d’essais"><option value="">— Choisir —</option>${options}</select></label>`;
-}
-
-function todoItems(ts, myIssues) {
-  const overdue = ts.filter((t) => t.overdue), dueSoon = ts.filter((t) => t.dueSoon), missing = ts.filter((t) => t.infoMissing);
-  const rework = documentRows(ts, "R");
-  return [
-    { n: dueSoon.length, tone: "warn", title: "préparations à boucler sous 30 jours", go: "tasks:dueSoon" },
-    { n: rework.length, tone: "warn", title: "documents à reprendre (R)", go: "documents:R" },
-    { n: myIssues.length, tone: "info", title: "corrections à faire dans la DEM", go: "tab:issues" },
-    { n: overdue.length, tone: "warn", title: "prépas en retard (échéance dépassée)", go: "tasks:overdue" },
-    { n: missing.length, tone: "neutral", title: "TOT avec des informations manquantes", go: "tasks:missing" },
-  ].filter((item) => item.n > 0);
-}
-
-function todoPanel(ts, myIssues) {
-  const items = todoItems(ts, myIssues);
-  const body = items.length
-    ? `<ul class="todo">${items.map((i) => `<li><button type="button" data-go="${i.go}" class="todoItem tone-${i.tone}"><span class="todoCount">${fmt(i.n)}</span><span class="todoText">${esc(i.title)}</span><span class="todoGo" aria-hidden="true">›</span></button></li>`).join("")}</ul>`
-    : emptyState("Rien à traiter", "Toutes vos TOT sont à jour.");
-  return panel("À faire", body, { cls: "todoPanel" });
 }
 
 function viewMine() {
@@ -167,18 +155,17 @@ function viewMine() {
         { label: "Affaire", value: (g) => `${g.affaire} ${g.libelle} ${g.ts.map((t) => t.ree).join(" ")}` },
         { label: "J0", value: (g) => (g.nextJ0 ? `${MONTHS_LONG[g.nextJ0.getMonth()]} ${g.nextJ0.getFullYear()}` : "J0 absent"), filter: true },
         { label: "Avancement", value: (g) => `${g.realized}/${g.n}` },
-        { label: "À surveiller", value: attentionLabel, filter: true },
-        { label: "Statut", value: (g) => AFFAIRE_STATUS[g.status].label, filter: true },
+        { label: "Gel M0", cls: "num", value: (g) => ratio(g.gel, g.n), hint: "TOT gelées : MC, OT, TOT, RDU et Régime renseignés" },
+        { label: "BPA", cls: "num", value: (g) => ratio(g.bpaRee, g.nRee), hint: "REE dont le BPA est daté ou en P" },
+        { label: "BPD", cls: "num", value: (g) => ratio(g.bpdRee, g.nRee), hint: "REE dont le BPD est signé" },
+        { label: "État", value: (g) => AFFAIRE_STATUS[g.status].label, filter: true },
       ],
     }).html
     : emptyState("Aucune TOT pour ce chargé", "Vérifiez les filtres.");
   $("view").innerHTML = `${head}<div class="kpis kpis-4">${kpis}</div>
-    <div class="split mineSplit">
-      ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`)}
-      ${todoPanel(ts, issues)}
-    </div>`;
+    ${panel("Avancement par affaire", `${legend(STATE_ORDER.map((s) => [s, STATE_COLORS[s]]))}${tableHtml}`, { sub: "Gel M0 par TOT · BPA et BPD par REE" })}`;
   currentExport = () => downloadMatrix(
-    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "BPA signés", "GER/1N signés", "BPD signés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
-    groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.realized, g.bpa.done, g.ger.done, g.bpd.done, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
+    ["Affaire", "Libellé DI", "Feuilles", "TOT", "REE", "J0 min", "J0 max", "Prochaine échéance prépa", "Prépa terminée", "Réalisées", "TOT gelées (Gel M0)", "REE avec BPA", "REE avec BPD signé", "BPA signés", "GER/1N signés", "BPD signés", "Prépas en retard", "Infos manquantes", "Corrections DEM", "Statut"],
+    groups.map((g) => [g.affaire, g.libelle, g.sheets.join(" "), g.n, g.rees, formatDate(g.j0Min), formatDate(g.j0Max), formatDate(g.nextDue), g.prep, g.realized, g.gel, g.bpaRee, g.bpdRee, g.bpa.done, g.ger.done, g.bpd.done, g.overdue, g.missing, g.issues, AFFAIRE_STATUS[g.status].label]),
     `Mes_affaires_${me.replace(/[^\p{L}\p{N}_-]+/gu, "_")}.csv`);
 }

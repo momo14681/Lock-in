@@ -102,15 +102,6 @@ function milestoneCards(ts) {
 
 // --- BPA / BPD : indicateurs globaux et tableau par tranche (comme la feuille Pilotage) ---
 
-function docKpi(label, ts, key) {
-  const n = ts.length, { done, produced: prod } = milestoneStats(ts, key);
-  return `<div class="kpi docKpi">
-    <span class="kpiLabel">${label}</span>
-    <div class="docKpiFigures"><span><strong class="kpiValue">${pct(prod, n)}</strong><small>produits · ${fmt(prod)}</small></span><span><strong class="kpiValue signedValue">${pct(done, n)}</strong><small>signés · ${fmt(done)}</small></span></div>
-    <span class="docBar" data-tip="${fmt(done)} signés · ${fmt(Math.max(0, prod - done))} à signer · ${fmt(Math.max(0, n - prod))} non produits\nsur ${fmt(n)} TOT" tabindex="0"><span style="flex:${done} 1 0;background:${DOC_COLORS.signed}"></span><span style="flex:${Math.max(0, prod - done)} 1 0;background:${DOC_COLORS.waiting}"></span><span style="flex:${Math.max(0, n - prod)} 1 0;background:${DOC_COLORS.none}"></span></span>
-  </div>`;
-}
-
 // Code projet de chaque feuille, lu dans la feuille « Pilotage » : chaque ligne
 // (B5:B15) pointe vers sa feuille technique via une formule « Préparation!ANxx ».
 function readProjectCodes(pilotage, preparation) {
@@ -188,7 +179,6 @@ function viewOverview() {
   $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Synthèse</h2>
       <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
     <div class="kpis kpis-4">${kpis}</div>
-    <div class="kpis kpis-2">${docKpi("BPA", ts, "bpaState")}${docKpi("BPD", ts, "bpdState")}</div>
     ${coordoTodo(ts)}
     ${panel("BPA / BPD par tranche", trancheTable(ts), { cls: "tranchePanel", actions: `<button type="button" data-go="tab:pilotage">Pilotage par tranche ›</button>` })}
     <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { cls: "chargePanel" })}${signalPanel()}</div>`;

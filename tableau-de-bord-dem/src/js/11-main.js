@@ -26,10 +26,11 @@ function renderChrome() {
     const count = t.count ? t.count() : null;
     return `<button type="button" data-tab="${t.id}" class="${active ? "active" : ""}" aria-current="${active ? "page" : "false"}">${esc(t.label)}${count ? ` <span class="count">${fmt(count)}</span>` : ""}</button>`;
   }).join("");
-  const moreActive = MORE_TABS[mode].some((t) => t.id === tab);
+  const moreTabs = MORE_TABS[mode].filter((t) => t.id !== EDITS_TAB || !excelMode || editList().length || tab === EDITS_TAB);
+  const moreActive = moreTabs.some((t) => t.id === tab);
   const more = `<select class="moreTabs${moreActive ? " active" : ""}" data-change="moreTab" aria-label="Autres listes">
       <option value="">${mode === "ce" ? "Mes listes…" : "Autres listes…"}</option>
-      ${MORE_TABS[mode].map((t) => `<option value="${t.id}" ${t.id === tab ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`;
+      ${moreTabs.map((t) => `<option value="${t.id}" ${t.id === tab ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`;
   const edits = editCount();
   const chip = edits ? `<button type="button" class="editsChip${tab === EDITS_TAB ? " active" : ""}" data-tab="${EDITS_TAB}" title="Modifications saisies, pas encore appliquées dans la DEM">✎ ${plural(edits, "modification")} à appliquer</button>` : "";
   $("tabs").innerHTML = main + more + chip;
@@ -53,7 +54,6 @@ function render() {
   renderChrome();
   (VIEWS[tab] || viewTasks)();
   $("pdfExport").disabled = false;
-  $("paExport").disabled = false;
   $("pngExport").disabled = false;
   $("pngRhythm").disabled = false;
   $("pngExport").textContent = pngMenuLabel();
@@ -66,6 +66,16 @@ function render() {
   positionColMenus();
 }
 
+// Fiche en lecture : seuls les champs renseignés, sans adresse de cellule (réservée à « Modifier »).
+// Les quatre jalons sont dans la frise au-dessus.
+function detailFields(t) {
+  const keys = Object.keys(fields).filter((k) => !MILESTONES.some(([m]) => m === k));
+  const filled = keys.filter((k) => String(t.raw[k] ?? "").trim()), empty = keys.filter((k) => !filled.includes(k));
+  return `<div class="detailGrid">${filled.map((k) => `<div class="${k === "observations" ? "full" : ""}"><span>${names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
+      <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>
+    ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${esc(empty.map((k) => names[k]).join(", "))}</p>` : ""}`;
+}
+
 function detail(t) {
   const controls = (data.audit || []).filter((i) => i.t === t);
   $("detail").classList.remove("wideDialog");
@@ -74,8 +84,8 @@ function detail(t) {
     <p id="pdgNote" hidden></p>
     ${editPendingNote(t)}
     ${t.libelle || t.reeLibelle ? `<p class="muted">${esc([t.libelle, t.reeLibelle].filter(Boolean).join(" — "))}</p>` : ""}
-    <div class="detailGrid">${Object.keys(fields).map((k) => `<div class="${k === "observations" ? "full" : ""}"><span>${names[k]} <span class="loc">${esc(address(t, k))}</span></span><strong>${esc(t.raw[k] || "—")}</strong></div>`).join("")}
-      <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>
+    ${milestoneTrack(t)}
+    ${detailFields(t)}
     <h3>Contrôles sur cette TOT</h3>
     ${controls.map((i) => `<div class="detailIssue">${badge(i.level, LEVEL_TONE[i.level])} <strong>${esc(i.kind)}</strong><p>${esc(i.reason)}</p><span class="loc">${esc(t.sheet)}!${esc(i.cells)}</span> ${ignoreButton(i)}</div>`).join("") || "<p class=\"muted\">Aucun signalement dans le périmètre actuel.</p>"}`;
   $("detail").dataset.task = t.index;
@@ -293,7 +303,6 @@ function init() {
   $("closeDetail").onclick = () => $("detail").close();
   $("detail").addEventListener("close", () => { delete $("detail").dataset.task; editMode = false; editError = ""; });
   $("pdfExport").onclick = exportPDF;
-  $("paExport").onclick = exportPowerApps;
   $("pngExport").onclick = () => exportPNG();
   $("pngRhythm").onclick = () => exportPNG("rythme");
 
