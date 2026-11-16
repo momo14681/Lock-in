@@ -258,6 +258,20 @@ function onTableInput(e) {
   render();
 }
 
+// Un menu ouvert près d'un bord (volet Excel étroit, barre d'outils repliée à gauche)
+// est décalé pour rester entièrement dans la fenêtre.
+function keepMenuInView(e) {
+  const menu = e.target;
+  if (!menu.matches?.("details.menu") || !menu.open) return;
+  const body = menu.querySelector(".menuBody"), width = document.documentElement.clientWidth, margin = 8;
+  if (!body) return;
+  body.style.transform = "";
+  body.style.maxWidth = `${width - 2 * margin}px`;
+  const r = body.getBoundingClientRect();
+  const dx = r.left < margin ? margin - r.left : r.right > width - margin ? width - margin - r.right : 0;
+  if (dx) body.style.transform = `translateX(${Math.round(dx)}px)`;
+}
+
 function onChange(e) {
   if (e.target.dataset.msChoice) { milestoneChoice[e.target.dataset.msChoice] = e.target.value; return detail(data.tasks[+$("detail").dataset.task]); }
   if (e.target.dataset?.cruDone !== undefined) { setCruDone(e.target.dataset.cruDone, e.target.checked); return render(); }
@@ -290,6 +304,8 @@ function init() {
 
   document.addEventListener("click", onClick);
   document.addEventListener("change", onChange);
+  // « toggle » ne remonte pas : écoute en capture.
+  document.addEventListener("toggle", keepMenuInView, true);
   document.addEventListener("input", onTableInput);
   document.addEventListener("toggle", (e) => { if (e.target.classList?.contains("colMenu")) positionColMenus(); }, true);
   window.addEventListener("resize", positionColMenus);
