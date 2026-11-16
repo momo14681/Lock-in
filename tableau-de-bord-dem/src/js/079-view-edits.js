@@ -17,7 +17,7 @@ const EDIT_DATES = new Set(["totPrete", "bpa", "bpd", "j0"]);
 let editMode = false, editError = "", editConfirm = null, editDraft = null;
 
 function resetEdit() {
-  editMode = false; editError = ""; editConfirm = null; editDraft = null;
+  editMode = false; editError = ""; editConfirm = null; editDraft = null; milestoneChoice = {};
 }
 
 function isoDate(d) {
@@ -57,31 +57,43 @@ function makeEdit(t, key, parsed) {
 }
 
 // --- Frise des quatre jalons (fiche d'une TOT) ---------------------------------------
-// Actions rapides selon le profil :
-// - chargé d'essais : « Passer en P » quand la cellule est vide ou en R ;
-// - coordo : sur une cellule en P, valider (PRÊT pour la TOT prête, date du jour pour BPA / BPD,
-//   PSR / TSR / PAR pour le GER/1N) ou renvoyer en R.
+// Action rapide : un bouton principal et, à sa droite, une flèche pour changer de valeur.
+// Valeur proposée d'abord selon le profil : le chargé d'essais passe en P ; le coordo valide
+// (PRÊT pour la TOT prête, date du jour pour BPA / BPD, TSR pour le GER/1N) ou renvoie en R.
 const MILESTONES = [["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER / 1N"], ["bpd", "BPD"]];
+const TODAY_CHOICE = "today";
+const MILESTONE_CHOICES = {
+  totPrete: ["PRÊT", "P", "R"], bpa: [TODAY_CHOICE, "P", "R"], bpd: [TODAY_CHOICE, "P", "R"], ger: ["TSR", "PSR", "PAR", "TAR", "P", "R"],
+};
+let milestoneChoice = {};
 
 function milestoneDone(t, key) {
   return key === "totPrete" ? totPreteDone(t.raw[key]) : t[key + "State"] === "done";
 }
 
-function milestoneActions(t, key) {
+function choiceValue(c) {
+  return c === TODAY_CHOICE ? formatDate(data.today) : c;
+}
+
+function choiceLabel(c) {
+  return c === TODAY_CHOICE ? "Date du jour" : c === "P" ? "Passer en P" : c;
+}
+
+// Valeurs possibles pour un jalon non terminé, sans celle déjà dans la cellule ; la première est proposée.
+function milestoneOptions(t, key) {
   if (!excelMode || t.cancelled || milestoneDone(t, key)) return [];
   const s = status(t.raw[key]);
-  if (mode === "ce") return !s || s === "R" ? [["P", "Passer en P"]] : [];
-  const waiting = s === "P" || (key === "ger" && GER_PRODUCED_CODES.includes(s));
-  if (!waiting) return [];
-  const validate = key === "totPrete" ? [["PRÊT", "PRÊT"]] : key === "ger" ? [["PSR", "PSR"], ["TSR", "TSR"], ["PAR", "PAR"]] : [[formatDate(data.today), "Valider aujourd’hui"]];
-  return [...validate, ["R", "R"]];
+  const list = MILESTONE_CHOICES[key].filter((c) => status(c) !== s);
+  const first = milestoneChoice[key] && list.includes(milestoneChoice[key]) ? milestoneChoice[key]
+    : mode === "ce" && list.includes("P") ? "P" : list[0];
+  return [first, ...list.filter((c) => c !== first)];
 }
 
 function milestoneTrack(t) {
   const steps = MILESTONES.map(([k, label]) => {
-    const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim();
-    const actions = milestoneActions(t, k).map(([v, text]) => `<button type="button" data-milestone="${k}" data-value="${esc(v)}"${v === "R" ? ' title="À reprendre par le chargé d’essais"' : ""}>${esc(text)}</button>`).join("");
-    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${actions ? `<span class="msActions">${actions}</span>` : ""}</li>`;
+    const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim(), options = milestoneOptions(t, k);
+    const action = options.length ? `<span class="msSplit"><button type="button" data-milestone="${k}" data-value="${esc(choiceValue(options[0]))}">${esc(choiceLabel(options[0]))}</button><label class="msMore" title="Choisir une autre valeur"><span aria-hidden="true">▾</span><select data-ms-choice="${k}" aria-label="Autre valeur pour ${label}">${MILESTONE_CHOICES[k].filter((c) => options.includes(c)).map((c) => `<option value="${esc(c)}"${c === options[0] ? " selected" : ""}>${esc(c === TODAY_CHOICE ? `Date du jour (${formatDate(data.today)})` : c)}</option>`).join("")}</select></label></span>` : "";
+    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }

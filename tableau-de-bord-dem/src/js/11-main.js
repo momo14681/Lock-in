@@ -259,6 +259,7 @@ function onTableInput(e) {
 }
 
 function onChange(e) {
+  if (e.target.dataset.msChoice) { milestoneChoice[e.target.dataset.msChoice] = e.target.value; return detail(data.tasks[+$("detail").dataset.task]); }
   if (e.target.dataset?.cruDone !== undefined) { setCruDone(e.target.dataset.cruDone, e.target.checked); return render(); }
   const tc = e.target.dataset?.tableCheck;
   if (tc !== undefined) {

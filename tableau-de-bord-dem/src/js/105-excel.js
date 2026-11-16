@@ -207,8 +207,8 @@ async function writeEditsToExcel(entries) {
 // Enregistre les saisies, relit la DEM et affiche le résultat.
 async function applyExcelEdits(entries, t = null) {
   $("message").innerHTML = '<div class="notice">Écriture dans la DEM…</div>';
-  // Fiche figée pendant l'écriture et la relecture : pas de deuxième saisie sur des valeurs périmées.
-  if ($("detail").open) $("detailBody").innerHTML = '<p class="muted">Écriture dans la DEM…</p>';
+  // La confirmation ferme la fiche ; elle ne se rouvre qu'en cas d'échec, avec le message.
+  if ($("detail").open) $("detail").close();
   let res;
   try { res = await writeEditsToExcel(entries); }
   catch (e) { res = { ok: false, message: `Écriture impossible : ${e.message || e}. Rien n’a été écrit.` }; }
@@ -219,11 +219,7 @@ async function applyExcelEdits(entries, t = null) {
     return false;
   }
   resetEdit();
-  // La relecture ferme la fiche : on la rouvre sur la ligne à jour.
-  const taskId = t?.id, wasOpen = $("detail").open;
   await readFromExcel({ preserveView: true });
-  const fresh = taskId && data?.tasks.find((x) => x.id === taskId);
-  if (fresh && wasOpen) detail(fresh);
   $("message").innerHTML = `<div class="notice">${res.written ? `${plural(res.written, "cellule")} écrite${res.written > 1 ? "s" : ""} dans la DEM.` : "Rien à écrire : la DEM contient déjà ces valeurs."}</div>`;
   return true;
 }
