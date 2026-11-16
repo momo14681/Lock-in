@@ -389,8 +389,14 @@ dialog::backdrop { background: #091d37aa; }
   .kpis-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 1100px) {
-  .appHeader { grid-template-columns: 1fr; justify-items: start; padding: 14px 20px; }
-  .headerActions { justify-content: flex-start; }
+  .appHeader { display: flex; flex-wrap: nowrap; align-items: center; gap: 12px; padding: 8px 20px; }
+  .brand { flex: 1 1 auto; gap: 10px; }
+  .brand svg { width: 28px; height: 28px; }
+  .brand h1 { font-size: 17px; white-space: nowrap; }
+  .headerSub { font-size: 12.5px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .modeSwitch, .headerActions { flex: 0 0 auto; }
+  .modeSwitch button { padding: 6px 12px; font-size: 14px; }
+  .headerActions { flex-wrap: nowrap; }
   main { padding: 16px 20px 32px; }
   .split, .split.wide { grid-template-columns: minmax(0, 1fr); }
   .kpis-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -399,9 +405,6 @@ dialog::backdrop { background: #091d37aa; }
 }
 @media (max-width: 640px) {
   main { padding: 12px 16px 28px; }
-  .appHeader { padding: 12px 16px; }
-  .modeSwitch { width: 100%; }
-  .modeSwitch button { flex: 1; justify-content: center; padding: 9px 8px; font-size: 14px; }
   .kpis-4, .kpis-6, .kpis-8 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpiValue { font-size: 24px; }
   .hero .kpiValue { font-size: 28px; }
@@ -597,13 +600,6 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .editRow small { font-size: 11.5px; }
 .editRow.full { grid-column: 1 / -1; }
 .editActions { display: flex; gap: 8px; margin-top: 14px; }
-.editPending { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--warn-bg, var(--neutral-bg)); }
-.editPending ul { margin: 6px 0 0; padding-left: 18px; }
-.editSteps { margin: 0; padding-left: 20px; line-height: 1.6; }
-.editNew { color: var(--info-ink); }
-.editsTable td small { display: block; }
-.editsChip { margin-left: auto; border: 0; border-radius: 999px; padding: 4px 12px; background: var(--info-bg); color: var(--info-ink); font-size: 13px; cursor: pointer; }
-.editsChip.active, .editsChip:hover { box-shadow: 0 0 0 2px var(--info-ink) inset; }
 @media (max-width: 900px) { .editGrid { grid-template-columns: minmax(0, 1fr); } }
 
 /* --- V28 : état d'une affaire, frise des jalons, en-tête compact -------------------- */
@@ -619,8 +615,8 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .msTrack button { margin-top: 4px; padding: 4px 8px; font-size: 12.5px; align-self: flex-start; }
 @media (max-width: 1100px) { .kpis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis-3 { grid-template-columns: minmax(0, 1fr); } .msTrack { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-/* Volet Excel et petits écrans : tout l'en-tête sur une ligne. */
-@media (max-width: 900px) {
+/* Volet Excel étroit : en-tête réduit à l'essentiel, toujours sur une ligne. */
+@media (max-width: 620px) {
   .appHeader { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 6px 10px; }
   .brand { gap: 8px; flex: 1 1 auto; }
   .brand svg { width: 22px; height: 22px; }
@@ -636,6 +632,10 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
   .tabs button { padding: 8px 10px 7px; font-size: 14.5px; }
   .viewTitle { font-size: 22px; }
 }
+.confirmList { list-style: none; margin: 4px 0 0; padding: 0; }
+.confirmList li { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 16px; flex-wrap: wrap; padding: 10px 2px; border-bottom: 1px solid var(--line-2); font-size: 14.5px; }
+.confirmChange { overflow-wrap: anywhere; white-space: pre-wrap; }
+.confirmChange strong { font-weight: 400; color: #1057C8; }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -1387,8 +1387,8 @@ const TABS = {
   ],
 };
 const MORE_TABS = {
-  ce: [{ id: "tasks", label: "Mes TOT" }, { id: "documents", label: "Mes documents à reprendre (R)" }, { id: "edits", label: "Modifications à appliquer" }],
-  coordo: [{ id: "owners", label: "Répartition par chargé" }, { id: "tasks", label: "Toutes les TOT" }, { id: "documents", label: "Documents à valider (P) / à reprendre (R)" }, { id: "cru", label: "TOT par ECU (feuille CRU)" }, { id: "iop319", label: "Contrôle 1N / TSR (export IOP319)" }, { id: "assignments", label: "Affectations SharePoint" }, { id: "edits", label: "Modifications à appliquer" }],
+  ce: [{ id: "tasks", label: "Mes TOT" }, { id: "documents", label: "Mes documents à reprendre (R)" }],
+  coordo: [{ id: "owners", label: "Répartition par chargé" }, { id: "tasks", label: "Toutes les TOT" }, { id: "documents", label: "Documents à valider (P) / à reprendre (R)" }, { id: "cru", label: "TOT par ECU (feuille CRU)" }, { id: "iop319", label: "Contrôle 1N / TSR (export IOP319)" }, { id: "assignments", label: "Affectations SharePoint" }],
 };
 const HIDDEN_TABS = { coordo: ["affaires", "dossiers"], ce: [] };
 
@@ -3471,47 +3471,32 @@ function cePilotageReportSections() {
 
 // ---- 079-view-edits.js ----
 // =============================================================================
-// Saisie des mises à jour de la DEM depuis le tableau de bord.
-// Le tableau de bord ne modifie jamais le classeur : chaque saisie (fiche d'une TOT,
-// bouton « Modifier ») rejoint une liste mémorisée sur ce PC. La liste se relit dans
-// « Modifications à appliquer », puis s'exporte en fichier texte que la macro
-// AppliquerModifsDEM (module VBA téléchargeable depuis la même vue) applique dans la
-// DEM après contrôle : ligne retrouvée par feuille + affaire + REE + OT + TOT, et
-// valeur actuelle inchangée depuis la saisie (sinon la modification est écartée).
+// Saisie dans la DEM depuis le tableau de bord (volet Excel uniquement).
+// La fiche d'une TOT propose « Modifier cette ligne » et la frise des jalons.
+// Chaque saisie passe par un écran de confirmation, puis est écrite directement
+// dans la DEM ouverte (105-excel.js) : ligne retrouvée par affaire + REE + OT + TOT,
+// et cellule inchangée depuis la lecture, sinon rien n'est écrit.
+// Hors d'Excel (fichier HTML ouvert seul), le tableau de bord reste en lecture.
 // =============================================================================
 
-const EDITS_TAB = "edits";
 const EDIT_FIELDS = ["totPrete", "bpa", "ger", "bpd", "j0", "mc", "rdu", "regime", "observations"];
 const EDIT_CODES = {
   totPrete: ["P", "R", "Renseigné"], bpa: ["P", "R", "F"], ger: [...GER_PRODUCED_CODES, ...GER_SIGNED_CODES, "R"], bpd: ["P", "R"], j0: ["Non renseigné"],
 };
 const EDIT_DATES = new Set(["totPrete", "bpa", "bpd", "j0"]);
-const EDIT_FILE_HEAD = ["Feuille", "Ligne", "Cellule", "Champ", "Affaire", "REE", "OT", "TOT", "Ancienne valeur", "Nouvelle valeur", "Type", "Chargé", "Saisi le"];
 
-let editsCache = null, editsYear = "", editMode = false, editError = "";
+// editConfirm : saisies en attente de confirmation ; editDraft : valeurs tapées, pour revenir au formulaire.
+let editMode = false, editError = "", editConfirm = null, editDraft = null;
 
-function editsKey() {
-  return "dem-essais-modifications-" + activeDEM;
-}
-
-function editList() {
-  if (!editsCache || editsYear !== activeDEM) {
-    editsYear = activeDEM;
-    try { editsCache = JSON.parse(localStorage.getItem(editsKey()) || "[]") || []; } catch (e) { editsCache = []; }
-  }
-  return editsCache;
-}
-
-function saveEdits(list) {
-  editsCache = list;
-  try { localStorage.setItem(editsKey(), JSON.stringify(list)); } catch (e) { /* liste gardée pour cette session seulement */ }
+function resetEdit() {
+  editMode = false; editError = ""; editConfirm = null; editDraft = null;
 }
 
 function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Saisie → { type, value (fichier), label (affichage) } ou { error }.
+// Saisie → { type, value (écrite), label (affichage) } ou { error }.
 function parseEditValue(key, input) {
   // Les observations gardent leurs retours à la ligne (sinon une fiche non touchée paraîtrait modifiée).
   const v = key === "observations"
@@ -3531,9 +3516,20 @@ function parseEditValue(key, input) {
   return { type: "texte", value: v, label: v };
 }
 
+function editCell(t, key) {
+  return address(t, key).split(":")[0];
+}
+
+function makeEdit(t, key, parsed) {
+  return {
+    id: `${t.id}#${key}`, taskId: t.id, key, sheet: t.sheet, row: t.rowNumber, cell: editCell(t, key),
+    affaire: t.affaire, ree: t.ree, ot: t.orig?.ot ?? t.ot, tot: t.orig?.tot ?? t.tot, owner: t.responsable,
+    old: t.orig?.[key] ?? "", type: parsed.type, value: parsed.value, label: parsed.label, at: new Date().toISOString(),
+  };
+}
+
 // --- Frise des quatre jalons (fiche d'une TOT) ---------------------------------------
-// « Fait aujourd'hui » écrit la date du jour (TSR pour le GER/1N, qui ne prend pas de date) :
-// directement dans la DEM depuis Excel, sinon dans « Modifications à appliquer ».
+// « Fait aujourd'hui » propose la date du jour (TSR pour le GER/1N, qui ne prend pas de date).
 const MILESTONES = [["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER / 1N"], ["bpd", "BPD"]];
 
 function milestoneDone(t, key) {
@@ -3542,193 +3538,77 @@ function milestoneDone(t, key) {
 
 function milestoneTrack(t) {
   const steps = MILESTONES.map(([k, label]) => {
-    const done = milestoneDone(t, k), p = pendingEdit(t, k), value = String(t.raw[k] ?? "").trim();
-    const action = t.cancelled ? "" : p
-      ? `<small class="muted">en attente : ${esc(p.label || "vide")}</small>`
-      : done ? "" : `<button type="button" data-milestone="${k}">${k === "ger" ? "Réalisé (TSR)" : "Fait aujourd’hui"}</button>`;
+    const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim();
+    const action = excelMode && !t.cancelled && !done ? `<button type="button" data-milestone="${k}">${k === "ger" ? "Réalisé (TSR)" : "Fait aujourd’hui"}</button>` : "";
     return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }
 
-function makeEdit(t, key, parsed) {
-  return {
-    id: editId(t, key), taskId: t.id, key, sheet: t.sheet, row: t.rowNumber, cell: editCell(t, key),
-    affaire: t.affaire, ree: t.ree, ot: t.orig?.ot ?? t.ot, tot: t.orig?.tot ?? t.tot, owner: t.responsable,
-    old: t.orig?.[key] ?? "", type: parsed.type, value: parsed.value, label: parsed.label, at: new Date().toISOString(),
-  };
-}
-
 function milestoneToday(t, key) {
   const parsed = parseEditValue(key, key === "ger" ? "TSR" : formatDate(data.today));
   if (parsed.error) return;
-  const entry = makeEdit(t, key, parsed);
-  if (excelMode) { applyExcelEdits([entry], t); return; }
-  saveEdits([...editList().filter((e) => e.id !== entry.id), entry]);
-  render();
+  editConfirm = [makeEdit(t, key, parsed)];
   detail(t);
-  $("message").innerHTML = `<div class="notice">${esc(names[key])} : ${esc(parsed.label)} ajouté à « Modifications à appliquer ».</div>`;
 }
 
-function editCell(t, key) {
-  return address(t, key).split(":")[0];
-}
-
-function editId(t, key) {
-  return `${t.id}#${key}`;
-}
-
-function pendingEdit(t, key) {
-  return editList().find((e) => e.id === editId(t, key)) || null;
-}
-
-// État d'une modification face à la DEM chargée.
-function editState(e) {
-  const t = data?.tasks.find((x) => x.id === e.taskId);
-  if (!t) return { code: "missing", label: "TOT introuvable dans la DEM", tone: "bad", t: null, current: "" };
-  const current = t.orig?.[e.key] ?? "";
-  if (status(current) === status(e.label)) return { code: "done", label: "Déjà dans la DEM", tone: "good", t, current };
-  if (status(current) !== status(e.old)) return { code: "changed", label: "Cellule modifiée depuis la saisie", tone: "warn", t, current };
-  return { code: "todo", label: "À appliquer", tone: "info", t, current };
-}
-
-function editCount() {
-  return data ? editList().filter((e) => editState(e).code !== "done").length : editList().length;
-}
-
-// --- Fiche d'une TOT : formulaire de saisie -------------------------------------------
+// --- Formulaire « Modifier cette ligne » -----------------------------------------------
 
 function editForm(t) {
   const rows = EDIT_FIELDS.map((k) => {
-    const p = pendingEdit(t, k), current = t.orig?.[k] ?? "", codes = EDIT_CODES[k] || [];
+    const current = t.orig?.[k] ?? "", shown = editDraft?.[k] ?? current, codes = EDIT_CODES[k] || [];
     const options = [...(EDIT_DATES.has(k) ? [formatDate(data.today)] : []), ...codes].map((o) => `<option value="${esc(o)}"></option>`).join("");
     const input = k === "observations"
-      ? `<textarea data-edit-field="${k}" rows="2">${esc(p ? p.label : current)}</textarea>`
-      : `<input type="text" data-edit-field="${k}" value="${esc(p ? p.label : current)}" ${options ? `list="editList-${k}"` : ""} placeholder="${EDIT_DATES.has(k) ? "jj/mm/aaaa" : ""}${codes.length ? (EDIT_DATES.has(k) ? " ou " : "") + codes.join(", ") : ""}">${options ? `<datalist id="editList-${k}">${options}</datalist>` : ""}`;
+      ? `<textarea data-edit-field="${k}" rows="2">${esc(shown)}</textarea>`
+      : `<input type="text" data-edit-field="${k}" value="${esc(shown)}" ${options ? `list="editList-${k}"` : ""} placeholder="${EDIT_DATES.has(k) ? "jj/mm/aaaa" : ""}${codes.length ? (EDIT_DATES.has(k) ? " ou " : "") + codes.join(", ") : ""}">${options ? `<datalist id="editList-${k}">${options}</datalist>` : ""}`;
     return `<label class="editRow${k === "observations" ? " full" : ""}"><span>${names[k]} <span class="loc">${esc(editCell(t, k))}</span></span>${input}<small class="muted">Dans la DEM : ${esc(current || "vide")}</small></label>`;
   }).join("");
-  const intro = excelMode ? "Les valeurs modifiées sont écrites directement dans la DEM, si personne ne les a changées entre-temps."
-    : "Vos saisies rejoignent « Modifications à appliquer ». La DEM n’est modifiée qu’au passage de la macro.";
-  return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">${intro}</p></div>
+  return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">Les valeurs modifiées sont écrites dans la DEM après confirmation, si personne ne les a changées entre-temps.</p></div>
     ${editError ? `<div class="notice error">${esc(editError)}</div>` : ""}
     <div class="editGrid">${rows}</div>
-    <div class="editActions"><button type="button" class="accent" data-edit-save>${excelMode ? "Enregistrer dans la DEM" : "Ajouter aux modifications"}</button><button type="button" class="ghost" data-edit-cancel>Annuler</button></div>`;
+    <div class="editActions"><button type="button" class="accent" data-edit-save>Enregistrer…</button><button type="button" class="ghost" data-edit-cancel>Annuler</button></div>`;
 }
 
-function editPendingNote(t) {
-  const list = EDIT_FIELDS.map((k) => pendingEdit(t, k)).filter(Boolean);
-  if (!list.length) return "";
-  return `<div class="editPending"><strong>${plural(list.length, "modification")} en attente pour cette ligne</strong>
-    <ul>${list.map((e) => `<li>${esc(names[e.key])} : ${esc(e.old || "vide")} → <b>${esc(e.label || "vide")}</b></li>`).join("")}</ul></div>`;
-}
-
+// Lit le formulaire : rien n'est écrit ici, les champs modifiés partent en confirmation.
 function saveEditForm(t) {
-  const list = editList().slice(), errors = [];
-  let added = 0;
+  const entries = [], errors = [], draft = {};
   document.querySelectorAll("#detailBody [data-edit-field]").forEach((el) => {
-    const key = el.dataset.editField, current = t.orig?.[key] ?? "", id = editId(t, key);
+    const key = el.dataset.editField;
+    draft[key] = el.value;
     const parsed = parseEditValue(key, el.value);
     if (parsed.error) { errors.push(parsed.error); return; }
-    const i = list.findIndex((e) => e.id === id);
-    const same = status(parsed.label) === status(current);
-    if (same) { if (i >= 0) list.splice(i, 1); return; }
-    const entry = makeEdit(t, key, parsed);
-    if (i >= 0) list[i] = entry; else list.push(entry);
-    added++;
+    if (status(parsed.label) !== status(t.orig?.[key] ?? "")) entries.push(makeEdit(t, key, parsed));
   });
+  editDraft = draft;
   if (errors.length) { editError = errors.join(" "); detail(t); return; }
-  // Dans Excel : écriture directe des champs de cette ligne.
-  if (excelMode) { applyExcelEdits(list.filter((e) => e.taskId === t.id && !editList().includes(e)), t); return; }
+  if (!entries.length) { editError = "Aucune valeur modifiée."; detail(t); return; }
   editError = "";
-  editMode = false;
-  saveEdits(list);
-  render();
+  editConfirm = entries;
   detail(t);
-  if (added) $("message").innerHTML = `<div class="notice">${plural(added, "modification")} ajoutée${added > 1 ? "s" : ""} à « Modifications à appliquer ».</div>`;
 }
 
-// --- Vue « Modifications à appliquer » ------------------------------------------------
+// --- Confirmation avant écriture --------------------------------------------------------
 
-function viewEdits() {
-  const list = editList(), rows = list.map((e) => ({ e, s: editState(e) }));
-  const count = (c) => rows.filter((r) => r.s.code === c).length;
-  const todo = count("todo");
-  const dt = dataTable({
-    key: "edits", items: rows, paged: false, cls: "compact editsTable", free: true,
-    empty: "Aucune modification saisie. Ouvrez une TOT (clic sur une affaire ou un REE) puis « Modifier cette ligne ».",
-    columns: [
-      { label: "TOT", value: (r) => `${r.e.affaire} ${r.e.ree} ${r.e.ot} ${r.e.tot}` },
-      { label: "Champ", value: (r) => names[r.e.key], filter: true },
-      { label: "Dans la DEM", value: (r) => (r.s.t ? r.s.current : r.e.old) },
-      { label: "Nouvelle valeur", value: (r) => r.e.label },
-      { label: "État", value: (r) => r.s.label, filter: true },
-      { label: "Chargé", value: (r) => r.e.owner, filter: true },
-      { label: "", value: () => "" },
-    ],
-    row: ({ e, s }) => `<tr>
-      <td>${s.t ? `<button type="button" class="linkbutton" data-task="${s.t.index}">${esc(e.affaire || "Affaire manquante")} · REE ${esc(e.ree || "—")}</button>` : `<strong>${esc(e.affaire)} · REE ${esc(e.ree)}</strong>`}<small>TOT ${esc(e.ot)}-${esc(e.tot)} · ${esc(e.sheet)}!${esc(e.cell)}</small></td>
-      <td>${esc(names[e.key])}</td>
-      <td>${esc((s.t ? s.current : e.old) || "vide")}</td>
-      <td><b class="editNew">${esc(e.label || "vide")}</b></td>
-      <td>${badge(s.label, s.tone)}</td>
-      <td>${esc(e.owner)}</td>
-      <td><button type="button" class="ghost" data-edit-remove="${esc(e.id)}" title="Retirer cette modification">Retirer</button></td></tr>`,
-  });
-  const steps = excelMode ? `<ol class="editSteps">
-      <li>Dans Excel, la fiche d’une TOT écrit directement dans la DEM : cette liste ne garde que les saisies faites hors d’Excel.</li>
-      <li>« Écrire dans la DEM » les applique toutes, après contrôle de chaque cellule.</li>
-    </ol>` : `<ol class="editSteps">
-      <li>Ouvrez une TOT puis « Modifier cette ligne » : vos saisies s’ajoutent ici (mémorisées sur ce PC).</li>
-      <li>Relisez la liste, puis « Télécharger le fichier pour la DEM ».</li>
-      <li>Dans Excel (application de bureau), ouvrez la DEM et lancez la macro <b>AppliquerModifsDEM</b> : elle montre ce qui sera écrit, demande confirmation, puis produit un compte rendu.</li>
-    </ol>`;
-  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Modifications à appliquer</h2>
-      <p class="muted">DEM ${esc(activeDEM)} · ${plural(list.length, "modification")} · ${fmt(todo)} à appliquer</p></div>
-      <div class="panelActions">
-        ${excelMode ? `<button type="button" class="accent" data-edits-write ${todo ? "" : "disabled"}>Écrire dans la DEM</button>`
-          : `<button type="button" class="accent" data-edits-export ${todo ? "" : "disabled"}>Télécharger le fichier pour la DEM</button>
-        <button type="button" data-edits-macro>Télécharger la macro Excel</button>`}
-      </div></div>
-    ${panel("Comment ça marche", steps)}
-    ${panel("Liste des modifications", dt.html, { actions: `${count("done") ? `<button type="button" class="ghost" data-edits-purge>Retirer les ${fmt(count("done"))} déjà dans la DEM</button>` : ""}${list.length ? '<button type="button" class="ghost" data-edits-clear>Tout effacer</button>' : ""}` })}`;
-  currentExport = () => downloadMatrix(["Feuille", "Cellule", "Affaire", "REE", "OT", "TOT", "Champ", "Dans la DEM", "Nouvelle valeur", "État", "Chargé"],
-    rows.map(({ e, s }) => [e.sheet, e.cell, e.affaire, e.ree, e.ot, e.tot, names[e.key], s.t ? s.current : e.old, e.label, s.label, e.owner]), `Modifications_DEM_${activeDEM}.csv`);
-}
-
-// Fichier lu par la macro : texte UTF-8, une modification par ligne, champs séparés par des tabulations.
-function exportEdits() {
-  const clean = (v) => String(v ?? "").replace(/\\/g, "\\\\").replace(/\t/g, " ").replace(/\r?\n/g, "\\n");
-  const list = editList().filter((e) => editState(e).code === "todo");
-  if (!list.length) return;
-  const now = new Date();
-  const lines = [
-    ["DEM_MODIFICATIONS", "1", activeDEM, data?.fileName || "", now.toISOString()].join("\t"),
-    EDIT_FILE_HEAD.join("\t"),
-    ...list.map((e) => [e.sheet, e.row, e.cell, names[e.key], e.affaire, e.ree, e.ot, e.tot, e.old, e.value, e.type, e.owner, e.at.slice(0, 10)].map(clean).join("\t")),
-  ];
-  const who = (mode === "ce" && me ? me : "coordo").replace(/[^\p{L}\p{N}_-]+/gu, "_");
-  const stamp = `${isoDate(now)}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
-  downloadBytes("﻿" + lines.join("\r\n") + "\r\n", "text/plain;charset=utf-8", `Modifications_DEM_${activeDEM}_${who}_${stamp}.txt`);
+function editConfirmPanel(t) {
+  const n = editConfirm.length;
+  return `<div class="editIntro"><strong>Écrire dans la DEM ?</strong>
+      <p class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${plural(n, "cellule")}</p></div>
+    <ul class="confirmList">${editConfirm.map((e) => `<li><span>${esc(names[e.key])} <span class="loc">${esc(e.cell)}</span></span>
+      <span class="confirmChange"><span class="muted">${esc(e.old || "vide")}</span> → <strong>${esc(e.label || "vide")}</strong></span></li>`).join("")}</ul>
+    <div class="editActions"><button type="button" class="accent" data-edit-confirm>Écrire dans la DEM</button><button type="button" class="ghost" data-edit-back>Annuler</button></div>`;
 }
 
 function editAction(d) {
-  if (d.editStart !== undefined) { editMode = true; editError = ""; return detail(data.tasks[+d.editStart]), true; }
-  if (d.editCancel !== undefined) { editMode = false; editError = ""; return detail(data.tasks[+$("detail").dataset.task]), true; }
-  if (d.milestone !== undefined) return milestoneToday(data.tasks[+$("detail").dataset.task], d.milestone), true;
-  if (d.editSave !== undefined) return saveEditForm(data.tasks[+$("detail").dataset.task]), true;
-  if (d.editRemove !== undefined) { saveEdits(editList().filter((e) => e.id !== d.editRemove)); render(); return true; }
-  if (d.editsPurge !== undefined) { saveEdits(editList().filter((e) => editState(e).code !== "done")); render(); return true; }
-  if (d.editsClear !== undefined) {
-    if (confirm("Effacer toutes les modifications saisies sur ce PC pour cette DEM ?")) { saveEdits([]); render(); }
-    return true;
-  }
-  if (d.editsExport !== undefined) return exportEdits(), true;
-  if (d.editsWrite !== undefined) return applyExcelEdits(editList().filter((e) => editState(e).code === "todo")), true;
-  if (d.editsMacro !== undefined) {
-    // L'éditeur VBA importe les .bas en Windows-1252 : le module n'utilise que des caractères Latin-1.
-    const src = VBA_MACRO.replace(/\r?\n/g, "\r\n");
-    downloadBytes(Uint8Array.from(src, (c) => c.charCodeAt(0) & 255), "text/plain", "AppliquerModifsDEM.bas");
-    return true;
+  const current = () => data.tasks[+$("detail").dataset.task];
+  if (d.editStart !== undefined) { resetEdit(); editMode = true; return detail(data.tasks[+d.editStart]), true; }
+  if (d.editCancel !== undefined) { resetEdit(); return detail(current()), true; }
+  if (d.editSave !== undefined) return saveEditForm(current()), true;
+  if (d.milestone !== undefined) return milestoneToday(current(), d.milestone), true;
+  if (d.editBack !== undefined) { editConfirm = null; return detail(current()), true; }
+  if (d.editConfirm !== undefined) {
+    const entries = editConfirm, t = current();
+    editConfirm = null;
+    return applyExcelEdits(entries, t), true;
   }
   return false;
 }
@@ -5195,14 +5075,12 @@ async function applyExcelEdits(entries, t = null) {
   try { res = await writeEditsToExcel(entries); }
   catch (e) { res = { ok: false, message: `Écriture impossible : ${e.message || e}. Rien n’a été écrit.` }; }
   if (!res.ok) {
-    editError = res.message;
+    editError = res.message; editConfirm = null;
     $("message").innerHTML = `<div class="notice error">${esc(res.message)}</div>`;
     if (t) { editMode = true; detail(t); }
     return false;
   }
-  const done = new Set(entries.map((e) => e.id));
-  saveEdits(editList().filter((e) => !done.has(e.id)));
-  editError = ""; editMode = false;
+  resetEdit();
   // La relecture ferme la fiche : on la rouvre sur la ligne à jour.
   const taskId = t?.id, wasOpen = $("detail").open;
   await readFromExcel({ preserveView: true });
@@ -5540,7 +5418,7 @@ function pdgAction(d) {
 // =============================================================================
 
 const VIEWS = {
-  mine: viewMine, cePilotage: viewCePilotage, edits: viewEdits, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
+  mine: viewMine, cePilotage: viewCePilotage, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
   documents: viewDocuments, cru: viewCRU, pilotage: viewPilotage, iop319: viewIOP, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
 };
 
@@ -5563,14 +5441,12 @@ function renderChrome() {
     const count = t.count ? t.count() : null;
     return `<button type="button" data-tab="${t.id}" class="${active ? "active" : ""}" aria-current="${active ? "page" : "false"}">${esc(t.label)}${count ? ` <span class="count">${fmt(count)}</span>` : ""}</button>`;
   }).join("");
-  const moreTabs = MORE_TABS[mode].filter((t) => t.id !== EDITS_TAB || !excelMode || editList().length || tab === EDITS_TAB);
+  const moreTabs = MORE_TABS[mode];
   const moreActive = moreTabs.some((t) => t.id === tab);
   const more = `<select class="moreTabs${moreActive ? " active" : ""}" data-change="moreTab" aria-label="Autres listes">
       <option value="">${mode === "ce" ? "Mes listes…" : "Autres listes…"}</option>
       ${moreTabs.map((t) => `<option value="${t.id}" ${t.id === tab ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`;
-  const edits = editCount();
-  const chip = edits ? `<button type="button" class="editsChip${tab === EDITS_TAB ? " active" : ""}" data-tab="${EDITS_TAB}" title="Modifications saisies, pas encore appliquées dans la DEM">✎ ${plural(edits, "modification")} à appliquer</button>` : "";
-  $("tabs").innerHTML = main + more + chip;
+  $("tabs").innerHTML = main + more;
   // Filtres actifs : signalés sur le bouton « Filtres » repliable.
   const active = selectedSheets.size + (j0Period().label === String(+activeDEM) ? 0 : 1);
   $("filterCount").hidden = !active;
@@ -5617,9 +5493,9 @@ function detail(t) {
   const controls = (data.audit || []).filter((i) => i.t === t);
   $("detail").classList.remove("wideDialog");
   $("detailTitle").textContent = `${t.affaire || "Affaire manquante"} · REE ${t.ree || "absent"}`;
-  $("detailBody").innerHTML = editMode ? editForm(t) : `<p class="detailIntro">${stateBadge(t)} <span class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${esc(t.responsable)}</span> ${toolLinks(t.ot, t.tot)} <button type="button" class="editStart" data-edit-start="${t.index}">Modifier cette ligne</button> <button type="button" class="editStart" data-pdg="${t.index}" title="Remplit le modèle PdG_Type à partir de la feuille CRU">Page de garde</button></p>
+  $("detailBody").innerHTML = editConfirm ? editConfirmPanel(t) : editMode ? editForm(t) : `<p class="detailIntro">${stateBadge(t)} <span class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${esc(t.responsable)}</span> ${toolLinks(t.ot, t.tot)} ${excelMode ? `<button type="button" class="editStart" data-edit-start="${t.index}">Modifier cette ligne</button>` : ""} <button type="button" class="editStart" data-pdg="${t.index}" title="Remplit le modèle PdG_Type à partir de la feuille CRU">Page de garde</button></p>
     <p id="pdgNote" hidden></p>
-    ${editPendingNote(t)}
+    ${excelMode ? "" : '<p class="muted detailEmpty">Lecture seule : pour modifier la DEM, ouvrez le tableau de bord dans le volet Excel.</p>'}
     ${t.libelle || t.reeLibelle ? `<p class="muted">${esc([t.libelle, t.reeLibelle].filter(Boolean).join(" — "))}</p>` : ""}
     ${milestoneTrack(t)}
     ${detailFields(t)}
@@ -5724,7 +5600,7 @@ function onClick(e) {
   const el = e.target.closest("button, [data-go]");
   if (!el || el.disabled) return;
   const d = el.dataset;
-  if (d.task !== undefined) { editMode = false; editError = ""; return detail(data.tasks[+d.task]); }
+  if (d.task !== undefined) { resetEdit(); return detail(data.tasks[+d.task]); }
   if (editAction(d)) return;
   if (pdgAction(d)) return;
   if (d.back !== undefined) return goBack();
@@ -5838,7 +5714,7 @@ function init() {
   $("reset").onclick = resetFilters;
   $("clear").onclick = closeWorkbook;
   $("closeDetail").onclick = () => $("detail").close();
-  $("detail").addEventListener("close", () => { delete $("detail").dataset.task; editMode = false; editError = ""; });
+  $("detail").addEventListener("close", () => { delete $("detail").dataset.task; resetEdit(); });
   $("pdfExport").onclick = exportPDF;
   $("pngExport").onclick = () => exportPNG();
   $("pngRhythm").onclick = () => exportPNG("rythme");
@@ -5873,9 +5749,6 @@ function init() {
 }
 
 init();
-
-// ---- vba/AppliquerModifsDEM.bas ----
-const VBA_MACRO = "Attribute VB_Name = \"AppliquerModifsDEM\"\n' =============================================================================\n' Applique dans la DEM les modifications saisies dans le tableau de bord\n' (fichier \"Modifications_DEM_....txt\" telecharge depuis la vue\n' \"Modifications a appliquer\").\n'\n' Utilisation : ouvrir la DEM dans Excel (application de bureau), puis\n' Developpeur > Macros > AppliquerModifsDEM (ou Alt+F8).\n'\n' Pour chaque modification, la macro :\n'   1. retrouve la ligne par feuille + affaire + REE + OT + TOT (colonnes A, D, J, K),\n'      meme si des lignes ont ete inserees depuis la saisie ;\n'   2. verifie que la cellule contient toujours la valeur vue lors de la saisie ;\n'      sinon la modification est ecartee (quelqu'un l'a changee entre-temps) ;\n'   3. montre le bilan et demande confirmation avant d'ecrire quoi que ce soit.\n' Un compte rendu s'ouvre dans un nouveau classeur. La DEM n'est pas enregistree\n' automatiquement : relire puis enregistrer.\n' =============================================================================\nOption Explicit\n\nPrivate Const COL_AFFAIRE As Long = 1   ' A\nPrivate Const COL_REE As Long = 4       ' D\nPrivate Const COL_OT As Long = 10       ' J\nPrivate Const COL_TOT As Long = 11      ' K\n\n' Index des champs d'une modification (colonnes du fichier, puis resultat de l'analyse).\nPrivate Const F_FEUILLE As Long = 0\nPrivate Const F_LIGNE As Long = 1\nPrivate Const F_CELLULE As Long = 2\nPrivate Const F_CHAMP As Long = 3\nPrivate Const F_AFFAIRE As Long = 4\nPrivate Const F_REE As Long = 5\nPrivate Const F_OT As Long = 6\nPrivate Const F_TOT As Long = 7\nPrivate Const F_ANCIENNE As Long = 8\nPrivate Const F_NOUVELLE As Long = 9\nPrivate Const F_TYPE As Long = 10\nPrivate Const F_CHARGE As Long = 11\nPrivate Const F_STATUT As Long = 13\nPrivate Const F_ADRESSE As Long = 14\nPrivate Const F_MESSAGE As Long = 15\nPrivate Const F_AFFICHAGE As Long = 16\n\nPublic Sub AppliquerModifsDEM()\n    Dim wb As Workbook, chemin As Variant, contenu As String, lignes() As String\n    Dim modifs As Collection, m As Variant, i As Long, ligne As String\n    Dim nOk As Long, nDeja As Long, nEcart As Long, apercu As String, nApercu As Long\n\n    Set wb = ActiveWorkbook\n    If wb Is Nothing Then\n        MsgBox \"Ouvrez d'abord la DEM, puis relancez la macro.\", vbExclamation, \"Modifications DEM\"\n        Exit Sub\n    End If\n\n    chemin = Application.GetOpenFilename(\"Modifications du tableau de bord (*.txt),*.txt\", , \"Choisir le fichier de modifications\")\n    If VarType(chemin) = vbBoolean Then Exit Sub\n\n    contenu = Replace(LireUtf8(CStr(chemin)), ChrW(65279), \"\")\n    lignes = Split(Replace(contenu, vbCr, \"\"), vbLf)\n    If UBound(lignes) < 1 Or Left(lignes(0), 17) <> \"DEM_MODIFICATIONS\" Then\n        MsgBox \"Ce fichier n'est pas un fichier de modifications du tableau de bord.\", vbExclamation, \"Modifications DEM\"\n        Exit Sub\n    End If\n\n    Set modifs = New Collection\n    For i = 2 To UBound(lignes)\n        ligne = lignes(i)\n        If Len(Trim(ligne)) > 0 Then modifs.Add Analyser(wb, Split(ligne, vbTab))\n    Next i\n    If modifs.Count = 0 Then\n        MsgBox \"Le fichier ne contient aucune modification.\", vbInformation, \"Modifications DEM\"\n        Exit Sub\n    End If\n\n    For Each m In modifs\n        Select Case m(F_STATUT)\n            Case \"A appliquer\"\n                nOk = nOk + 1\n                If nApercu < 8 Then\n                    ' MsgBox est limite a 1024 caracteres : apercu court.\n                    apercu = apercu & vbLf & \"  \" & Left(m(F_FEUILLE) & \"!\" & m(F_ADRESSE) & \"  \" & m(F_CHAMP) & \" : \" & _\n                        IIf(m(F_ANCIENNE) = \"\", \"vide\", m(F_ANCIENNE)) & \" -> \" & IIf(m(F_AFFICHAGE) = \"\", \"vide\", m(F_AFFICHAGE)), 70)\n                    nApercu = nApercu + 1\n                End If\n            Case \"Déjà dans la DEM\"\n                nDeja = nDeja + 1\n            Case Else\n                nEcart = nEcart + 1\n        End Select\n    Next m\n    If nOk > nApercu Then apercu = apercu & vbLf & \"  ... et \" & (nOk - nApercu) & \" autre(s)\"\n\n    If nOk = 0 Then\n        MsgBox \"Aucune modification à appliquer.\" & vbLf & nDeja & \" déjà dans la DEM, \" & nEcart & \" écartée(s).\" & vbLf & _\n            \"Le compte rendu va s'ouvrir.\", vbInformation, \"Modifications DEM\"\n    ElseIf MsgBox(\"Classeur : \" & wb.Name & vbLf & vbLf & nOk & \" modification(s) à appliquer :\" & apercu & vbLf & vbLf & _\n            nDeja & \" déjà dans la DEM, \" & nEcart & \" écartée(s) (voir le compte rendu).\" & vbLf & vbLf & _\n            \"Appliquer maintenant ? (Ctrl+Z ne pourra pas annuler la macro.)\", vbYesNo + vbQuestion, \"Modifications DEM\") = vbYes Then\n        For i = 1 To modifs.Count\n            m = modifs(i)\n            If m(F_STATUT) = \"A appliquer\" Then\n                m = Ecrire(wb, m)\n                modifs.Remove i\n                If i > modifs.Count Then modifs.Add m Else modifs.Add m, Before:=i\n            End If\n        Next i\n    Else\n        For i = 1 To modifs.Count\n            m = modifs(i)\n            If m(F_STATUT) = \"A appliquer\" Then\n                m(F_STATUT) = \"Non appliquée\"\n                m(F_MESSAGE) = \"Annulé avant écriture\"\n                modifs.Remove i\n                If i > modifs.Count Then modifs.Add m Else modifs.Add m, Before:=i\n            End If\n        Next i\n    End If\n\n    CompteRendu modifs, CStr(chemin), wb.Name\nEnd Sub\n\n' Retrouve la ligne et la cellule, puis compare la valeur actuelle a celle vue lors de la saisie.\nPrivate Function Analyser(wb As Workbook, f As Variant) As Variant\n    Dim m(0 To 16) As Variant, i As Long, ws As Worksheet, r As Long, c As Long, cible As Range\n    Dim actuelle As String\n    For i = 0 To 12\n        If i <= UBound(f) Then m(i) = Decoder(CStr(f(i))) Else m(i) = \"\"\n    Next i\n    m(F_ADRESSE) = m(F_CELLULE)\n    m(F_AFFICHAGE) = m(F_NOUVELLE)\n    Analyser = m\n    If UBound(f) < 10 Then\n        m(F_STATUT) = \"Erreur\": m(F_MESSAGE) = \"Ligne du fichier illisible\"\n        Analyser = m: Exit Function\n    End If\n    If m(F_TYPE) = \"date\" Then m(F_AFFICHAGE) = TexteDate(DateIso(CStr(m(F_NOUVELLE))))\n\n    On Error Resume Next\n    Set ws = wb.Worksheets(CStr(m(F_FEUILLE)))\n    c = ws.Range(CStr(m(F_CELLULE))).Column\n    On Error GoTo 0\n    If ws Is Nothing Or c = 0 Then\n        m(F_STATUT) = \"Introuvable\": m(F_MESSAGE) = \"Feuille \" & m(F_FEUILLE) & \" absente de ce classeur\"\n        Analyser = m: Exit Function\n    End If\n\n    r = TrouverLigne(ws, Val(m(F_LIGNE)), CStr(m(F_AFFAIRE)), CStr(m(F_REE)), CStr(m(F_OT)), CStr(m(F_TOT)))\n    If r < 0 Then\n        m(F_STATUT) = \"Introuvable\": m(F_MESSAGE) = \"Plusieurs lignes ont cette affaire, ce REE, cet OT et cette TOT\"\n        Analyser = m: Exit Function\n    ElseIf r = 0 Then\n        m(F_STATUT) = \"Introuvable\": m(F_MESSAGE) = \"Affaire / REE / OT / TOT non retrouvés dans la feuille\"\n        Analyser = m: Exit Function\n    End If\n\n    Set cible = ws.Cells(r, c).MergeArea.Cells(1, 1)\n    m(F_ADRESSE) = cible.Address(False, False)\n    actuelle = Texte(cible.Value)\n    If Norme(actuelle) = Norme(CStr(m(F_AFFICHAGE))) Then\n        m(F_STATUT) = \"Déjà dans la DEM\"\n    ElseIf Norme(actuelle) <> Norme(CStr(m(F_ANCIENNE))) Then\n        m(F_STATUT) = \"Écartée\"\n        m(F_MESSAGE) = \"La cellule a changé depuis la saisie : \" & IIf(actuelle = \"\", \"vide\", actuelle) & _\n            \" (attendu : \" & IIf(m(F_ANCIENNE) = \"\", \"vide\", m(F_ANCIENNE)) & \")\"\n    Else\n        m(F_STATUT) = \"A appliquer\"\n    End If\n    If r <> Val(m(F_LIGNE)) And m(F_MESSAGE) = \"\" Then m(F_MESSAGE) = \"Ligne déplacée : \" & m(F_LIGNE) & \" -> \" & r\n    Analyser = m\nEnd Function\n\nPrivate Function Ecrire(wb As Workbook, m As Variant) As Variant\n    Dim cible As Range\n    On Error GoTo Echec\n    Set cible = wb.Worksheets(CStr(m(F_FEUILLE))).Range(CStr(m(F_ADRESSE)))\n    Select Case m(F_TYPE)\n        Case \"date\": cible.Value = DateIso(CStr(m(F_NOUVELLE)))\n        Case \"vide\": cible.MergeArea.ClearContents\n        Case Else\n            ' Un nombre reste un nombre ; tout autre texte est force en texte (apostrophe)\n            ' pour qu'Excel ne le transforme pas en date ou en formule.\n            If IsNumeric(m(F_NOUVELLE)) Then cible.Value = CStr(m(F_NOUVELLE)) Else cible.Value = \"'\" & CStr(m(F_NOUVELLE))\n    End Select\n    m(F_STATUT) = \"Appliquée\"\n    Ecrire = m\n    Exit Function\nEchec:\n    m(F_STATUT) = \"Erreur\"\n    m(F_MESSAGE) = \"Écriture impossible : \" & Err.Description\n    Ecrire = m\nEnd Function\n\n' Ligne attendue d'abord, sinon recherche dans toute la feuille. 0 = absente, -1 = ambigue.\nPrivate Function TrouverLigne(ws As Worksheet, attendue As Long, affaire As String, ree As String, ot As String, tot As String) As Long\n    Dim r As Long, derniere As Long, trouve As Long\n    If attendue >= 2 Then\n        If Correspond(ws, attendue, affaire, ree, ot, tot) Then TrouverLigne = attendue: Exit Function\n    End If\n    derniere = ws.Cells.Find(\"*\", , xlFormulas, , xlByRows, xlPrevious).Row\n    For r = 2 To derniere\n        If Correspond(ws, r, affaire, ree, ot, tot) Then\n            If trouve > 0 Then TrouverLigne = -1: Exit Function\n            trouve = r\n        End If\n    Next r\n    TrouverLigne = trouve\nEnd Function\n\nPrivate Function Correspond(ws As Worksheet, r As Long, affaire As String, ree As String, ot As String, tot As String) As Boolean\n    Correspond = Norme(Valeur(ws, r, COL_AFFAIRE)) = Norme(affaire) And Norme(Valeur(ws, r, COL_REE)) = Norme(ree) _\n        And Norme(Valeur(ws, r, COL_OT)) = Norme(ot) And Norme(Valeur(ws, r, COL_TOT)) = Norme(tot)\nEnd Function\n\n' Valeur d'une cellule, y compris dans une plage fusionnee (coin superieur gauche).\nPrivate Function Valeur(ws As Worksheet, r As Long, c As Long) As String\n    Valeur = Texte(ws.Cells(r, c).MergeArea.Cells(1, 1).Value)\nEnd Function\n\n' Meme ecriture que le tableau de bord : dates jj/mm/aaaa, nombres sans separateur de milliers.\nPrivate Function Texte(v As Variant) As String\n    If IsError(v) Then\n        Texte = \"#ERREUR\"\n    ElseIf IsEmpty(v) Then\n        Texte = \"\"\n    ElseIf VarType(v) = vbDate Then\n        Texte = TexteDate(CDate(v))\n    ElseIf VarType(v) = vbDouble Or VarType(v) = vbCurrency Or VarType(v) = vbLong Or VarType(v) = vbInteger Then\n        If v = Int(v) And Abs(v) < 1E+15 Then Texte = Format(v, \"0\") Else Texte = Replace(CStr(v), Application.International(xlDecimalSeparator), \".\")\n    Else\n        Texte = Trim(Replace(CStr(v), ChrW(160), \" \"))\n    End If\nEnd Function\n\nPrivate Function TexteDate(d As Date) As String\n    TexteDate = Right(\"0\" & Day(d), 2) & \"/\" & Right(\"0\" & Month(d), 2) & \"/\" & Year(d)\nEnd Function\n\nPrivate Function DateIso(s As String) As Date\n    DateIso = DateSerial(CInt(Left(s, 4)), CInt(Mid(s, 6, 2)), CInt(Mid(s, 9, 2)))\nEnd Function\n\n' Comparaison sans casse ni espaces superflus.\nPrivate Function Norme(s As String) As String\n    Dim t As String\n    t = Trim(Replace(Replace(Replace(s, ChrW(160), \" \"), vbTab, \" \"), vbCr, \"\"))\n    Do While InStr(t, \"  \") > 0\n        t = Replace(t, \"  \", \" \")\n    Loop\n    Norme = UCase(t)\nEnd Function\n\n' Le fichier code les retours a la ligne en \\n et les barres obliques inverses en \\\\.\nPrivate Function Decoder(s As String) As String\n    Dim i As Long, c As String, out As String\n    i = 1\n    Do While i <= Len(s)\n        c = Mid(s, i, 1)\n        If c = \"\\\" And i < Len(s) Then\n            Select Case Mid(s, i + 1, 1)\n                Case \"n\": out = out & vbLf: i = i + 2\n                Case \"\\\": out = out & \"\\\": i = i + 2\n                Case Else: out = out & c: i = i + 1\n            End Select\n        Else\n            out = out & c: i = i + 1\n        End If\n    Loop\n    Decoder = out\nEnd Function\n\nPrivate Function LireUtf8(chemin As String) As String\n    Dim flux As Object\n    Set flux = CreateObject(\"ADODB.Stream\")\n    flux.Type = 2\n    flux.Charset = \"utf-8\"\n    flux.Open\n    flux.LoadFromFile chemin\n    LireUtf8 = flux.ReadText\n    flux.Close\nEnd Function\n\nPrivate Sub CompteRendu(modifs As Collection, fichier As String, classeur As String)\n    Dim rapport As Workbook, ws As Worksheet, m As Variant, r As Long\n    Set rapport = Workbooks.Add\n    Set ws = rapport.Worksheets(1)\n    ws.Name = \"Compte rendu\"\n    ws.Range(\"A1\").Value = \"Modifications du tableau de bord appliquées à \" & classeur & \" le \" & Format(Now, \"dd/mm/yyyy hh:nn\")\n    ws.Range(\"A2\").Value = \"Fichier : \" & fichier\n    ws.Range(\"A4:L4\").Value = Array(\"Résultat\", \"Détail\", \"Feuille\", \"Cellule\", \"Champ\", \"Affaire\", \"REE\", \"OT\", \"TOT\", \"Ancienne valeur\", \"Nouvelle valeur\", \"Chargé\")\n    ws.Range(\"A4:L4\").Font.Bold = True\n    r = 5\n    For Each m In modifs\n        ws.Cells(r, 1).Value = m(F_STATUT)\n        ws.Cells(r, 2).Value = m(F_MESSAGE)\n        ws.Cells(r, 3).Value = m(F_FEUILLE)\n        ws.Cells(r, 4).Value = m(F_ADRESSE)\n        ws.Cells(r, 5).Value = m(F_CHAMP)\n        ws.Range(ws.Cells(r, 6), ws.Cells(r, 12)).NumberFormat = \"@\"\n        ws.Cells(r, 6).Value = m(F_AFFAIRE)\n        ws.Cells(r, 7).Value = m(F_REE)\n        ws.Cells(r, 8).Value = m(F_OT)\n        ws.Cells(r, 9).Value = m(F_TOT)\n        ws.Cells(r, 10).Value = m(F_ANCIENNE)\n        ws.Cells(r, 11).Value = m(F_AFFICHAGE)\n        ws.Cells(r, 12).Value = m(F_CHARGE)\n        r = r + 1\n    Next m\n    ws.Columns(\"A:L\").AutoFit\n    ws.Range(\"A4:L4\").AutoFilter\nEnd Sub\n";
 
 })();</script>
 </body>

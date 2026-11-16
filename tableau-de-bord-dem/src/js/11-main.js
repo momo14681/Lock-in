@@ -3,7 +3,7 @@
 // =============================================================================
 
 const VIEWS = {
-  mine: viewMine, cePilotage: viewCePilotage, edits: viewEdits, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
+  mine: viewMine, cePilotage: viewCePilotage, overview: viewOverview, owners: viewOwners, issues: viewIssues, assignments: viewAssignments,
   documents: viewDocuments, cru: viewCRU, pilotage: viewPilotage, iop319: viewIOP, tasks: viewTasks, team: viewTeam, affaires: viewGroups, dossiers: viewGroups,
 };
 
@@ -26,14 +26,12 @@ function renderChrome() {
     const count = t.count ? t.count() : null;
     return `<button type="button" data-tab="${t.id}" class="${active ? "active" : ""}" aria-current="${active ? "page" : "false"}">${esc(t.label)}${count ? ` <span class="count">${fmt(count)}</span>` : ""}</button>`;
   }).join("");
-  const moreTabs = MORE_TABS[mode].filter((t) => t.id !== EDITS_TAB || !excelMode || editList().length || tab === EDITS_TAB);
+  const moreTabs = MORE_TABS[mode];
   const moreActive = moreTabs.some((t) => t.id === tab);
   const more = `<select class="moreTabs${moreActive ? " active" : ""}" data-change="moreTab" aria-label="Autres listes">
       <option value="">${mode === "ce" ? "Mes listes…" : "Autres listes…"}</option>
       ${moreTabs.map((t) => `<option value="${t.id}" ${t.id === tab ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`;
-  const edits = editCount();
-  const chip = edits ? `<button type="button" class="editsChip${tab === EDITS_TAB ? " active" : ""}" data-tab="${EDITS_TAB}" title="Modifications saisies, pas encore appliquées dans la DEM">✎ ${plural(edits, "modification")} à appliquer</button>` : "";
-  $("tabs").innerHTML = main + more + chip;
+  $("tabs").innerHTML = main + more;
   // Filtres actifs : signalés sur le bouton « Filtres » repliable.
   const active = selectedSheets.size + (j0Period().label === String(+activeDEM) ? 0 : 1);
   $("filterCount").hidden = !active;
@@ -80,9 +78,9 @@ function detail(t) {
   const controls = (data.audit || []).filter((i) => i.t === t);
   $("detail").classList.remove("wideDialog");
   $("detailTitle").textContent = `${t.affaire || "Affaire manquante"} · REE ${t.ree || "absent"}`;
-  $("detailBody").innerHTML = editMode ? editForm(t) : `<p class="detailIntro">${stateBadge(t)} <span class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${esc(t.responsable)}</span> ${toolLinks(t.ot, t.tot)} <button type="button" class="editStart" data-edit-start="${t.index}">Modifier cette ligne</button> <button type="button" class="editStart" data-pdg="${t.index}" title="Remplit le modèle PdG_Type à partir de la feuille CRU">Page de garde</button></p>
+  $("detailBody").innerHTML = editConfirm ? editConfirmPanel(t) : editMode ? editForm(t) : `<p class="detailIntro">${stateBadge(t)} <span class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${esc(t.responsable)}</span> ${toolLinks(t.ot, t.tot)} ${excelMode ? `<button type="button" class="editStart" data-edit-start="${t.index}">Modifier cette ligne</button>` : ""} <button type="button" class="editStart" data-pdg="${t.index}" title="Remplit le modèle PdG_Type à partir de la feuille CRU">Page de garde</button></p>
     <p id="pdgNote" hidden></p>
-    ${editPendingNote(t)}
+    ${excelMode ? "" : '<p class="muted detailEmpty">Lecture seule : pour modifier la DEM, ouvrez le tableau de bord dans le volet Excel.</p>'}
     ${t.libelle || t.reeLibelle ? `<p class="muted">${esc([t.libelle, t.reeLibelle].filter(Boolean).join(" — "))}</p>` : ""}
     ${milestoneTrack(t)}
     ${detailFields(t)}
@@ -187,7 +185,7 @@ function onClick(e) {
   const el = e.target.closest("button, [data-go]");
   if (!el || el.disabled) return;
   const d = el.dataset;
-  if (d.task !== undefined) { editMode = false; editError = ""; return detail(data.tasks[+d.task]); }
+  if (d.task !== undefined) { resetEdit(); return detail(data.tasks[+d.task]); }
   if (editAction(d)) return;
   if (pdgAction(d)) return;
   if (d.back !== undefined) return goBack();
@@ -301,7 +299,7 @@ function init() {
   $("reset").onclick = resetFilters;
   $("clear").onclick = closeWorkbook;
   $("closeDetail").onclick = () => $("detail").close();
-  $("detail").addEventListener("close", () => { delete $("detail").dataset.task; editMode = false; editError = ""; });
+  $("detail").addEventListener("close", () => { delete $("detail").dataset.task; resetEdit(); });
   $("pdfExport").onclick = exportPDF;
   $("pngExport").onclick = () => exportPNG();
   $("pngRhythm").onclick = () => exportPNG("rythme");

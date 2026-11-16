@@ -37,7 +37,7 @@ const parts = {
   XLSX_JS: xlsxJs,
   VENDOR_JS: vendorJs,
   PDF_FONTS: read("vendor", "pdf-fonts.js"),
-  APP_JS: appJs + `\n// ---- vba/AppliquerModifsDEM.bas ----\nconst VBA_MACRO = ${JSON.stringify(read("src", "vba", "AppliquerModifsDEM.bas"))};\n`,
+  APP_JS: appJs,
 };
 
 for (const [name, content] of Object.entries(parts)) {

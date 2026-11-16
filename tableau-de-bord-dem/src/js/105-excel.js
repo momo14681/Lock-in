@@ -211,14 +211,12 @@ async function applyExcelEdits(entries, t = null) {
   try { res = await writeEditsToExcel(entries); }
   catch (e) { res = { ok: false, message: `Écriture impossible : ${e.message || e}. Rien n’a été écrit.` }; }
   if (!res.ok) {
-    editError = res.message;
+    editError = res.message; editConfirm = null;
     $("message").innerHTML = `<div class="notice error">${esc(res.message)}</div>`;
     if (t) { editMode = true; detail(t); }
     return false;
   }
-  const done = new Set(entries.map((e) => e.id));
-  saveEdits(editList().filter((e) => !done.has(e.id)));
-  editError = ""; editMode = false;
+  resetEdit();
   // La relecture ferme la fiche : on la rouvre sur la ligne à jour.
   const taskId = t?.id, wasOpen = $("detail").open;
   await readFromExcel({ preserveView: true });

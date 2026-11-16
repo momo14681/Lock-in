@@ -1,45 +1,30 @@
 // =============================================================================
-// Saisie des mises à jour de la DEM depuis le tableau de bord.
-// Le tableau de bord ne modifie jamais le classeur : chaque saisie (fiche d'une TOT,
-// bouton « Modifier ») rejoint une liste mémorisée sur ce PC. La liste se relit dans
-// « Modifications à appliquer », puis s'exporte en fichier texte que la macro
-// AppliquerModifsDEM (module VBA téléchargeable depuis la même vue) applique dans la
-// DEM après contrôle : ligne retrouvée par feuille + affaire + REE + OT + TOT, et
-// valeur actuelle inchangée depuis la saisie (sinon la modification est écartée).
+// Saisie dans la DEM depuis le tableau de bord (volet Excel uniquement).
+// La fiche d'une TOT propose « Modifier cette ligne » et la frise des jalons.
+// Chaque saisie passe par un écran de confirmation, puis est écrite directement
+// dans la DEM ouverte (105-excel.js) : ligne retrouvée par affaire + REE + OT + TOT,
+// et cellule inchangée depuis la lecture, sinon rien n'est écrit.
+// Hors d'Excel (fichier HTML ouvert seul), le tableau de bord reste en lecture.
 // =============================================================================
 
-const EDITS_TAB = "edits";
 const EDIT_FIELDS = ["totPrete", "bpa", "ger", "bpd", "j0", "mc", "rdu", "regime", "observations"];
 const EDIT_CODES = {
   totPrete: ["P", "R", "Renseigné"], bpa: ["P", "R", "F"], ger: [...GER_PRODUCED_CODES, ...GER_SIGNED_CODES, "R"], bpd: ["P", "R"], j0: ["Non renseigné"],
 };
 const EDIT_DATES = new Set(["totPrete", "bpa", "bpd", "j0"]);
-const EDIT_FILE_HEAD = ["Feuille", "Ligne", "Cellule", "Champ", "Affaire", "REE", "OT", "TOT", "Ancienne valeur", "Nouvelle valeur", "Type", "Chargé", "Saisi le"];
 
-let editsCache = null, editsYear = "", editMode = false, editError = "";
+// editConfirm : saisies en attente de confirmation ; editDraft : valeurs tapées, pour revenir au formulaire.
+let editMode = false, editError = "", editConfirm = null, editDraft = null;
 
-function editsKey() {
-  return "dem-essais-modifications-" + activeDEM;
-}
-
-function editList() {
-  if (!editsCache || editsYear !== activeDEM) {
-    editsYear = activeDEM;
-    try { editsCache = JSON.parse(localStorage.getItem(editsKey()) || "[]") || []; } catch (e) { editsCache = []; }
-  }
-  return editsCache;
-}
-
-function saveEdits(list) {
-  editsCache = list;
-  try { localStorage.setItem(editsKey(), JSON.stringify(list)); } catch (e) { /* liste gardée pour cette session seulement */ }
+function resetEdit() {
+  editMode = false; editError = ""; editConfirm = null; editDraft = null;
 }
 
 function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Saisie → { type, value (fichier), label (affichage) } ou { error }.
+// Saisie → { type, value (écrite), label (affichage) } ou { error }.
 function parseEditValue(key, input) {
   // Les observations gardent leurs retours à la ligne (sinon une fiche non touchée paraîtrait modifiée).
   const v = key === "observations"
@@ -59,9 +44,20 @@ function parseEditValue(key, input) {
   return { type: "texte", value: v, label: v };
 }
 
+function editCell(t, key) {
+  return address(t, key).split(":")[0];
+}
+
+function makeEdit(t, key, parsed) {
+  return {
+    id: `${t.id}#${key}`, taskId: t.id, key, sheet: t.sheet, row: t.rowNumber, cell: editCell(t, key),
+    affaire: t.affaire, ree: t.ree, ot: t.orig?.ot ?? t.ot, tot: t.orig?.tot ?? t.tot, owner: t.responsable,
+    old: t.orig?.[key] ?? "", type: parsed.type, value: parsed.value, label: parsed.label, at: new Date().toISOString(),
+  };
+}
+
 // --- Frise des quatre jalons (fiche d'une TOT) ---------------------------------------
-// « Fait aujourd'hui » écrit la date du jour (TSR pour le GER/1N, qui ne prend pas de date) :
-// directement dans la DEM depuis Excel, sinon dans « Modifications à appliquer ».
+// « Fait aujourd'hui » propose la date du jour (TSR pour le GER/1N, qui ne prend pas de date).
 const MILESTONES = [["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER / 1N"], ["bpd", "BPD"]];
 
 function milestoneDone(t, key) {
@@ -70,193 +66,77 @@ function milestoneDone(t, key) {
 
 function milestoneTrack(t) {
   const steps = MILESTONES.map(([k, label]) => {
-    const done = milestoneDone(t, k), p = pendingEdit(t, k), value = String(t.raw[k] ?? "").trim();
-    const action = t.cancelled ? "" : p
-      ? `<small class="muted">en attente : ${esc(p.label || "vide")}</small>`
-      : done ? "" : `<button type="button" data-milestone="${k}">${k === "ger" ? "Réalisé (TSR)" : "Fait aujourd’hui"}</button>`;
+    const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim();
+    const action = excelMode && !t.cancelled && !done ? `<button type="button" data-milestone="${k}">${k === "ger" ? "Réalisé (TSR)" : "Fait aujourd’hui"}</button>` : "";
     return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }
 
-function makeEdit(t, key, parsed) {
-  return {
-    id: editId(t, key), taskId: t.id, key, sheet: t.sheet, row: t.rowNumber, cell: editCell(t, key),
-    affaire: t.affaire, ree: t.ree, ot: t.orig?.ot ?? t.ot, tot: t.orig?.tot ?? t.tot, owner: t.responsable,
-    old: t.orig?.[key] ?? "", type: parsed.type, value: parsed.value, label: parsed.label, at: new Date().toISOString(),
-  };
-}
-
 function milestoneToday(t, key) {
   const parsed = parseEditValue(key, key === "ger" ? "TSR" : formatDate(data.today));
   if (parsed.error) return;
-  const entry = makeEdit(t, key, parsed);
-  if (excelMode) { applyExcelEdits([entry], t); return; }
-  saveEdits([...editList().filter((e) => e.id !== entry.id), entry]);
-  render();
+  editConfirm = [makeEdit(t, key, parsed)];
   detail(t);
-  $("message").innerHTML = `<div class="notice">${esc(names[key])} : ${esc(parsed.label)} ajouté à « Modifications à appliquer ».</div>`;
 }
 
-function editCell(t, key) {
-  return address(t, key).split(":")[0];
-}
-
-function editId(t, key) {
-  return `${t.id}#${key}`;
-}
-
-function pendingEdit(t, key) {
-  return editList().find((e) => e.id === editId(t, key)) || null;
-}
-
-// État d'une modification face à la DEM chargée.
-function editState(e) {
-  const t = data?.tasks.find((x) => x.id === e.taskId);
-  if (!t) return { code: "missing", label: "TOT introuvable dans la DEM", tone: "bad", t: null, current: "" };
-  const current = t.orig?.[e.key] ?? "";
-  if (status(current) === status(e.label)) return { code: "done", label: "Déjà dans la DEM", tone: "good", t, current };
-  if (status(current) !== status(e.old)) return { code: "changed", label: "Cellule modifiée depuis la saisie", tone: "warn", t, current };
-  return { code: "todo", label: "À appliquer", tone: "info", t, current };
-}
-
-function editCount() {
-  return data ? editList().filter((e) => editState(e).code !== "done").length : editList().length;
-}
-
-// --- Fiche d'une TOT : formulaire de saisie -------------------------------------------
+// --- Formulaire « Modifier cette ligne » -----------------------------------------------
 
 function editForm(t) {
   const rows = EDIT_FIELDS.map((k) => {
-    const p = pendingEdit(t, k), current = t.orig?.[k] ?? "", codes = EDIT_CODES[k] || [];
+    const current = t.orig?.[k] ?? "", shown = editDraft?.[k] ?? current, codes = EDIT_CODES[k] || [];
     const options = [...(EDIT_DATES.has(k) ? [formatDate(data.today)] : []), ...codes].map((o) => `<option value="${esc(o)}"></option>`).join("");
     const input = k === "observations"
-      ? `<textarea data-edit-field="${k}" rows="2">${esc(p ? p.label : current)}</textarea>`
-      : `<input type="text" data-edit-field="${k}" value="${esc(p ? p.label : current)}" ${options ? `list="editList-${k}"` : ""} placeholder="${EDIT_DATES.has(k) ? "jj/mm/aaaa" : ""}${codes.length ? (EDIT_DATES.has(k) ? " ou " : "") + codes.join(", ") : ""}">${options ? `<datalist id="editList-${k}">${options}</datalist>` : ""}`;
+      ? `<textarea data-edit-field="${k}" rows="2">${esc(shown)}</textarea>`
+      : `<input type="text" data-edit-field="${k}" value="${esc(shown)}" ${options ? `list="editList-${k}"` : ""} placeholder="${EDIT_DATES.has(k) ? "jj/mm/aaaa" : ""}${codes.length ? (EDIT_DATES.has(k) ? " ou " : "") + codes.join(", ") : ""}">${options ? `<datalist id="editList-${k}">${options}</datalist>` : ""}`;
     return `<label class="editRow${k === "observations" ? " full" : ""}"><span>${names[k]} <span class="loc">${esc(editCell(t, k))}</span></span>${input}<small class="muted">Dans la DEM : ${esc(current || "vide")}</small></label>`;
   }).join("");
-  const intro = excelMode ? "Les valeurs modifiées sont écrites directement dans la DEM, si personne ne les a changées entre-temps."
-    : "Vos saisies rejoignent « Modifications à appliquer ». La DEM n’est modifiée qu’au passage de la macro.";
-  return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">${intro}</p></div>
+  return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">Les valeurs modifiées sont écrites dans la DEM après confirmation, si personne ne les a changées entre-temps.</p></div>
     ${editError ? `<div class="notice error">${esc(editError)}</div>` : ""}
     <div class="editGrid">${rows}</div>
-    <div class="editActions"><button type="button" class="accent" data-edit-save>${excelMode ? "Enregistrer dans la DEM" : "Ajouter aux modifications"}</button><button type="button" class="ghost" data-edit-cancel>Annuler</button></div>`;
+    <div class="editActions"><button type="button" class="accent" data-edit-save>Enregistrer…</button><button type="button" class="ghost" data-edit-cancel>Annuler</button></div>`;
 }
 
-function editPendingNote(t) {
-  const list = EDIT_FIELDS.map((k) => pendingEdit(t, k)).filter(Boolean);
-  if (!list.length) return "";
-  return `<div class="editPending"><strong>${plural(list.length, "modification")} en attente pour cette ligne</strong>
-    <ul>${list.map((e) => `<li>${esc(names[e.key])} : ${esc(e.old || "vide")} → <b>${esc(e.label || "vide")}</b></li>`).join("")}</ul></div>`;
-}
-
+// Lit le formulaire : rien n'est écrit ici, les champs modifiés partent en confirmation.
 function saveEditForm(t) {
-  const list = editList().slice(), errors = [];
-  let added = 0;
+  const entries = [], errors = [], draft = {};
   document.querySelectorAll("#detailBody [data-edit-field]").forEach((el) => {
-    const key = el.dataset.editField, current = t.orig?.[key] ?? "", id = editId(t, key);
+    const key = el.dataset.editField;
+    draft[key] = el.value;
     const parsed = parseEditValue(key, el.value);
     if (parsed.error) { errors.push(parsed.error); return; }
-    const i = list.findIndex((e) => e.id === id);
-    const same = status(parsed.label) === status(current);
-    if (same) { if (i >= 0) list.splice(i, 1); return; }
-    const entry = makeEdit(t, key, parsed);
-    if (i >= 0) list[i] = entry; else list.push(entry);
-    added++;
+    if (status(parsed.label) !== status(t.orig?.[key] ?? "")) entries.push(makeEdit(t, key, parsed));
   });
+  editDraft = draft;
   if (errors.length) { editError = errors.join(" "); detail(t); return; }
-  // Dans Excel : écriture directe des champs de cette ligne.
-  if (excelMode) { applyExcelEdits(list.filter((e) => e.taskId === t.id && !editList().includes(e)), t); return; }
+  if (!entries.length) { editError = "Aucune valeur modifiée."; detail(t); return; }
   editError = "";
-  editMode = false;
-  saveEdits(list);
-  render();
+  editConfirm = entries;
   detail(t);
-  if (added) $("message").innerHTML = `<div class="notice">${plural(added, "modification")} ajoutée${added > 1 ? "s" : ""} à « Modifications à appliquer ».</div>`;
 }
 
-// --- Vue « Modifications à appliquer » ------------------------------------------------
+// --- Confirmation avant écriture --------------------------------------------------------
 
-function viewEdits() {
-  const list = editList(), rows = list.map((e) => ({ e, s: editState(e) }));
-  const count = (c) => rows.filter((r) => r.s.code === c).length;
-  const todo = count("todo");
-  const dt = dataTable({
-    key: "edits", items: rows, paged: false, cls: "compact editsTable", free: true,
-    empty: "Aucune modification saisie. Ouvrez une TOT (clic sur une affaire ou un REE) puis « Modifier cette ligne ».",
-    columns: [
-      { label: "TOT", value: (r) => `${r.e.affaire} ${r.e.ree} ${r.e.ot} ${r.e.tot}` },
-      { label: "Champ", value: (r) => names[r.e.key], filter: true },
-      { label: "Dans la DEM", value: (r) => (r.s.t ? r.s.current : r.e.old) },
-      { label: "Nouvelle valeur", value: (r) => r.e.label },
-      { label: "État", value: (r) => r.s.label, filter: true },
-      { label: "Chargé", value: (r) => r.e.owner, filter: true },
-      { label: "", value: () => "" },
-    ],
-    row: ({ e, s }) => `<tr>
-      <td>${s.t ? `<button type="button" class="linkbutton" data-task="${s.t.index}">${esc(e.affaire || "Affaire manquante")} · REE ${esc(e.ree || "—")}</button>` : `<strong>${esc(e.affaire)} · REE ${esc(e.ree)}</strong>`}<small>TOT ${esc(e.ot)}-${esc(e.tot)} · ${esc(e.sheet)}!${esc(e.cell)}</small></td>
-      <td>${esc(names[e.key])}</td>
-      <td>${esc((s.t ? s.current : e.old) || "vide")}</td>
-      <td><b class="editNew">${esc(e.label || "vide")}</b></td>
-      <td>${badge(s.label, s.tone)}</td>
-      <td>${esc(e.owner)}</td>
-      <td><button type="button" class="ghost" data-edit-remove="${esc(e.id)}" title="Retirer cette modification">Retirer</button></td></tr>`,
-  });
-  const steps = excelMode ? `<ol class="editSteps">
-      <li>Dans Excel, la fiche d’une TOT écrit directement dans la DEM : cette liste ne garde que les saisies faites hors d’Excel.</li>
-      <li>« Écrire dans la DEM » les applique toutes, après contrôle de chaque cellule.</li>
-    </ol>` : `<ol class="editSteps">
-      <li>Ouvrez une TOT puis « Modifier cette ligne » : vos saisies s’ajoutent ici (mémorisées sur ce PC).</li>
-      <li>Relisez la liste, puis « Télécharger le fichier pour la DEM ».</li>
-      <li>Dans Excel (application de bureau), ouvrez la DEM et lancez la macro <b>AppliquerModifsDEM</b> : elle montre ce qui sera écrit, demande confirmation, puis produit un compte rendu.</li>
-    </ol>`;
-  $("view").innerHTML = `<div class="viewHead"><div><h2 class="viewTitle">Modifications à appliquer</h2>
-      <p class="muted">DEM ${esc(activeDEM)} · ${plural(list.length, "modification")} · ${fmt(todo)} à appliquer</p></div>
-      <div class="panelActions">
-        ${excelMode ? `<button type="button" class="accent" data-edits-write ${todo ? "" : "disabled"}>Écrire dans la DEM</button>`
-          : `<button type="button" class="accent" data-edits-export ${todo ? "" : "disabled"}>Télécharger le fichier pour la DEM</button>
-        <button type="button" data-edits-macro>Télécharger la macro Excel</button>`}
-      </div></div>
-    ${panel("Comment ça marche", steps)}
-    ${panel("Liste des modifications", dt.html, { actions: `${count("done") ? `<button type="button" class="ghost" data-edits-purge>Retirer les ${fmt(count("done"))} déjà dans la DEM</button>` : ""}${list.length ? '<button type="button" class="ghost" data-edits-clear>Tout effacer</button>' : ""}` })}`;
-  currentExport = () => downloadMatrix(["Feuille", "Cellule", "Affaire", "REE", "OT", "TOT", "Champ", "Dans la DEM", "Nouvelle valeur", "État", "Chargé"],
-    rows.map(({ e, s }) => [e.sheet, e.cell, e.affaire, e.ree, e.ot, e.tot, names[e.key], s.t ? s.current : e.old, e.label, s.label, e.owner]), `Modifications_DEM_${activeDEM}.csv`);
-}
-
-// Fichier lu par la macro : texte UTF-8, une modification par ligne, champs séparés par des tabulations.
-function exportEdits() {
-  const clean = (v) => String(v ?? "").replace(/\\/g, "\\\\").replace(/\t/g, " ").replace(/\r?\n/g, "\\n");
-  const list = editList().filter((e) => editState(e).code === "todo");
-  if (!list.length) return;
-  const now = new Date();
-  const lines = [
-    ["DEM_MODIFICATIONS", "1", activeDEM, data?.fileName || "", now.toISOString()].join("\t"),
-    EDIT_FILE_HEAD.join("\t"),
-    ...list.map((e) => [e.sheet, e.row, e.cell, names[e.key], e.affaire, e.ree, e.ot, e.tot, e.old, e.value, e.type, e.owner, e.at.slice(0, 10)].map(clean).join("\t")),
-  ];
-  const who = (mode === "ce" && me ? me : "coordo").replace(/[^\p{L}\p{N}_-]+/gu, "_");
-  const stamp = `${isoDate(now)}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
-  downloadBytes("﻿" + lines.join("\r\n") + "\r\n", "text/plain;charset=utf-8", `Modifications_DEM_${activeDEM}_${who}_${stamp}.txt`);
+function editConfirmPanel(t) {
+  const n = editConfirm.length;
+  return `<div class="editIntro"><strong>Écrire dans la DEM ?</strong>
+      <p class="muted">${esc(t.sheet)} · ligne ${t.rowNumber} · ${plural(n, "cellule")}</p></div>
+    <ul class="confirmList">${editConfirm.map((e) => `<li><span>${esc(names[e.key])} <span class="loc">${esc(e.cell)}</span></span>
+      <span class="confirmChange"><span class="muted">${esc(e.old || "vide")}</span> → <strong>${esc(e.label || "vide")}</strong></span></li>`).join("")}</ul>
+    <div class="editActions"><button type="button" class="accent" data-edit-confirm>Écrire dans la DEM</button><button type="button" class="ghost" data-edit-back>Annuler</button></div>`;
 }
 
 function editAction(d) {
-  if (d.editStart !== undefined) { editMode = true; editError = ""; return detail(data.tasks[+d.editStart]), true; }
-  if (d.editCancel !== undefined) { editMode = false; editError = ""; return detail(data.tasks[+$("detail").dataset.task]), true; }
-  if (d.milestone !== undefined) return milestoneToday(data.tasks[+$("detail").dataset.task], d.milestone), true;
-  if (d.editSave !== undefined) return saveEditForm(data.tasks[+$("detail").dataset.task]), true;
-  if (d.editRemove !== undefined) { saveEdits(editList().filter((e) => e.id !== d.editRemove)); render(); return true; }
-  if (d.editsPurge !== undefined) { saveEdits(editList().filter((e) => editState(e).code !== "done")); render(); return true; }
-  if (d.editsClear !== undefined) {
-    if (confirm("Effacer toutes les modifications saisies sur ce PC pour cette DEM ?")) { saveEdits([]); render(); }
-    return true;
-  }
-  if (d.editsExport !== undefined) return exportEdits(), true;
-  if (d.editsWrite !== undefined) return applyExcelEdits(editList().filter((e) => editState(e).code === "todo")), true;
-  if (d.editsMacro !== undefined) {
-    // L'éditeur VBA importe les .bas en Windows-1252 : le module n'utilise que des caractères Latin-1.
-    const src = VBA_MACRO.replace(/\r?\n/g, "\r\n");
-    downloadBytes(Uint8Array.from(src, (c) => c.charCodeAt(0) & 255), "text/plain", "AppliquerModifsDEM.bas");
-    return true;
+  const current = () => data.tasks[+$("detail").dataset.task];
+  if (d.editStart !== undefined) { resetEdit(); editMode = true; return detail(data.tasks[+d.editStart]), true; }
+  if (d.editCancel !== undefined) { resetEdit(); return detail(current()), true; }
+  if (d.editSave !== undefined) return saveEditForm(current()), true;
+  if (d.milestone !== undefined) return milestoneToday(current(), d.milestone), true;
+  if (d.editBack !== undefined) { editConfirm = null; return detail(current()), true; }
+  if (d.editConfirm !== undefined) {
+    const entries = editConfirm, t = current();
+    editConfirm = null;
+    return applyExcelEdits(entries, t), true;
   }
   return false;
 }

@@ -23,7 +23,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 | Mon pilotage | La feuille Pilotage de la DEM pour moi : Gel M0 passé, BPA faits, essais réalisés, BPD signés ; Gel M0 à passer et BPA à faire (court terme < 30 j, moyen terme 30 à 90 j, plus tard) ; avancement par tranche ; mes affaires et REE. Gel M0 = J0 − 70 j, ligne gelée quand MC, OT, TOT, RDU et Régime sont renseignés ; BPA fait = date ou P sur toutes les lignes du REE (un REE reste dans « BPA à faire » tant qu’une ligne n’a pas son BPA) ; à préparer par le chargé si titulaire EDF ou BPA en F. |
 | À corriger dans la DEM | Quelles cellules dois-je corriger ? |
 | Équipe | Où en est l'équipe ? (même contenu que l'écran d'équipe) |
-| *Mes listes…* | Mes TOT, mes documents P / R, **Modifications à appliquer** (voir plus bas) |
+| *Mes listes…* | Mes TOT, mes documents P / R |
 
 **Coordo essais**
 
@@ -33,7 +33,7 @@ sont repliés sous **Filtres**, les exports sous **Exporter**. Le fichier Excel 
 | Pilotage par tranche | Où en sont les tranches suivies (CS2M et CS4A par défaut, puces pour en ajouter) ? Côte à côte : préparation, réalisés, BPD signés, prépas en retard ; documents EAM / BPA / GER / BPD (P, R, % produits, % signés, comme la feuille Pilotage) ; avancement par semaine de J0 (par mois si la tranche dépasse 20 semaines) ; points à traiter et charge par chargé. Chaque nombre ouvre la liste limitée à la tranche. |
 | À corriger dans la DEM | Toutes les corrections, filtrables par chargé, priorité et type. |
 | Équipe | Avancement global, retards de préparation, documents. |
-| *Autres listes…* | **Modifications à appliquer** (voir plus bas), répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint, **Contrôle 1N / TSR** (export EAM IOP319 chargé ou glissé à part : indicateur Conforme / Non conforme si chaque TOT a un commentaire 1N et un TSR, PAR ou TAR ; puis comparaison avec la DEM, qui doit avoir la TOT en TSR dans GER/1N et le 1N fait, c’est-à-dire une date dans BPD ; BPD en P = 1N en cours ; une TOT à l’état PRÊT sans 1N ni TSR n’est pas encore réalisée et n’est pas signalée), **TOT par ECU** (feuille CRU : une ligne par TOT avec son dernier commentaire, compteurs et filtre par ECU, chargé repris de la DEM quand l'OT / TOT y figure) |
+| *Autres listes…* | Répartition par chargé, toutes les TOT, documents P / R, affectations SharePoint, **Contrôle 1N / TSR** (export EAM IOP319 chargé ou glissé à part : indicateur Conforme / Non conforme si chaque TOT a un commentaire 1N et un TSR, PAR ou TAR ; puis comparaison avec la DEM, qui doit avoir la TOT en TSR dans GER/1N et le 1N fait, c’est-à-dire une date dans BPD ; BPD en P = 1N en cours ; une TOT à l’état PRÊT sans 1N ni TSR n’est pas encore réalisée et n’est pas signalée), **TOT par ECU** (feuille CRU : une ligne par TOT avec son dernier commentaire, compteurs et filtre par ECU, chargé repris de la DEM quand l'OT / TOT y figure) |
 
 **Histogramme de charge :** unité *TOT par statut*, *REE TEM / AT* ou *REE* ; tri par
 charge **Total, AT, TEM** ou nom. Avec le tri AT, le segment AT est placé en premier et
@@ -41,24 +41,12 @@ la valeur AT affichée à côté du total. Cliquer sur un nom le retire du graph
 
 ## Saisir des modifications dans la DEM
 
-Le tableau de bord ne modifie jamais la DEM lui-même (fichier hors ligne, sans accès à
-Teams). La saisie se fait en deux temps :
-
-1. **Saisie** : dans la fiche d'une TOT, « Modifier cette ligne » permet de changer
-   TOT prête, BPA, GER/1N, BPD, J0, MC, RDU, Régime et Observations (dates au format
-   jj/mm/aaaa ou codes P, R, F, TSR, TAR…). Les saisies sont mémorisées sur le PC
-   (navigateur) et listées dans **Modifications à appliquer**, avec leur état :
-   à appliquer, déjà dans la DEM, la DEM a changé depuis la saisie, ligne introuvable.
-2. **Application** : « Télécharger le fichier pour la DEM » produit un fichier texte
-   (`Modifications_DEM_<année>_….txt`, UTF-8, tabulations). Dans Excel **bureau**, la DEM
-   ouverte, la macro `AppliquerModifsDEM` (« Télécharger la macro Excel », à importer une
-   fois par Alt+F11 › Fichier › Importer un fichier, dans PERSONAL.XLSB ou dans la DEM)
-   lit ce fichier, retrouve chaque ligne par Affaire / REE / OT / TOT (même si des lignes
-   ont été insérées), n'écrit que si la cellule contient encore l'ancienne valeur, montre
-   un aperçu et demande confirmation, puis ouvre un compte rendu. La DEM n'est pas
-   enregistrée par la macro : relire puis enregistrer.
-
-Source de la macro : `src/vba/AppliquerModifsDEM.bas` (embarquée dans le HTML au build).
+La saisie se fait uniquement dans le volet Excel (complément, voir `addin/README.md`) :
+dans la fiche d'une TOT, la frise des jalons (« Fait aujourd'hui ») ou « Modifier cette ligne »
+(TOT prête, BPA, GER/1N, BPD, J0, MC, RDU, Régime, Observations). Un écran de confirmation
+liste les cellules et leur nouvelle valeur ; après accord, elles sont écrites dans la DEM
+ouverte si la ligne (Affaire / REE / OT / TOT) et l'ancienne valeur n'ont pas changé.
+Le fichier HTML ouvert seul reste en lecture.
 
 ## Appli Power Apps
 
@@ -144,10 +132,9 @@ node build.mjs     # Node 18+ ; produit Tableau_de_bord_DEM.html
 | `src/js/076-view-iop319.js` | Contrôle 1N / TSR (export EAM IOP319) |
 | `src/js/077-view-pilotage.js` | Pilotage par tranche |
 | `src/js/078-view-ce-pilotage.js` | Mon pilotage (chargé d’essais) |
-| `src/js/079-view-edits.js` | Saisie des modifications et fichier pour la macro |
+| `src/js/079-view-edits.js` | Saisie dans la DEM (volet Excel) et confirmation avant écriture |
 | `src/js/08-view-team.js` | Avancement équipe et image PNG |
 | `src/js/09-exports.js` | Exports CSV et PDF |
 | `src/js/10-source.js` | Chargement, fichier mémorisé, DEM 2026 / 2027 |
 | `src/js/11-main.js` | Rendu, navigation, démarrage |
-| `src/vba/AppliquerModifsDEM.bas` | Macro Excel qui applique les modifications dans la DEM |
 | `vendor/` | SheetJS, pdf-lib, fontkit, police Work Sans (repris de la V1.3) |
