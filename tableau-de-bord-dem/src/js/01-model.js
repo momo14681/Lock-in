@@ -7,7 +7,7 @@
 const TECHNICAL_SHEETS = ["CS0M", "CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4A", "CS4M", "CS8M", "CS9M"];
 const IPE_SHEET = "Suivi modification IPE";
 const GER_PRODUCED_CODES = ["P", "PS", "TS"];
-const GER_SIGNED_CODES = ["PSR", "TSR", "TAR"]; // TAR : total avec réserve
+const GER_SIGNED_CODES = ["PSR", "TSR", "PAR", "TAR"]; // posés par le coordo ; PAR / TAR : partiel / total avec réserve
 const DAY_MS = 86_400_000;
 const UNASSIGNED = "Non affecté";
 
@@ -90,13 +90,14 @@ function parseExcelDate(value) {
 }
 
 // Équivalences de saisie : « Prêt » en TOT prête vaut P ; une date en GER/1N vaut TSR.
-// « Renseigné » en TOT prête vaut une TOT prête faite, comme une date (totPreteDone).
+// Circuit de validation : le chargé passe la cellule en P, le coordo valide (PRÊT en TOT prête,
+// date du jour en BPA / BPD, PSR / TSR / PAR en GER/1N) ou renvoie en R.
+// « PRÊT » et « Renseigné » en TOT prête valent une TOT prête faite, comme une date.
 function totPreteDone(value) {
-  return Boolean(parseExcelDate(value)) || /^RENSEIGNEE?S?$/.test(status(value));
+  return Boolean(parseExcelDate(value)) || /^(RENSEIGNEE?S?|PRETE?S?)$/.test(status(value));
 }
 
 function normalizeStatus(key, value) {
-  if (key === "totPrete" && /^PRETE?S?$/.test(status(value))) return "P";
   if (key === "ger" && parseExcelDate(value)) return "TSR";
   return value;
 }

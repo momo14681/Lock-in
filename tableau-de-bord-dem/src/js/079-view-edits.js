@@ -9,7 +9,7 @@
 
 const EDIT_FIELDS = ["totPrete", "bpa", "ger", "bpd", "j0", "mc", "rdu", "regime", "observations"];
 const EDIT_CODES = {
-  totPrete: ["P", "R", "Renseigné"], bpa: ["P", "R", "F"], ger: [...GER_PRODUCED_CODES, ...GER_SIGNED_CODES, "R"], bpd: ["P", "R"], j0: ["Non renseigné"],
+  totPrete: ["P", "R", "PRÊT", "Renseigné"], bpa: ["P", "R", "F"], ger: [...GER_PRODUCED_CODES, ...GER_SIGNED_CODES, "R"], bpd: ["P", "R"], j0: ["Non renseigné"],
 };
 const EDIT_DATES = new Set(["totPrete", "bpa", "bpd", "j0"]);
 
@@ -57,24 +57,37 @@ function makeEdit(t, key, parsed) {
 }
 
 // --- Frise des quatre jalons (fiche d'une TOT) ---------------------------------------
-// « Fait aujourd'hui » propose la date du jour (TSR pour le GER/1N, qui ne prend pas de date).
+// Actions rapides selon le profil :
+// - chargé d'essais : « Passer en P » quand la cellule est vide ou en R ;
+// - coordo : sur une cellule en P, valider (PRÊT pour la TOT prête, date du jour pour BPA / BPD,
+//   PSR / TSR / PAR pour le GER/1N) ou renvoyer en R.
 const MILESTONES = [["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER / 1N"], ["bpd", "BPD"]];
 
 function milestoneDone(t, key) {
-  return key === "totPrete" ? t.totReady : t[key + "State"] === "done";
+  return key === "totPrete" ? totPreteDone(t.raw[key]) : t[key + "State"] === "done";
+}
+
+function milestoneActions(t, key) {
+  if (!excelMode || t.cancelled || milestoneDone(t, key)) return [];
+  const s = status(t.raw[key]);
+  if (mode === "ce") return !s || s === "R" ? [["P", "Passer en P"]] : [];
+  const waiting = s === "P" || (key === "ger" && GER_PRODUCED_CODES.includes(s));
+  if (!waiting) return [];
+  const validate = key === "totPrete" ? [["PRÊT", "PRÊT"]] : key === "ger" ? [["PSR", "PSR"], ["TSR", "TSR"], ["PAR", "PAR"]] : [[formatDate(data.today), "Valider aujourd’hui"]];
+  return [...validate, ["R", "R"]];
 }
 
 function milestoneTrack(t) {
   const steps = MILESTONES.map(([k, label]) => {
     const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim();
-    const action = excelMode && !t.cancelled && !done ? `<button type="button" data-milestone="${k}">${k === "ger" ? "Réalisé (TSR)" : "Fait aujourd’hui"}</button>` : "";
-    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
+    const actions = milestoneActions(t, k).map(([v, text]) => `<button type="button" data-milestone="${k}" data-value="${esc(v)}"${v === "R" ? ' title="À reprendre par le chargé d’essais"' : ""}>${esc(text)}</button>`).join("");
+    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${actions ? `<span class="msActions">${actions}</span>` : ""}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }
 
-function milestoneToday(t, key) {
-  const parsed = parseEditValue(key, key === "ger" ? "TSR" : formatDate(data.today));
+function milestoneSet(t, key, value) {
+  const parsed = parseEditValue(key, value);
   if (parsed.error) return;
   editConfirm = [makeEdit(t, key, parsed)];
   detail(t);
@@ -131,7 +144,7 @@ function editAction(d) {
   if (d.editStart !== undefined) { resetEdit(); editMode = true; return detail(data.tasks[+d.editStart]), true; }
   if (d.editCancel !== undefined) { resetEdit(); return detail(current()), true; }
   if (d.editSave !== undefined) return saveEditForm(current()), true;
-  if (d.milestone !== undefined) return milestoneToday(current(), d.milestone), true;
+  if (d.milestone !== undefined) return milestoneSet(current(), d.milestone, d.value), true;
   if (d.editBack !== undefined) { editConfirm = null; return detail(current()), true; }
   if (d.editConfirm !== undefined) {
     const entries = editConfirm, t = current();

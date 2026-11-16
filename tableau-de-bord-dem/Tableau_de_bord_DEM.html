@@ -612,7 +612,8 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .msTrack .msLabel { font-size: 12.5px; color: var(--muted); }
 .msTrack strong { font-weight: 400; font-size: 15px; overflow-wrap: anywhere; }
 .msTrack li:not(.done):not(.started) strong { color: var(--muted); }
-.msTrack button { margin-top: 4px; padding: 4px 8px; font-size: 12.5px; align-self: flex-start; }
+.msActions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.msTrack button { padding: 4px 8px; font-size: 12.5px; }
 @media (max-width: 1100px) { .kpis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis-3 { grid-template-columns: minmax(0, 1fr); } .msTrack { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* Volet Excel étroit : en-tête réduit à l'essentiel, toujours sur une ligne. */
@@ -884,7 +885,7 @@ const PDF_REGULAR="AAEAAAAQAQAABAAAR0RFRl13W2UAAX0AAAAAzkdQT1OjCWUNAAF90AABSOhHU
 const TECHNICAL_SHEETS = ["CS0M", "CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4A", "CS4M", "CS8M", "CS9M"];
 const IPE_SHEET = "Suivi modification IPE";
 const GER_PRODUCED_CODES = ["P", "PS", "TS"];
-const GER_SIGNED_CODES = ["PSR", "TSR", "TAR"]; // TAR : total avec réserve
+const GER_SIGNED_CODES = ["PSR", "TSR", "PAR", "TAR"]; // posés par le coordo ; PAR / TAR : partiel / total avec réserve
 const DAY_MS = 86_400_000;
 const UNASSIGNED = "Non affecté";
 
@@ -967,13 +968,14 @@ function parseExcelDate(value) {
 }
 
 // Équivalences de saisie : « Prêt » en TOT prête vaut P ; une date en GER/1N vaut TSR.
-// « Renseigné » en TOT prête vaut une TOT prête faite, comme une date (totPreteDone).
+// Circuit de validation : le chargé passe la cellule en P, le coordo valide (PRÊT en TOT prête,
+// date du jour en BPA / BPD, PSR / TSR / PAR en GER/1N) ou renvoie en R.
+// « PRÊT » et « Renseigné » en TOT prête valent une TOT prête faite, comme une date.
 function totPreteDone(value) {
-  return Boolean(parseExcelDate(value)) || /^RENSEIGNEE?S?$/.test(status(value));
+  return Boolean(parseExcelDate(value)) || /^(RENSEIGNEE?S?|PRETE?S?)$/.test(status(value));
 }
 
 function normalizeStatus(key, value) {
-  if (key === "totPrete" && /^PRETE?S?$/.test(status(value))) return "P";
   if (key === "ger" && parseExcelDate(value)) return "TSR";
   return value;
 }
@@ -3481,7 +3483,7 @@ function cePilotageReportSections() {
 
 const EDIT_FIELDS = ["totPrete", "bpa", "ger", "bpd", "j0", "mc", "rdu", "regime", "observations"];
 const EDIT_CODES = {
-  totPrete: ["P", "R", "Renseigné"], bpa: ["P", "R", "F"], ger: [...GER_PRODUCED_CODES, ...GER_SIGNED_CODES, "R"], bpd: ["P", "R"], j0: ["Non renseigné"],
+  totPrete: ["P", "R", "PRÊT", "Renseigné"], bpa: ["P", "R", "F"], ger: [...GER_PRODUCED_CODES, ...GER_SIGNED_CODES, "R"], bpd: ["P", "R"], j0: ["Non renseigné"],
 };
 const EDIT_DATES = new Set(["totPrete", "bpa", "bpd", "j0"]);
 
@@ -3529,24 +3531,37 @@ function makeEdit(t, key, parsed) {
 }
 
 // --- Frise des quatre jalons (fiche d'une TOT) ---------------------------------------
-// « Fait aujourd'hui » propose la date du jour (TSR pour le GER/1N, qui ne prend pas de date).
+// Actions rapides selon le profil :
+// - chargé d'essais : « Passer en P » quand la cellule est vide ou en R ;
+// - coordo : sur une cellule en P, valider (PRÊT pour la TOT prête, date du jour pour BPA / BPD,
+//   PSR / TSR / PAR pour le GER/1N) ou renvoyer en R.
 const MILESTONES = [["totPrete", "TOT prête"], ["bpa", "BPA"], ["ger", "GER / 1N"], ["bpd", "BPD"]];
 
 function milestoneDone(t, key) {
-  return key === "totPrete" ? t.totReady : t[key + "State"] === "done";
+  return key === "totPrete" ? totPreteDone(t.raw[key]) : t[key + "State"] === "done";
+}
+
+function milestoneActions(t, key) {
+  if (!excelMode || t.cancelled || milestoneDone(t, key)) return [];
+  const s = status(t.raw[key]);
+  if (mode === "ce") return !s || s === "R" ? [["P", "Passer en P"]] : [];
+  const waiting = s === "P" || (key === "ger" && GER_PRODUCED_CODES.includes(s));
+  if (!waiting) return [];
+  const validate = key === "totPrete" ? [["PRÊT", "PRÊT"]] : key === "ger" ? [["PSR", "PSR"], ["TSR", "TSR"], ["PAR", "PAR"]] : [[formatDate(data.today), "Valider aujourd’hui"]];
+  return [...validate, ["R", "R"]];
 }
 
 function milestoneTrack(t) {
   const steps = MILESTONES.map(([k, label]) => {
     const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim();
-    const action = excelMode && !t.cancelled && !done ? `<button type="button" data-milestone="${k}">${k === "ger" ? "Réalisé (TSR)" : "Fait aujourd’hui"}</button>` : "";
-    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
+    const actions = milestoneActions(t, k).map(([v, text]) => `<button type="button" data-milestone="${k}" data-value="${esc(v)}"${v === "R" ? ' title="À reprendre par le chargé d’essais"' : ""}>${esc(text)}</button>`).join("");
+    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}</span><strong>${esc(value || "à faire")}</strong>${actions ? `<span class="msActions">${actions}</span>` : ""}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }
 
-function milestoneToday(t, key) {
-  const parsed = parseEditValue(key, key === "ger" ? "TSR" : formatDate(data.today));
+function milestoneSet(t, key, value) {
+  const parsed = parseEditValue(key, value);
   if (parsed.error) return;
   editConfirm = [makeEdit(t, key, parsed)];
   detail(t);
@@ -3603,7 +3618,7 @@ function editAction(d) {
   if (d.editStart !== undefined) { resetEdit(); editMode = true; return detail(data.tasks[+d.editStart]), true; }
   if (d.editCancel !== undefined) { resetEdit(); return detail(current()), true; }
   if (d.editSave !== undefined) return saveEditForm(current()), true;
-  if (d.milestone !== undefined) return milestoneToday(current(), d.milestone), true;
+  if (d.milestone !== undefined) return milestoneSet(current(), d.milestone, d.value), true;
   if (d.editBack !== undefined) { editConfirm = null; return detail(current()), true; }
   if (d.editConfirm !== undefined) {
     const entries = editConfirm, t = current();
@@ -5071,6 +5086,8 @@ async function writeEditsToExcel(entries) {
 // Enregistre les saisies, relit la DEM et affiche le résultat.
 async function applyExcelEdits(entries, t = null) {
   $("message").innerHTML = '<div class="notice">Écriture dans la DEM…</div>';
+  // Fiche figée pendant l'écriture et la relecture : pas de deuxième saisie sur des valeurs périmées.
+  if ($("detail").open) $("detailBody").innerHTML = '<p class="muted">Écriture dans la DEM…</p>';
   let res;
   try { res = await writeEditsToExcel(entries); }
   catch (e) { res = { ok: false, message: `Écriture impossible : ${e.message || e}. Rien n’a été écrit.` }; }
@@ -5714,7 +5731,8 @@ function init() {
   $("reset").onclick = resetFilters;
   $("clear").onclick = closeWorkbook;
   $("closeDetail").onclick = () => $("detail").close();
-  $("detail").addEventListener("close", () => { delete $("detail").dataset.task; resetEdit(); });
+  // L'évènement arrive en différé : ignoré si la fiche a été rouverte entre-temps (après une écriture).
+  $("detail").addEventListener("close", () => { if ($("detail").open) return; delete $("detail").dataset.task; resetEdit(); });
   $("pdfExport").onclick = exportPDF;
   $("pngExport").onclick = () => exportPNG();
   $("pngRhythm").onclick = () => exportPNG("rythme");

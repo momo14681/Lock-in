@@ -299,7 +299,8 @@ function init() {
   $("reset").onclick = resetFilters;
   $("clear").onclick = closeWorkbook;
   $("closeDetail").onclick = () => $("detail").close();
-  $("detail").addEventListener("close", () => { delete $("detail").dataset.task; resetEdit(); });
+  // L'évènement arrive en différé : ignoré si la fiche a été rouverte entre-temps (après une écriture).
+  $("detail").addEventListener("close", () => { if ($("detail").open) return; delete $("detail").dataset.task; resetEdit(); });
   $("pdfExport").onclick = exportPDF;
   $("pngExport").onclick = () => exportPNG();
   $("pngRhythm").onclick = () => exportPNG("rythme");

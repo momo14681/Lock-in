@@ -207,6 +207,8 @@ async function writeEditsToExcel(entries) {
 // Enregistre les saisies, relit la DEM et affiche le résultat.
 async function applyExcelEdits(entries, t = null) {
   $("message").innerHTML = '<div class="notice">Écriture dans la DEM…</div>';
+  // Fiche figée pendant l'écriture et la relecture : pas de deuxième saisie sur des valeurs périmées.
+  if ($("detail").open) $("detailBody").innerHTML = '<p class="muted">Écriture dans la DEM…</p>';
   let res;
   try { res = await writeEditsToExcel(entries); }
   catch (e) { res = { ok: false, message: `Écriture impossible : ${e.message || e}. Rien n’a été écrit.` }; }
