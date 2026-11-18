@@ -127,29 +127,49 @@ function pctTone(v, n) {
   return r >= 0.8 ? "good" : r >= 0.5 ? "warn" : "bad";
 }
 
-function trancheTable(ts) {
+// Indicateurs par tranche, calculés comme la feuille Pilotage de la DEM :
+// - TOT = chaînes OT-TOT uniques (lignes sans OT ou TOT ignorées, doublons comptés une fois) ;
+// - REE = couples affaire-REE des lignes portant un REE, un OT ou un TOT ;
+// - une TOT compte dans une colonne si l'une de ses lignes remplit la condition ;
+// - EAM : attente validation = P, TOT prête = date, PRÊT ou Renseigné ; % prêt = TOT prêtes / TOT ;
+// - BPA / BPD (valeur du REE) : attente signature = P, attente correction = R, signés = date ;
+//   % produit = (P + R + signés) / TOT, % signés = signés / TOT.
+function trancheStats(lines) {
+  const active = lines.filter((t) => t.active);
+  const keys = (pred) => new Set(active.filter(pred).map((t) => t.totKey)).size;
+  // États lus à la construction de la ligne (valeur brute : date Excel, P, R…).
+  const doc = (k) => {
+    const st = (t) => t[k + "State"];
+    const P = keys((t) => st(t) === "ready"), R = keys((t) => st(t) === "rework"), done = keys((t) => st(t) === "done");
+    return { P, R, done, produced: keys((t) => ["ready", "rework", "done"].includes(st(t))) };
+  };
+  return {
+    n: keys(() => true),
+    ree: new Set(lines.filter((t) => t.reeLine).map((t) => `${status(t.affaire)}-${status(t.ree)}`)).size,
+    waiting: keys((t) => status(t.totPrete) === "P"),
+    ready: keys((t) => t.totValidated),
+    bpa: doc("bpa"), bpd: doc("bpd"),
+  };
+}
+
+const PCT_FR_2 = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function trancheTable() {
+  const lines = filteredLinesBy(ownerScope());
   const codes = sheetProjectCodes();
-  // Ordre de la feuille Pilotage ; les feuilles sans TOT ne sont pas affichées.
+  // Ordre de la feuille Pilotage ; les feuilles sans ligne ne sont pas affichées.
   const order = ["CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4M", "CS4A", "CS0M", "CS8M", "CS9M"];
-  const sheets = [...order, ...TECHNICAL_SHEETS.filter((s) => !order.includes(s))].filter((s) => data.availableSheets.includes(s) && ts.some((t) => t.sheet === s));
+  const sheets = [...order, ...TECHNICAL_SHEETS.filter((s) => !order.includes(s))].filter((s) => data.availableSheets.includes(s) && lines.some((t) => t.sheet === s));
   const label = (s) => `${s.slice(0, 3)} ${s.endsWith("A") ? "TEA" : "TEM"}`.replace(/^CS([089]) TEM$/, "CS$1");
-  const cell = (v, n) => `<td class="num pctCell tone-${pctTone(v, n)}">${n ? pct(v, n) : "—"}</td>`;
-  const rows = sheets.map((s) => {
-    const sts = ts.filter((t) => t.sheet === s), n = sts.length;
-    const ready = sts.filter((t) => t.totReady).length;
-    const bpa = milestoneStats(sts, "bpaState"), bpd = milestoneStats(sts, "bpdState");
-    return { s, n, ree: dossierCount(sts), ready, bpa, bpd };
-  });
-  const total = (() => {
-    const bpa = milestoneStats(ts, "bpaState"), bpd = milestoneStats(ts, "bpdState");
-    return { n: ts.length, ree: dossierCount(ts), ready: ts.filter((t) => t.totReady).length, bpa, bpd };
-  })();
+  const cell = (v, n) => `<td class="num pctCell tone-${pctTone(v, n)}" data-tip="${fmt(v)} / ${fmt(n)} TOT" tabindex="0">${n ? PCT_FR_2.format(100 * v / n) + " %" : "—"}</td>`;
+  const rows = sheets.map((s) => ({ s, ...trancheStats(lines.filter((t) => t.sheet === s)) }));
+  const total = trancheStats(lines.filter((t) => sheets.includes(t.sheet)));
   const line = (r, head) => `<tr class="${head ? "totalRow" : ""}"><td>${head || `<button type="button" class="linkbutton" data-sheet-only="${esc(r.s)}">${esc(label(r.s))}</button><small>${esc(codes.get(r.s) || r.s)}</small>`}</td>
     <td class="num">${fmt(r.ree)}</td><td class="num">${fmt(r.n)}</td>
     ${cell(r.ready, r.n)}${cell(r.bpa.produced, r.n)}${cell(r.bpa.done, r.n)}${cell(r.bpd.produced, r.n)}${cell(r.bpd.done, r.n)}</tr>`;
   return `<div class="tableWrap free"><table class="trancheTable">
     <thead><tr><th rowspan="2">Tranche</th><th rowspan="2" class="num">REE</th><th rowspan="2" class="num">TOT</th><th class="num">EAM</th><th colspan="2" class="groupHead">BPA</th><th colspan="2" class="groupHead">BPD</th></tr>
-    <tr><th class="num">% TOT prête</th><th class="num">% produits</th><th class="num">% signés</th><th class="num">% produits</th><th class="num">% signés</th></tr></thead>
+    <tr><th class="num">% prêt</th><th class="num">% produits</th><th class="num">% signés</th><th class="num">% produits</th><th class="num">% signés</th></tr></thead>
     <tbody>${rows.map((r) => line(r)).join("")}${line(total, "Total")}</tbody></table></div>
     ${legend([["≥ 80 %", "var(--good-bg)"], ["50 à 80 %", "var(--warn-bg)"], ["< 50 %", "var(--bad-bg)"]])}`;
 }
@@ -180,7 +200,7 @@ function viewOverview() {
       <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
     <div class="kpis kpis-4">${kpis}</div>
     ${coordoTodo(ts)}
-    ${panel("BPA / BPD par tranche", trancheTable(ts), { cls: "tranchePanel", actions: `<button type="button" data-go="tab:pilotage">Pilotage par tranche ›</button>` })}
+    ${panel("BPA / BPD par tranche", trancheTable(), { cls: "tranchePanel", actions: `<button type="button" data-go="tab:pilotage">Pilotage par tranche ›</button>` })}
     <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { cls: "chargePanel" })}${signalPanel()}</div>`;
   currentExport = () => downloadMatrix(["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"],
     chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]), "Charge_par_charge.csv");

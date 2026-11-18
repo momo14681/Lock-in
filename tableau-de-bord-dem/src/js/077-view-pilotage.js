@@ -18,7 +18,7 @@ function trancheLabel(s) {
 }
 
 function pilotAvailable() {
-  const live = new Set(data.tasks.filter((t) => !t.cancelled).map((t) => t.sheet));
+  const live = new Set(data.tasks.filter((t) => t.counted).map((t) => t.sheet));
   return [...PILOT_ORDER, ...TECHNICAL_SHEETS.filter((s) => !PILOT_ORDER.includes(s))].filter((s) => live.has(s));
 }
 
@@ -45,7 +45,7 @@ function togglePilotSheet(sheet) {
 // TOT d'une tranche : le choix de tranches de la vue remplace le filtre « feuilles ».
 function pilotTasks(sheet) {
   const owner = mode === "coordo" ? $("owner").value : "";
-  return data.tasks.filter((t) => !t.cancelled && t.sheet === sheet && (!owner || t.responsable === owner));
+  return data.tasks.filter((t) => t.counted && t.sheet === sheet && (!owner || t.responsable === owner));
 }
 
 // Chaîne documentaire, comme la feuille Pilotage : en attente de validation (P),

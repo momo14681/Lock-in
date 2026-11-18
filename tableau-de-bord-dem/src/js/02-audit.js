@@ -48,7 +48,7 @@ function audit(tasks) {
     if (t.rduMissing && (t.totReady || t.bpdSigned || String(t.ger || "").trim() !== "")) add(t, "RDU manquant", ["rdu"], "Le RDU n’est pas renseigné. À ajouter si possible.");
     // Prioritaire seulement si l'activité (J0) est encore à venir ; sinon simple mise à jour de la DEM.
     if (t.overdue) add(t, "Prépa en retard (échéance dépassée)", [...t.missingPrerequisites, ...(!t.totReady ? ["totPrete"] : []), "j0"], `Préparation attendue le ${t.prepDueLabel}. Compléter les informations ou confirmer le planning.`, t.j0 && data?.today && t.j0 >= data.today ? "Prioritaire" : "À compléter");
-    if (t.duplicate) add(t, "Doublon possible", ["affaire", "ree", "ot", "tot"], "Même combinaison feuille, affaire, REE, OT et TOT sur plusieurs lignes. Vérifier avant toute suppression.");
+    if (t.duplicate) add(t, "TOT en double", ["ot", "tot"], `Même OT-TOT sur ${t.sameTot.length} lignes de la feuille (lignes ${t.sameTot.map((x) => x.rowNumber).join(", ")}) : comptée une seule fois. Vérifier avant toute suppression.`);
 
     for (const key of ["j0", "totPrete", "bpa", "ger", "bpd"]) {
       if (formatProblem(t, key)) {

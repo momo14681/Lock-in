@@ -94,7 +94,7 @@ function parseExcelDate(value) {
 // date du jour en BPA / BPD, PSR / TSR / PAR en GER/1N) ou renvoie en R.
 // « PRÊT » et « Renseigné » en TOT prête valent une TOT prête faite, comme une date.
 function totPreteDone(value) {
-  return Boolean(parseExcelDate(value)) || /^(RENSEIGNEE?S?|PRETE?S?)$/.test(status(value));
+  return Boolean(parseExcelDate(value)) || /^(RENSEIGN|PRET)/.test(status(value));
 }
 
 function normalizeStatus(key, value) {
@@ -141,7 +141,12 @@ function rowHasBusinessData(values) {
   return [values.affaire, values.ree, values.entreprise, values.responsable, values.chargeAffaires, values.mc, values.ot, values.tot, values.rdu, values.responsableSharePoint, values.totPrete, values.j0, values.regime, values.bpa, values.ger, values.bpd].some(isNonBlank);
 }
 
-function buildTask(sheet, rowNumber, row, today) {
+// Colonnes recopiées depuis la ligne qui porte le REE quand elles sont vides sur une ligne
+// de TOT du même REE (cellules fusionnées ou laissées vides) : A (affaire), D (REE), Q (BPA), S (BPD).
+// Même règle que la feuille Pilotage (RECHERCHE sur la dernière ligne où le REE est rempli).
+const REE_INHERITED = [0, 3, 16, 18];
+
+function buildTask(sheet, rowNumber, row, today, head = null) {
   const values = {
     affaire: compact(row[0]),
     libelle: compact(row[1]),
@@ -167,6 +172,12 @@ function buildTask(sheet, rowNumber, row, today) {
   };
 
   if (!rowHasBusinessData(values) || ![values.affaire, values.ree, values.ot, values.tot].some(isNonBlank)) return null;
+  // Ligne comptée pour les REE de la feuille Pilotage : REE, OT ou TOT renseigné sur la ligne elle-même.
+  const reeLine = [values.ree, values.ot, values.tot].some(isNonBlank);
+  if (head && head !== row) {
+    const keys = { 0: "affaire", 3: "ree", 16: "bpa", 18: "bpd" };
+    for (const i of REE_INHERITED) if (!isNonBlank(values[keys[i]])) values[keys[i]] = compact(head[i]);
+  }
 
   // « Non renseigné dans SharePoint » (recopié depuis SharePoint) vaut « Non affecté ».
   // Chargé d’essais lu en colonne M (« Chargé d’essai SP »), sans distinguer prestataires et internes.
@@ -186,7 +197,7 @@ function buildTask(sheet, rowNumber, row, today) {
   const gerState = classifyMilestone(values.ger, GER_SIGNED_CODES, false, GER_PRODUCED_CODES);
   const bpdState = classifyMilestone(values.bpd);
   const cancelled = [values.mc, values.ot, values.tot, values.rdu, values.totPrete, values.regime, values.bpa, values.ger, values.bpd]
-    .some((value) => /^ANNULEE?S?$/.test(status(value)));
+    .some((value) => /ANNUL/.test(status(value)));
   // Une TOT marquée prête n'est jamais « en retard » : il reste seulement des informations à compléter.
   const overdue = !cancelled && !prepComplete && !totReady && Boolean(prepDue && prepDue < today);
   const dueSoon = !cancelled && !prepComplete && !totReady && Boolean(prepDue && prepDue >= today && prepDue <= addDays(today, 30));
@@ -232,6 +243,8 @@ function buildTask(sheet, rowNumber, row, today) {
     gerState,
     bpdState,
     cancelled,
+    reeLine,
+    totValidated: totPreteDone(values.totPrete),
     overdue,
     dueSoon,
     prepState,
@@ -256,6 +269,10 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
     if (!sheet) continue;
     await pauseForPaint();
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+    // Ligne qui porte le REE de chaque ligne : dernière ligne au-dessus (ou elle-même) où D est rempli.
+    const heads = [];
+    let lastHead = null;
+    for (let r = 0; r < rows.length; r++) { if (isNonBlank(compact(rows[r]?.[3]))) lastHead = rows[r]; heads[r] = lastHead; }
     // Les cellules fusionnées portent la valeur de leur coin supérieur gauche.
     for (const merge of sheet["!merges"] || []) {
       const value = rows[merge.s.r]?.[merge.s.c];
@@ -264,7 +281,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
       }
     }
     for (let index = 1; index < rows.length; index += 1) {
-      const task = buildTask(sheetName, index + 1, rows[index], today);
+      const task = buildTask(sheetName, index + 1, rows[index], today, heads[index]);
       if (task) tasks.push(task);
     }
   }
@@ -322,6 +339,33 @@ function produced(t, key) {
   return field === "ger"
     ? GER_PRODUCED_CODES.includes(code) || GER_SIGNED_CODES.includes(code) || code === "R"
     : code === "P" || code === "R" || t[key] === "done";
+}
+
+// --- Une TOT = une chaîne OT-TOT unique dans la feuille -------------------------------
+// Zéros de tête ignorés (0718238-14 = 718238-14), comme VALEUR() dans la feuille Pilotage.
+// Une ligne sans OT ou sans TOT (ou TOT = 0) n'est pas une TOT ; une TOT sur plusieurs lignes compte une fois.
+function totPart(v) {
+  const s = text(v).trim();
+  if (!s) return "";
+  const n = Number(s.replace(",", "."));
+  return Number.isFinite(n) ? String(n) : status(s);
+}
+
+function applyTotKeys(tasks) {
+  const first = new Map(), count = new Map();
+  for (const t of tasks) {
+    const ot = totPart(t.ot), tot = totPart(t.tot);
+    t.totKey = `${t.sheet}|${ot}-${tot}`;
+    t.active = !t.cancelled && !!ot && !!tot && tot !== "0";
+    if (!t.active) { t.counted = false; continue; }
+    count.set(t.totKey, (count.get(t.totKey) || 0) + 1);
+    if (!first.has(t.totKey)) first.set(t.totKey, t);
+    t.counted = first.get(t.totKey) === t;
+  }
+  for (const t of tasks) {
+    t.duplicate = t.active && count.get(t.totKey) > 1;
+    t.sameTot = t.duplicate ? tasks.filter((x) => x.active && x.totKey === t.totKey) : null;
+  }
 }
 
 // Un REE dont le BPD est daté est archivé : ses TOT comptent aussi comme réalisées.

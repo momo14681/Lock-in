@@ -107,9 +107,8 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
         if (!pattern.test(v)) throw Error(`Structure non reconnue : ${name}!${col}1 (« ${v} »). Le tableau de bord attend le modèle DEM actuel.`);
       }
     }
-    const liveCounts = new Map();
-    for (const t of result.tasks.filter((x) => !x.cancelled)) liveCounts.set(t.id, (liveCounts.get(t.id) || 0) + 1);
-    result.tasks.forEach((t, i) => { t.duplicate = !t.cancelled && (liveCounts.get(t.id) || 0) > 1; t.index = i; });
+    applyTotKeys(result.tasks);
+    result.tasks.forEach((t, i) => { t.index = i; });
     await pauseForPaint();
     result.cru = readCRU(wb.Sheets[CRU_SHEET]);
     result.pdg = readPdgSource(wb.Sheets[CRU_SHEET]);
@@ -133,7 +132,7 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
     if ($("detail").open) $("detail").close();
     $("workspace").classList.remove("hidden");
     $("drop").classList.add("hidden");
-    $("source").textContent = `${file.name} · ${fmt(data.tasks.filter((t) => !t.cancelled).length)} TOT hors annulées · ${data.availableSheets.length} feuilles · importé le ${formatFrenchDateTime(data.analyzedAt)}${file.lastModified ? ` · copie enregistrée le ${formatFrenchDateTime(new Date(file.lastModified))}` : " · lu dans Excel"}.`;
+    $("source").textContent = `${file.name} · ${fmt(data.tasks.filter((t) => t.counted).length)} TOT hors annulées · ${data.availableSheets.length} feuilles · importé le ${formatFrenchDateTime(data.analyzedAt)}${file.lastModified ? ` · copie enregistrée le ${formatFrenchDateTime(new Date(file.lastModified))}` : " · lu dans Excel"}.`;
     $("message").innerHTML = data.missingSheets.length ? `<div class="notice">Import partiel : feuilles absentes ${esc(data.missingSheets.join(", "))}. Les indicateurs couvrent uniquement les feuilles présentes.</div>` : "";
     render();
     return true;

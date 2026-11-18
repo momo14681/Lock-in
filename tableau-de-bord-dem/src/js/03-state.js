@@ -120,6 +120,13 @@ function searchMatches(t, q) {
 function filteredBy(owner) {
   if (!data) return [];
   const q = $("search").value.trim().toLowerCase();
+  return filteredLinesBy(owner, q).filter((t) => t.counted);
+}
+
+// Toutes les lignes non annulées du périmètre, y compris celles qui ne sont pas des TOT comptées
+// (TOT en double, ligne de REE sans OT ou TOT) : pour les contrôles et le décompte des REE.
+function filteredLinesBy(owner, q = $("search").value.trim().toLowerCase()) {
+  if (!data) return [];
   return data.tasks.filter((t) => !t.cancelled && sheetMatches(t.sheet) && (!owner || t.responsable === owner) && searchMatches(t, q));
 }
 
@@ -130,7 +137,7 @@ function filtered() {
 // Signalements actifs d'un chargé (ou de tous), indépendamment de l'onglet affiché.
 function activeIssueCount(owner) {
   if (!data?.audit || (mode === "ce" && !owner)) return 0;
-  const pool = new Set(filteredBy(owner));
+  const pool = new Set(filteredLinesBy(owner));
   return data.audit.filter((i) => pool.has(i.t) && !ignoredIssues.has(issueId(i))).length;
 }
 

@@ -44,7 +44,7 @@ function render() {
   if (!allowed.includes(tab)) tab = tabByMode[mode] = TABS[mode][0].id;
   visible = filtered();
   data.audit = audit(data.tasks.filter((t) => !t.cancelled));
-  const inScope = new Set(visible);
+  const inScope = new Set(filteredLinesBy(ownerScope()));
   allIssues = data.audit.filter((i) => inScope.has(i.t));
   issues = allIssues.filter((i) => !ignoredIssues.has(issueId(i)));
   currentExport = null;

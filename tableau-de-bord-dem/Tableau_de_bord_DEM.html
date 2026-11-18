@@ -982,7 +982,7 @@ function parseExcelDate(value) {
 // date du jour en BPA / BPD, PSR / TSR / PAR en GER/1N) ou renvoie en R.
 // « PRÊT » et « Renseigné » en TOT prête valent une TOT prête faite, comme une date.
 function totPreteDone(value) {
-  return Boolean(parseExcelDate(value)) || /^(RENSEIGNEE?S?|PRETE?S?)$/.test(status(value));
+  return Boolean(parseExcelDate(value)) || /^(RENSEIGN|PRET)/.test(status(value));
 }
 
 function normalizeStatus(key, value) {
@@ -1029,7 +1029,12 @@ function rowHasBusinessData(values) {
   return [values.affaire, values.ree, values.entreprise, values.responsable, values.chargeAffaires, values.mc, values.ot, values.tot, values.rdu, values.responsableSharePoint, values.totPrete, values.j0, values.regime, values.bpa, values.ger, values.bpd].some(isNonBlank);
 }
 
-function buildTask(sheet, rowNumber, row, today) {
+// Colonnes recopiées depuis la ligne qui porte le REE quand elles sont vides sur une ligne
+// de TOT du même REE (cellules fusionnées ou laissées vides) : A (affaire), D (REE), Q (BPA), S (BPD).
+// Même règle que la feuille Pilotage (RECHERCHE sur la dernière ligne où le REE est rempli).
+const REE_INHERITED = [0, 3, 16, 18];
+
+function buildTask(sheet, rowNumber, row, today, head = null) {
   const values = {
     affaire: compact(row[0]),
     libelle: compact(row[1]),
@@ -1055,6 +1060,12 @@ function buildTask(sheet, rowNumber, row, today) {
   };
 
   if (!rowHasBusinessData(values) || ![values.affaire, values.ree, values.ot, values.tot].some(isNonBlank)) return null;
+  // Ligne comptée pour les REE de la feuille Pilotage : REE, OT ou TOT renseigné sur la ligne elle-même.
+  const reeLine = [values.ree, values.ot, values.tot].some(isNonBlank);
+  if (head && head !== row) {
+    const keys = { 0: "affaire", 3: "ree", 16: "bpa", 18: "bpd" };
+    for (const i of REE_INHERITED) if (!isNonBlank(values[keys[i]])) values[keys[i]] = compact(head[i]);
+  }
 
   // « Non renseigné dans SharePoint » (recopié depuis SharePoint) vaut « Non affecté ».
   // Chargé d’essais lu en colonne M (« Chargé d’essai SP »), sans distinguer prestataires et internes.
@@ -1074,7 +1085,7 @@ function buildTask(sheet, rowNumber, row, today) {
   const gerState = classifyMilestone(values.ger, GER_SIGNED_CODES, false, GER_PRODUCED_CODES);
   const bpdState = classifyMilestone(values.bpd);
   const cancelled = [values.mc, values.ot, values.tot, values.rdu, values.totPrete, values.regime, values.bpa, values.ger, values.bpd]
-    .some((value) => /^ANNULEE?S?$/.test(status(value)));
+    .some((value) => /ANNUL/.test(status(value)));
   // Une TOT marquée prête n'est jamais « en retard » : il reste seulement des informations à compléter.
   const overdue = !cancelled && !prepComplete && !totReady && Boolean(prepDue && prepDue < today);
   const dueSoon = !cancelled && !prepComplete && !totReady && Boolean(prepDue && prepDue >= today && prepDue <= addDays(today, 30));
@@ -1120,6 +1131,8 @@ function buildTask(sheet, rowNumber, row, today) {
     gerState,
     bpdState,
     cancelled,
+    reeLine,
+    totValidated: totPreteDone(values.totPrete),
     overdue,
     dueSoon,
     prepState,
@@ -1144,6 +1157,10 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
     if (!sheet) continue;
     await pauseForPaint();
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+    // Ligne qui porte le REE de chaque ligne : dernière ligne au-dessus (ou elle-même) où D est rempli.
+    const heads = [];
+    let lastHead = null;
+    for (let r = 0; r < rows.length; r++) { if (isNonBlank(compact(rows[r]?.[3]))) lastHead = rows[r]; heads[r] = lastHead; }
     // Les cellules fusionnées portent la valeur de leur coin supérieur gauche.
     for (const merge of sheet["!merges"] || []) {
       const value = rows[merge.s.r]?.[merge.s.c];
@@ -1152,7 +1169,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
       }
     }
     for (let index = 1; index < rows.length; index += 1) {
-      const task = buildTask(sheetName, index + 1, rows[index], today);
+      const task = buildTask(sheetName, index + 1, rows[index], today, heads[index]);
       if (task) tasks.push(task);
     }
   }
@@ -1210,6 +1227,33 @@ function produced(t, key) {
   return field === "ger"
     ? GER_PRODUCED_CODES.includes(code) || GER_SIGNED_CODES.includes(code) || code === "R"
     : code === "P" || code === "R" || t[key] === "done";
+}
+
+// --- Une TOT = une chaîne OT-TOT unique dans la feuille -------------------------------
+// Zéros de tête ignorés (0718238-14 = 718238-14), comme VALEUR() dans la feuille Pilotage.
+// Une ligne sans OT ou sans TOT (ou TOT = 0) n'est pas une TOT ; une TOT sur plusieurs lignes compte une fois.
+function totPart(v) {
+  const s = text(v).trim();
+  if (!s) return "";
+  const n = Number(s.replace(",", "."));
+  return Number.isFinite(n) ? String(n) : status(s);
+}
+
+function applyTotKeys(tasks) {
+  const first = new Map(), count = new Map();
+  for (const t of tasks) {
+    const ot = totPart(t.ot), tot = totPart(t.tot);
+    t.totKey = `${t.sheet}|${ot}-${tot}`;
+    t.active = !t.cancelled && !!ot && !!tot && tot !== "0";
+    if (!t.active) { t.counted = false; continue; }
+    count.set(t.totKey, (count.get(t.totKey) || 0) + 1);
+    if (!first.has(t.totKey)) first.set(t.totKey, t);
+    t.counted = first.get(t.totKey) === t;
+  }
+  for (const t of tasks) {
+    t.duplicate = t.active && count.get(t.totKey) > 1;
+    t.sameTot = t.duplicate ? tasks.filter((x) => x.active && x.totKey === t.totKey) : null;
+  }
 }
 
 // Un REE dont le BPD est daté est archivé : ses TOT comptent aussi comme réalisées.
@@ -1359,7 +1403,7 @@ function audit(tasks) {
     if (t.rduMissing && (t.totReady || t.bpdSigned || String(t.ger || "").trim() !== "")) add(t, "RDU manquant", ["rdu"], "Le RDU n’est pas renseigné. À ajouter si possible.");
     // Prioritaire seulement si l'activité (J0) est encore à venir ; sinon simple mise à jour de la DEM.
     if (t.overdue) add(t, "Prépa en retard (échéance dépassée)", [...t.missingPrerequisites, ...(!t.totReady ? ["totPrete"] : []), "j0"], `Préparation attendue le ${t.prepDueLabel}. Compléter les informations ou confirmer le planning.`, t.j0 && data?.today && t.j0 >= data.today ? "Prioritaire" : "À compléter");
-    if (t.duplicate) add(t, "Doublon possible", ["affaire", "ree", "ot", "tot"], "Même combinaison feuille, affaire, REE, OT et TOT sur plusieurs lignes. Vérifier avant toute suppression.");
+    if (t.duplicate) add(t, "TOT en double", ["ot", "tot"], `Même OT-TOT sur ${t.sameTot.length} lignes de la feuille (lignes ${t.sameTot.map((x) => x.rowNumber).join(", ")}) : comptée une seule fois. Vérifier avant toute suppression.`);
 
     for (const key of ["j0", "totPrete", "bpa", "ger", "bpd"]) {
       if (formatProblem(t, key)) {
@@ -1511,6 +1555,13 @@ function searchMatches(t, q) {
 function filteredBy(owner) {
   if (!data) return [];
   const q = $("search").value.trim().toLowerCase();
+  return filteredLinesBy(owner, q).filter((t) => t.counted);
+}
+
+// Toutes les lignes non annulées du périmètre, y compris celles qui ne sont pas des TOT comptées
+// (TOT en double, ligne de REE sans OT ou TOT) : pour les contrôles et le décompte des REE.
+function filteredLinesBy(owner, q = $("search").value.trim().toLowerCase()) {
+  if (!data) return [];
   return data.tasks.filter((t) => !t.cancelled && sheetMatches(t.sheet) && (!owner || t.responsable === owner) && searchMatches(t, q));
 }
 
@@ -1521,7 +1572,7 @@ function filtered() {
 // Signalements actifs d'un chargé (ou de tous), indépendamment de l'onglet affiché.
 function activeIssueCount(owner) {
   if (!data?.audit || (mode === "ce" && !owner)) return 0;
-  const pool = new Set(filteredBy(owner));
+  const pool = new Set(filteredLinesBy(owner));
   return data.audit.filter((i) => pool.has(i.t) && !ignoredIssues.has(issueId(i))).length;
 }
 
@@ -2336,29 +2387,49 @@ function pctTone(v, n) {
   return r >= 0.8 ? "good" : r >= 0.5 ? "warn" : "bad";
 }
 
-function trancheTable(ts) {
+// Indicateurs par tranche, calculés comme la feuille Pilotage de la DEM :
+// - TOT = chaînes OT-TOT uniques (lignes sans OT ou TOT ignorées, doublons comptés une fois) ;
+// - REE = couples affaire-REE des lignes portant un REE, un OT ou un TOT ;
+// - une TOT compte dans une colonne si l'une de ses lignes remplit la condition ;
+// - EAM : attente validation = P, TOT prête = date, PRÊT ou Renseigné ; % prêt = TOT prêtes / TOT ;
+// - BPA / BPD (valeur du REE) : attente signature = P, attente correction = R, signés = date ;
+//   % produit = (P + R + signés) / TOT, % signés = signés / TOT.
+function trancheStats(lines) {
+  const active = lines.filter((t) => t.active);
+  const keys = (pred) => new Set(active.filter(pred).map((t) => t.totKey)).size;
+  // États lus à la construction de la ligne (valeur brute : date Excel, P, R…).
+  const doc = (k) => {
+    const st = (t) => t[k + "State"];
+    const P = keys((t) => st(t) === "ready"), R = keys((t) => st(t) === "rework"), done = keys((t) => st(t) === "done");
+    return { P, R, done, produced: keys((t) => ["ready", "rework", "done"].includes(st(t))) };
+  };
+  return {
+    n: keys(() => true),
+    ree: new Set(lines.filter((t) => t.reeLine).map((t) => `${status(t.affaire)}-${status(t.ree)}`)).size,
+    waiting: keys((t) => status(t.totPrete) === "P"),
+    ready: keys((t) => t.totValidated),
+    bpa: doc("bpa"), bpd: doc("bpd"),
+  };
+}
+
+const PCT_FR_2 = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function trancheTable() {
+  const lines = filteredLinesBy(ownerScope());
   const codes = sheetProjectCodes();
-  // Ordre de la feuille Pilotage ; les feuilles sans TOT ne sont pas affichées.
+  // Ordre de la feuille Pilotage ; les feuilles sans ligne ne sont pas affichées.
   const order = ["CS1M", "CS1A", "CS2M", "CS2A", "CS3M", "CS3A", "CS4M", "CS4A", "CS0M", "CS8M", "CS9M"];
-  const sheets = [...order, ...TECHNICAL_SHEETS.filter((s) => !order.includes(s))].filter((s) => data.availableSheets.includes(s) && ts.some((t) => t.sheet === s));
+  const sheets = [...order, ...TECHNICAL_SHEETS.filter((s) => !order.includes(s))].filter((s) => data.availableSheets.includes(s) && lines.some((t) => t.sheet === s));
   const label = (s) => `${s.slice(0, 3)} ${s.endsWith("A") ? "TEA" : "TEM"}`.replace(/^CS([089]) TEM$/, "CS$1");
-  const cell = (v, n) => `<td class="num pctCell tone-${pctTone(v, n)}">${n ? pct(v, n) : "—"}</td>`;
-  const rows = sheets.map((s) => {
-    const sts = ts.filter((t) => t.sheet === s), n = sts.length;
-    const ready = sts.filter((t) => t.totReady).length;
-    const bpa = milestoneStats(sts, "bpaState"), bpd = milestoneStats(sts, "bpdState");
-    return { s, n, ree: dossierCount(sts), ready, bpa, bpd };
-  });
-  const total = (() => {
-    const bpa = milestoneStats(ts, "bpaState"), bpd = milestoneStats(ts, "bpdState");
-    return { n: ts.length, ree: dossierCount(ts), ready: ts.filter((t) => t.totReady).length, bpa, bpd };
-  })();
+  const cell = (v, n) => `<td class="num pctCell tone-${pctTone(v, n)}" data-tip="${fmt(v)} / ${fmt(n)} TOT" tabindex="0">${n ? PCT_FR_2.format(100 * v / n) + " %" : "—"}</td>`;
+  const rows = sheets.map((s) => ({ s, ...trancheStats(lines.filter((t) => t.sheet === s)) }));
+  const total = trancheStats(lines.filter((t) => sheets.includes(t.sheet)));
   const line = (r, head) => `<tr class="${head ? "totalRow" : ""}"><td>${head || `<button type="button" class="linkbutton" data-sheet-only="${esc(r.s)}">${esc(label(r.s))}</button><small>${esc(codes.get(r.s) || r.s)}</small>`}</td>
     <td class="num">${fmt(r.ree)}</td><td class="num">${fmt(r.n)}</td>
     ${cell(r.ready, r.n)}${cell(r.bpa.produced, r.n)}${cell(r.bpa.done, r.n)}${cell(r.bpd.produced, r.n)}${cell(r.bpd.done, r.n)}</tr>`;
   return `<div class="tableWrap free"><table class="trancheTable">
     <thead><tr><th rowspan="2">Tranche</th><th rowspan="2" class="num">REE</th><th rowspan="2" class="num">TOT</th><th class="num">EAM</th><th colspan="2" class="groupHead">BPA</th><th colspan="2" class="groupHead">BPD</th></tr>
-    <tr><th class="num">% TOT prête</th><th class="num">% produits</th><th class="num">% signés</th><th class="num">% produits</th><th class="num">% signés</th></tr></thead>
+    <tr><th class="num">% prêt</th><th class="num">% produits</th><th class="num">% signés</th><th class="num">% produits</th><th class="num">% signés</th></tr></thead>
     <tbody>${rows.map((r) => line(r)).join("")}${line(total, "Total")}</tbody></table></div>
     ${legend([["≥ 80 %", "var(--good-bg)"], ["50 à 80 %", "var(--warn-bg)"], ["< 50 %", "var(--bad-bg)"]])}`;
 }
@@ -2389,7 +2460,7 @@ function viewOverview() {
       <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
     <div class="kpis kpis-4">${kpis}</div>
     ${coordoTodo(ts)}
-    ${panel("BPA / BPD par tranche", trancheTable(ts), { cls: "tranchePanel", actions: `<button type="button" data-go="tab:pilotage">Pilotage par tranche ›</button>` })}
+    ${panel("BPA / BPD par tranche", trancheTable(), { cls: "tranchePanel", actions: `<button type="button" data-go="tab:pilotage">Pilotage par tranche ›</button>` })}
     <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { cls: "chargePanel" })}${signalPanel()}</div>`;
   currentExport = () => downloadMatrix(["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"],
     chargeGroups().map((g) => [g.name, ...g.segments.map((s) => s.value), g.total, g.AT, g.TEM]), "Charge_par_charge.csv");
@@ -3009,7 +3080,7 @@ function trancheLabel(s) {
 }
 
 function pilotAvailable() {
-  const live = new Set(data.tasks.filter((t) => !t.cancelled).map((t) => t.sheet));
+  const live = new Set(data.tasks.filter((t) => t.counted).map((t) => t.sheet));
   return [...PILOT_ORDER, ...TECHNICAL_SHEETS.filter((s) => !PILOT_ORDER.includes(s))].filter((s) => live.has(s));
 }
 
@@ -3036,7 +3107,7 @@ function togglePilotSheet(sheet) {
 // TOT d'une tranche : le choix de tranches de la vue remplace le filtre « feuilles ».
 function pilotTasks(sheet) {
   const owner = mode === "coordo" ? $("owner").value : "";
-  return data.tasks.filter((t) => !t.cancelled && t.sheet === sheet && (!owner || t.responsable === owner));
+  return data.tasks.filter((t) => t.counted && t.sheet === sheet && (!owner || t.responsable === owner));
 }
 
 // Chaîne documentaire, comme la feuille Pilotage : en attente de validation (P),
@@ -4498,9 +4569,8 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
         if (!pattern.test(v)) throw Error(`Structure non reconnue : ${name}!${col}1 (« ${v} »). Le tableau de bord attend le modèle DEM actuel.`);
       }
     }
-    const liveCounts = new Map();
-    for (const t of result.tasks.filter((x) => !x.cancelled)) liveCounts.set(t.id, (liveCounts.get(t.id) || 0) + 1);
-    result.tasks.forEach((t, i) => { t.duplicate = !t.cancelled && (liveCounts.get(t.id) || 0) > 1; t.index = i; });
+    applyTotKeys(result.tasks);
+    result.tasks.forEach((t, i) => { t.index = i; });
     await pauseForPaint();
     result.cru = readCRU(wb.Sheets[CRU_SHEET]);
     result.pdg = readPdgSource(wb.Sheets[CRU_SHEET]);
@@ -4524,7 +4594,7 @@ async function loadFrom(readWb, file, { preserveView = false, resetIgnored = tru
     if ($("detail").open) $("detail").close();
     $("workspace").classList.remove("hidden");
     $("drop").classList.add("hidden");
-    $("source").textContent = `${file.name} · ${fmt(data.tasks.filter((t) => !t.cancelled).length)} TOT hors annulées · ${data.availableSheets.length} feuilles · importé le ${formatFrenchDateTime(data.analyzedAt)}${file.lastModified ? ` · copie enregistrée le ${formatFrenchDateTime(new Date(file.lastModified))}` : " · lu dans Excel"}.`;
+    $("source").textContent = `${file.name} · ${fmt(data.tasks.filter((t) => t.counted).length)} TOT hors annulées · ${data.availableSheets.length} feuilles · importé le ${formatFrenchDateTime(data.analyzedAt)}${file.lastModified ? ` · copie enregistrée le ${formatFrenchDateTime(new Date(file.lastModified))}` : " · lu dans Excel"}.`;
     $("message").innerHTML = data.missingSheets.length ? `<div class="notice">Import partiel : feuilles absentes ${esc(data.missingSheets.join(", "))}. Les indicateurs couvrent uniquement les feuilles présentes.</div>` : "";
     render();
     return true;
@@ -5541,7 +5611,7 @@ function render() {
   if (!allowed.includes(tab)) tab = tabByMode[mode] = TABS[mode][0].id;
   visible = filtered();
   data.audit = audit(data.tasks.filter((t) => !t.cancelled));
-  const inScope = new Set(visible);
+  const inScope = new Set(filteredLinesBy(ownerScope()));
   allIssues = data.audit.filter((i) => inScope.has(i.t));
   issues = allIssues.filter((i) => !ignoredIssues.has(issueId(i)));
   currentExport = null;
