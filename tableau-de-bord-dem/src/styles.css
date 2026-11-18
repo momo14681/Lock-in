@@ -637,3 +637,16 @@ tr.totalRow td { border-top: 2px solid var(--line); color: var(--ink); }
 .brand > div { min-width: 0; }
 @media (max-width: 400px) { .brand svg { display: none; } .headerSub { font-size: 11.5px; } }
 .msTrack .msLabel small { font-size: 11.5px; color: var(--muted); margin-left: 2px; }
+
+/* Idée / bug */
+.headerIcon { display: inline-flex; align-items: center; justify-content: center; padding: 6px 8px; }
+.headerIcon svg { width: 18px; height: 18px; }
+dialog.feedbackDialog { width: min(520px, 94vw); }
+.feedbackDialog textarea { display: block; width: 100%; box-sizing: border-box; margin: 12px 0; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); resize: vertical; }
+.feedbackDialog textarea:focus { outline: 2px solid var(--info-ink); outline-offset: -1px; }
+.feedbackActions { display: flex; gap: 8px; flex-wrap: wrap; }
+a.button { display: inline-flex; align-items: center; text-decoration: none; }
+a.button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+a.button.primary:hover { background: var(--primary-hover); }
+a.button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+.feedbackNote { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); min-height: 1em; }
