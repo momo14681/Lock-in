@@ -61,6 +61,7 @@ function render() {
   $("view").querySelectorAll("tbody tr:not(.subRow)").forEach((tr) => {
     if (tr.querySelector("[data-expand], [data-task], [data-group], [data-owner-tasks], [data-go]")) tr.classList.add("rowLink");
   });
+  renderActiveFilters();
   restoreTableFocus();
   positionColMenus();
 }
@@ -196,6 +197,7 @@ function onClick(e) {
     if (SETTABLE[key]) { SETTABLE[key](d.set.slice(cut + 1)); page = 1; render(); }
     return;
   }
+  if (d.clearFilter !== undefined) { clearFilter(d.clearFilter); return; }
   if (d.ignore !== undefined) {
     e.stopPropagation();
     if (ignoredIssues.has(d.ignore)) ignoredIssues.delete(d.ignore); else ignoredIssues.add(d.ignore);

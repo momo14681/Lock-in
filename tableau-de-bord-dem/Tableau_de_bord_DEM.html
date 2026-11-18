@@ -667,6 +667,27 @@ a.button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 .msTrack li.alertField { border-top-color: var(--bad) !important; background: var(--bad-bg); }
 .editRow.alertField input, .editRow.alertField textarea { border-color: var(--bad); background: var(--bad-bg); }
 .editRow.alertField > span { color: var(--bad-ink); }
+
+/* Barre d'onglets colorée (lisibilité) */
+.tabBar { background: var(--primary); border-bottom: 0; border-radius: 12px; padding: 6px 10px 0; }
+.tabs button { color: rgba(255, 255, 255, .88); }
+.tabs button:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.tabs button.active { background: var(--bg); color: var(--ink); border-bottom-color: var(--orange); }
+.tabs button .count { background: rgba(255, 255, 255, .22); color: #fff; }
+.moreTabs { color: #fff; }
+.moreTabs option { color: var(--ink); }
+.moreTabs.active { background: var(--bg); color: var(--ink); border-color: var(--bg); }
+.tabBar .toolbar { padding-bottom: 6px; }
+/* Filtres actifs */
+.activeFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: -10px 0 18px; padding: 8px 12px; background: #FFEDE5; border: 1px solid #FFC9B0; border-radius: 10px; }
+.activeFilters[hidden] { display: none; }
+.activeFiltersLabel { font-size: 13px; color: #9A3412; margin-right: 2px; }
+.filterChip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 11px; font-size: 13px; border-radius: 999px; background: var(--surface); border-color: #FE5815; color: var(--ink); }
+.filterChip span { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #FE5815; color: #fff; font-size: 13px; line-height: 1; }
+.filterChip:hover { background: #fff5f0; }
+.filterClearAll { padding: 4px 10px; font-size: 13px; background: transparent; border-color: transparent; color: #9A3412; text-decoration: underline; }
+@media print { .activeFilters { display: none !important; } }
+.tabs .moreTabs { width: auto; min-width: 0; max-width: 190px; padding-right: 26px; }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -832,6 +853,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       </div>
     </div>
 
+    <div id="activeFilters" class="activeFilters" hidden></div>
     <div id="view"></div>
     <span id="source" hidden></span>
   </section>
@@ -5692,6 +5714,53 @@ $("feedbackCopy").onclick = async () => {
   $("feedbackNote").textContent = `Message copié. Colle-le dans un mail à ${FEEDBACK_TO}.`;
 };
 
+// ---- 108-active-filters.js ----
+// Filtres actifs : bandeau sous les onglets, chaque filtre avec sa croix, et « Tout effacer ».
+// Un clic dans un tableau (tranche, chargé, affaire) peut poser un filtre : il reste visible ici.
+function defaultJ0Years() {
+  return [+activeDEM];
+}
+
+function activeFilterChips() {
+  const chips = [];
+  for (const s of selectedSheets) chips.push({ label: `Feuille ${s}`, clear: `sheet:${s}` });
+  const years = [...selectedJ0Years].sort();
+  if (years.join() !== defaultJ0Years().join()) chips.push({ label: `J0 ${years.length ? years.join(", ") : "toutes années"}`, clear: "j0" });
+  if (mode === "coordo" && $("owner").value) chips.push({ label: `Chargé : ${$("owner").value}`, clear: "owner" });
+  if (tab === "tasks" && taskScope) chips.push({ label: `Affaire ${taskScope.affaire || "manquante"}${taskScope.kind === "dossiers" ? " / REE " + taskScope.ree : ""}`, clear: "scope" });
+  for (const b of $("view").querySelectorAll("[data-table-reset]")) {
+    const st = tableState[b.dataset.tableReset];
+    if (!st) continue;
+    const values = Object.values(st.filters || {}).flat();
+    const parts = [...(st.search ? [`« ${st.search} »`] : []), ...values.slice(0, 2), ...(values.length > 2 ? [`+${values.length - 2}`] : [])];
+    chips.push({ label: `Tableau : ${parts.join(", ")}`, clear: `table:${b.dataset.tableReset}` });
+  }
+  return chips;
+}
+
+function renderActiveFilters() {
+  const chips = activeFilterChips(), box = $("activeFilters");
+  box.hidden = !chips.length;
+  box.innerHTML = chips.length
+    ? `<span class="activeFiltersLabel">Filtré par</span>${chips.map((c) => `<button type="button" class="filterChip" data-clear-filter="${esc(c.clear)}" title="Retirer ce filtre">${esc(c.label)}<span aria-hidden="true">×</span></button>`).join("")}${chips.length > 1 ? '<button type="button" class="filterClearAll" data-clear-filter="all">Tout effacer</button>' : ""}`
+    : "";
+}
+
+function clearFilter(spec) {
+  const cut = spec.indexOf(":"), kind = cut < 0 ? spec : spec.slice(0, cut), arg = cut < 0 ? "" : spec.slice(cut + 1);
+  if (kind === "sheet") selectedSheets.delete(arg);
+  if (kind === "j0" || kind === "all") { selectedJ0Years.clear(); defaultJ0Years().forEach((y) => selectedJ0Years.add(y)); updateJ0YearButtons(); }
+  if (kind === "owner") $("owner").value = "";
+  if (kind === "scope") taskScope = null;
+  if (kind === "table") tableState[arg] = { search: "", open: false, filters: {} };
+  if (kind === "all") {
+    for (const b of $("view").querySelectorAll("[data-table-reset]")) tableState[b.dataset.tableReset] = { search: "", open: false, filters: {} };
+    return resetFilters();
+  }
+  page = 1;
+  render();
+}
+
 // ---- 11-main.js ----
 // =============================================================================
 // Rendu, navigation et liaisons d'évènements.
@@ -5756,6 +5825,7 @@ function render() {
   $("view").querySelectorAll("tbody tr:not(.subRow)").forEach((tr) => {
     if (tr.querySelector("[data-expand], [data-task], [data-group], [data-owner-tasks], [data-go]")) tr.classList.add("rowLink");
   });
+  renderActiveFilters();
   restoreTableFocus();
   positionColMenus();
 }
@@ -5891,6 +5961,7 @@ function onClick(e) {
     if (SETTABLE[key]) { SETTABLE[key](d.set.slice(cut + 1)); page = 1; render(); }
     return;
   }
+  if (d.clearFilter !== undefined) { clearFilter(d.clearFilter); return; }
   if (d.ignore !== undefined) {
     e.stopPropagation();
     if (ignoredIssues.has(d.ignore)) ignoredIssues.delete(d.ignore); else ignoredIssues.add(d.ignore);
