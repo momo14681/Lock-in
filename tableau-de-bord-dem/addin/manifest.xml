@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Manifeste du complément Excel « Pilotage des essais ». Généré par build.mjs dans
-     addin/manifest.xml ; https://momo14681.github.io/pilotage-essais/ = adresse où le dossier addin/ est publié (ADDIN_URL). -->
+     addin/manifest.xml ; https://melk735.github.io/Pilotage-essais/ = adresse où le dossier addin/ est publié (ADDIN_URL). -->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
@@ -12,11 +12,11 @@
   <DefaultLocale>fr-FR</DefaultLocale>
   <DisplayName DefaultValue="Pilotage des essais"/>
   <Description DefaultValue="Tableau de bord de la DEM : indicateurs, listes, fiches TOT et saisie directe dans la DEM."/>
-  <IconUrl DefaultValue="https://momo14681.github.io/pilotage-essais/icone-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://momo14681.github.io/pilotage-essais/icone-64.png"/>
-  <SupportUrl DefaultValue="https://momo14681.github.io/pilotage-essais/index.html"/>
+  <IconUrl DefaultValue="https://melk735.github.io/Pilotage-essais/icone-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://melk735.github.io/Pilotage-essais/icone-64.png"/>
+  <SupportUrl DefaultValue="https://melk735.github.io/Pilotage-essais/index.html"/>
   <AppDomains>
-    <AppDomain>https://momo14681.github.io/pilotage-essais/</AppDomain>
+    <AppDomain>https://melk735.github.io/Pilotage-essais/</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Workbook"/>
@@ -27,7 +27,7 @@
     </Sets>
   </Requirements>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://momo14681.github.io/pilotage-essais/index.html"/>
+    <SourceLocation DefaultValue="https://melk735.github.io/Pilotage-essais/index.html"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
@@ -72,12 +72,12 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icone16" DefaultValue="https://momo14681.github.io/pilotage-essais/icone-16.png"/>
-        <bt:Image id="Icone32" DefaultValue="https://momo14681.github.io/pilotage-essais/icone-32.png"/>
-        <bt:Image id="Icone80" DefaultValue="https://momo14681.github.io/pilotage-essais/icone-80.png"/>
+        <bt:Image id="Icone16" DefaultValue="https://melk735.github.io/Pilotage-essais/icone-16.png"/>
+        <bt:Image id="Icone32" DefaultValue="https://melk735.github.io/Pilotage-essais/icone-32.png"/>
+        <bt:Image id="Icone80" DefaultValue="https://melk735.github.io/Pilotage-essais/icone-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Page" DefaultValue="https://momo14681.github.io/pilotage-essais/index.html"/>
+        <bt:Url id="Page" DefaultValue="https://melk735.github.io/Pilotage-essais/index.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="Titre" DefaultValue="Pilotage des essais"/>

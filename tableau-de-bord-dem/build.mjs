@@ -68,7 +68,7 @@ const tools = 'const EDF_TOOLS = "https://prod-sdin.edf.fr";';
 if (!html.includes(tools)) throw new Error("Adresse des outils EDF introuvable.");
 const addinHtml = html.replace(csp, () => `<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>`).replace(tools, 'const EDF_TOOLS = "";');
 if (/prod-sdin|edf\.fr/i.test(addinHtml)) throw new Error("La page du complément contient encore une adresse interne EDF.");
-const addinUrl = (process.env.ADDIN_URL || "https://momo14681.github.io/pilotage-essais/").replace(/\/?$/, "/");
+const addinUrl = (process.env.ADDIN_URL || "https://melk735.github.io/Pilotage-essais/").replace(/\/?$/, "/");
 writeFileSync(join(root, "addin", "index.html"), addinHtml);
 writeFileSync(join(root, "addin", "manifest.xml"), read("src", "addin", "manifest.xml").replaceAll("{{URL}}", addinUrl));
 console.log(`addin/index.html + addin/manifest.xml · ${addinUrl}`);
