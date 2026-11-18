@@ -44,6 +44,7 @@ function render() {
   if (!allowed.includes(tab)) tab = tabByMode[mode] = TABS[mode][0].id;
   visible = filtered();
   data.audit = audit(data.tasks.filter((t) => !t.cancelled));
+  alertIndexFor = null;
   const inScope = new Set(filteredLinesBy(ownerScope()));
   allIssues = data.audit.filter((i) => inScope.has(i.t));
   issues = allIssues.filter((i) => !ignoredIssues.has(issueId(i)));
@@ -69,9 +70,9 @@ function render() {
 function detailFields(t) {
   const keys = Object.keys(fields).filter((k) => !MILESTONES.some(([m]) => m === k));
   const filled = keys.filter((k) => String(t.raw[k] ?? "").trim()), empty = keys.filter((k) => !filled.includes(k));
-  return `<div class="detailGrid">${filled.map((k) => `<div class="${k === "observations" ? "full" : ""}"><span>${names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
+  return `<div class="detailGrid">${filled.map((k) => `<div${alertAttr(t, k, k === "observations" ? "full" : "")}><span>${names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
       <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>
-    ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${esc(empty.map((k) => names[k]).join(", "))}</p>` : ""}`;
+    ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${empty.map((k) => `<span${alertAttr(t, k)}>${esc(names[k])}</span>`).join(", ")}</p>` : ""}`;
 }
 
 function detail(t) {
@@ -198,6 +199,7 @@ function onClick(e) {
   if (d.ignore !== undefined) {
     e.stopPropagation();
     if (ignoredIssues.has(d.ignore)) ignoredIssues.delete(d.ignore); else ignoredIssues.add(d.ignore);
+    alertIndexFor = null;
     render();
     if ($("detail").open && $("detail").dataset.task) detail(data.tasks[+$("detail").dataset.task]);
     return;

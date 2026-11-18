@@ -660,6 +660,13 @@ a.button.primary { background: var(--primary); color: #fff; border-color: var(--
 a.button.primary:hover { background: var(--primary-hover); }
 a.button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 .feedbackNote { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); min-height: 1em; }
+
+/* Champ en alerte (non ignorée) : rouge jusqu'à correction */
+.alertField, .alertField strong, .ms.alertField b { color: var(--bad-ink) !important; }
+.detailGrid div.alertField { background: var(--bad-bg); border-bottom-color: var(--bad); padding-left: 6px; padding-right: 6px; border-radius: 6px 6px 0 0; }
+.msTrack li.alertField { border-top-color: var(--bad) !important; background: var(--bad-bg); }
+.editRow.alertField input, .editRow.alertField textarea { border-color: var(--bad); background: var(--bad-bg); }
+.editRow.alertField > span { color: var(--bad-ink); }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -1459,6 +1466,30 @@ function issueId(i) {
   return JSON.stringify([i.t.sheet, i.t.rowNumber, i.kind, i.cells, i.value]);
 }
 
+// Champs en alerte (non ignorée) d'une TOT : affichés en rouge jusqu'à correction ou « Ignorer ».
+// J0 n'est pas en faute dans « Prépa en retard » : il sert seulement à situer l'échéance.
+let alertIndex = null, alertIndexFor = null;
+function alertMap(t) {
+  if (alertIndexFor !== data?.audit) {
+    alertIndex = new Map(); alertIndexFor = data?.audit;
+    for (const i of data?.audit || []) {
+      if (ignoredIssues.has(issueId(i))) continue;
+      const m = alertIndex.get(i.t) || new Map();
+      for (const k of i.keys) if (!(k === "j0" && i.kind.startsWith("Prépa en retard"))) m.set(k, [...(m.get(k) || []), i.kind]);
+      alertIndex.set(i.t, m);
+    }
+  }
+  return alertIndex.get(t);
+}
+function alertOn(t, key) {
+  return !!alertMap(t)?.has(key);
+}
+// Attributs à poser sur l'élément du champ : classe + infobulle.
+function alertAttr(t, key, cls = "") {
+  const kinds = alertMap(t)?.get(key);
+  return kinds ? ` class="${cls ? cls + " " : ""}alertField" title="${esc([...new Set(kinds)].join(" · "))}"` : cls ? ` class="${cls}"` : "";
+}
+
 // ---- 03-state.js ----
 // =============================================================================
 // État de l'interface, préférences et périmètre filtré.
@@ -1994,7 +2025,7 @@ function fracCell(a, b) {
 }
 
 function milestoneLine(t) {
-  return [["BPA", t.bpa], ["GER", t.ger], ["BPD", t.bpd]].map(([k, v]) => `<span class="ms"><b>${k}</b> ${esc(v || "—")}</span>`).join("");
+  return [["BPA", t.bpa, "bpa"], ["GER", t.ger, "ger"], ["BPD", t.bpd, "bpd"]].map(([k, v, key]) => `<span${alertAttr(t, key, "ms")}><b>${k}</b> ${esc(v || "—")}</span>`).join("");
 }
 
 function affaireRow(g) {
@@ -2009,7 +2040,7 @@ function affaireRow(g) {
     if (!open) return row;
     const sub = g.ts.slice().sort((a, b) => COLLATOR_FR_NUM.compare(a.ree, b.ree) || a.rowNumber - b.rowNumber).map((t) => `<tr>
       <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
-      <td>${t.j0Label}</td>
+      <td><span${alertAttr(t, "j0")}>${t.j0Label}</span></td>
       <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td>
@@ -2136,7 +2167,7 @@ function viewTasks() {
       <td>${taskLink(t)}</td>
       ${owner ? `<td>${esc(t.responsable)}</td>` : ""}
       <td>${esc(t.sheet)}</td>
-      <td>${t.j0Label}<small>Prépa : ${t.prepDueLabel}</small></td>
+      <td><span${alertAttr(t, "j0")}>${t.j0Label}</span><small>Prépa : ${t.prepDueLabel}</small></td>
       <td>${stateBadge(t)}${t.missingInfoKeys.length && !isRealized(t) ? `<small class="missingKeys">Manque : ${esc(missingLabel(t))}</small>` : ""}</td>
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${toolLinks(t.ot, t.tot)}</td></tr>`,
@@ -3716,7 +3747,7 @@ function milestoneTrack(t) {
     const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim(), options = milestoneOptions(t, k);
     const action = options.length ? `<span class="msSplit"><button type="button" data-milestone="${k}" data-value="${esc(choiceValue(options[0]))}">${esc(choiceLabel(options[0]))}</button><label class="msMore" title="Choisir une autre valeur"><span aria-hidden="true">▾</span><select data-ms-choice="${k}" aria-label="Autre valeur pour ${label}">${MILESTONE_CHOICES[k].filter((c) => options.includes(c)).map((c) => `<option value="${esc(c)}"${c === options[0] ? " selected" : ""}>${esc(c === TODAY_CHOICE ? `Date du jour (${formatDate(data.today)})` : c)}</option>`).join("")}</select></label></span>` : "";
     const n = milestoneLines(t, k).length;
-    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}${n > 1 ? ` <small>REE · ${n} TOT</small>` : ""}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
+    return `<li${alertAttr(t, k, done ? "done" : value ? "started" : "")}><span class="msLabel">${label}${n > 1 ? ` <small>REE · ${n} TOT</small>` : ""}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }
@@ -3742,7 +3773,7 @@ function editForm(t) {
     const input = k === "observations"
       ? `<textarea data-edit-field="${k}" rows="2">${esc(shown)}</textarea>`
       : `<input type="text" data-edit-field="${k}" value="${esc(shown)}" ${options ? `list="editList-${k}"` : ""} placeholder="${EDIT_DATES.has(k) ? "jj/mm/aaaa" : ""}${codes.length ? (EDIT_DATES.has(k) ? " ou " : "") + codes.join(", ") : ""}">${options ? `<datalist id="editList-${k}">${options}</datalist>` : ""}`;
-    return `<label class="editRow${k === "observations" ? " full" : ""}"><span>${names[k]} <span class="loc">${esc(editCell(t, k))}</span></span>${input}<small class="muted">Dans la DEM : ${esc(current || "vide")}</small></label>`;
+    return `<label${alertAttr(t, k, "editRow" + (k === "observations" ? " full" : ""))}><span>${names[k]} <span class="loc">${esc(editCell(t, k))}</span></span>${input}<small class="muted">Dans la DEM : ${esc(current || "vide")}</small></label>`;
   }).join("");
   return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">Les valeurs modifiées sont écrites dans la DEM après confirmation, si personne ne les a changées entre-temps.</p></div>
     ${editError ? `<div class="notice error">${esc(editError)}</div>` : ""}
@@ -5708,6 +5739,7 @@ function render() {
   if (!allowed.includes(tab)) tab = tabByMode[mode] = TABS[mode][0].id;
   visible = filtered();
   data.audit = audit(data.tasks.filter((t) => !t.cancelled));
+  alertIndexFor = null;
   const inScope = new Set(filteredLinesBy(ownerScope()));
   allIssues = data.audit.filter((i) => inScope.has(i.t));
   issues = allIssues.filter((i) => !ignoredIssues.has(issueId(i)));
@@ -5733,9 +5765,9 @@ function render() {
 function detailFields(t) {
   const keys = Object.keys(fields).filter((k) => !MILESTONES.some(([m]) => m === k));
   const filled = keys.filter((k) => String(t.raw[k] ?? "").trim()), empty = keys.filter((k) => !filled.includes(k));
-  return `<div class="detailGrid">${filled.map((k) => `<div class="${k === "observations" ? "full" : ""}"><span>${names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
+  return `<div class="detailGrid">${filled.map((k) => `<div${alertAttr(t, k, k === "observations" ? "full" : "")}><span>${names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
       <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>
-    ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${esc(empty.map((k) => names[k]).join(", "))}</p>` : ""}`;
+    ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${empty.map((k) => `<span${alertAttr(t, k)}>${esc(names[k])}</span>`).join(", ")}</p>` : ""}`;
 }
 
 function detail(t) {
@@ -5862,6 +5894,7 @@ function onClick(e) {
   if (d.ignore !== undefined) {
     e.stopPropagation();
     if (ignoredIssues.has(d.ignore)) ignoredIssues.delete(d.ignore); else ignoredIssues.add(d.ignore);
+    alertIndexFor = null;
     render();
     if ($("detail").open && $("detail").dataset.task) detail(data.tasks[+$("detail").dataset.task]);
     return;

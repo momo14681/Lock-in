@@ -105,7 +105,7 @@ function milestoneTrack(t) {
     const done = milestoneDone(t, k), value = String(t.raw[k] ?? "").trim(), options = milestoneOptions(t, k);
     const action = options.length ? `<span class="msSplit"><button type="button" data-milestone="${k}" data-value="${esc(choiceValue(options[0]))}">${esc(choiceLabel(options[0]))}</button><label class="msMore" title="Choisir une autre valeur"><span aria-hidden="true">▾</span><select data-ms-choice="${k}" aria-label="Autre valeur pour ${label}">${MILESTONE_CHOICES[k].filter((c) => options.includes(c)).map((c) => `<option value="${esc(c)}"${c === options[0] ? " selected" : ""}>${esc(c === TODAY_CHOICE ? `Date du jour (${formatDate(data.today)})` : c)}</option>`).join("")}</select></label></span>` : "";
     const n = milestoneLines(t, k).length;
-    return `<li class="${done ? "done" : value ? "started" : ""}"><span class="msLabel">${label}${n > 1 ? ` <small>REE · ${n} TOT</small>` : ""}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
+    return `<li${alertAttr(t, k, done ? "done" : value ? "started" : "")}><span class="msLabel">${label}${n > 1 ? ` <small>REE · ${n} TOT</small>` : ""}</span><strong>${esc(value || "à faire")}</strong>${action}</li>`;
   }).join("");
   return `<ol class="msTrack" aria-label="Jalons de la TOT">${steps}</ol>`;
 }
@@ -131,7 +131,7 @@ function editForm(t) {
     const input = k === "observations"
       ? `<textarea data-edit-field="${k}" rows="2">${esc(shown)}</textarea>`
       : `<input type="text" data-edit-field="${k}" value="${esc(shown)}" ${options ? `list="editList-${k}"` : ""} placeholder="${EDIT_DATES.has(k) ? "jj/mm/aaaa" : ""}${codes.length ? (EDIT_DATES.has(k) ? " ou " : "") + codes.join(", ") : ""}">${options ? `<datalist id="editList-${k}">${options}</datalist>` : ""}`;
-    return `<label class="editRow${k === "observations" ? " full" : ""}"><span>${names[k]} <span class="loc">${esc(editCell(t, k))}</span></span>${input}<small class="muted">Dans la DEM : ${esc(current || "vide")}</small></label>`;
+    return `<label${alertAttr(t, k, "editRow" + (k === "observations" ? " full" : ""))}><span>${names[k]} <span class="loc">${esc(editCell(t, k))}</span></span>${input}<small class="muted">Dans la DEM : ${esc(current || "vide")}</small></label>`;
   }).join("");
   return `<div class="editIntro"><strong>Modifier cette ligne</strong><p class="muted">Les valeurs modifiées sont écrites dans la DEM après confirmation, si personne ne les a changées entre-temps.</p></div>
     ${editError ? `<div class="notice error">${esc(editError)}</div>` : ""}

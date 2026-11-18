@@ -76,3 +76,27 @@ const ignoredIssues = new Set();
 function issueId(i) {
   return JSON.stringify([i.t.sheet, i.t.rowNumber, i.kind, i.cells, i.value]);
 }
+
+// Champs en alerte (non ignorée) d'une TOT : affichés en rouge jusqu'à correction ou « Ignorer ».
+// J0 n'est pas en faute dans « Prépa en retard » : il sert seulement à situer l'échéance.
+let alertIndex = null, alertIndexFor = null;
+function alertMap(t) {
+  if (alertIndexFor !== data?.audit) {
+    alertIndex = new Map(); alertIndexFor = data?.audit;
+    for (const i of data?.audit || []) {
+      if (ignoredIssues.has(issueId(i))) continue;
+      const m = alertIndex.get(i.t) || new Map();
+      for (const k of i.keys) if (!(k === "j0" && i.kind.startsWith("Prépa en retard"))) m.set(k, [...(m.get(k) || []), i.kind]);
+      alertIndex.set(i.t, m);
+    }
+  }
+  return alertIndex.get(t);
+}
+function alertOn(t, key) {
+  return !!alertMap(t)?.has(key);
+}
+// Attributs à poser sur l'élément du champ : classe + infobulle.
+function alertAttr(t, key, cls = "") {
+  const kinds = alertMap(t)?.get(key);
+  return kinds ? ` class="${cls ? cls + " " : ""}alertField" title="${esc([...new Set(kinds)].join(" · "))}"` : cls ? ` class="${cls}"` : "";
+}

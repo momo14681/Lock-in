@@ -97,7 +97,7 @@ function fracCell(a, b) {
 }
 
 function milestoneLine(t) {
-  return [["BPA", t.bpa], ["GER", t.ger], ["BPD", t.bpd]].map(([k, v]) => `<span class="ms"><b>${k}</b> ${esc(v || "—")}</span>`).join("");
+  return [["BPA", t.bpa, "bpa"], ["GER", t.ger, "ger"], ["BPD", t.bpd, "bpd"]].map(([k, v, key]) => `<span${alertAttr(t, key, "ms")}><b>${k}</b> ${esc(v || "—")}</span>`).join("");
 }
 
 function affaireRow(g) {
@@ -112,7 +112,7 @@ function affaireRow(g) {
     if (!open) return row;
     const sub = g.ts.slice().sort((a, b) => COLLATOR_FR_NUM.compare(a.ree, b.ree) || a.rowNumber - b.rowNumber).map((t) => `<tr>
       <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
-      <td>${t.j0Label}</td>
+      <td><span${alertAttr(t, "j0")}>${t.j0Label}</span></td>
       <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td>

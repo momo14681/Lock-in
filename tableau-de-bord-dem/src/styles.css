@@ -650,3 +650,10 @@ a.button.primary { background: var(--primary); color: #fff; border-color: var(--
 a.button.primary:hover { background: var(--primary-hover); }
 a.button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 .feedbackNote { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); min-height: 1em; }
+
+/* Champ en alerte (non ignorée) : rouge jusqu'à correction */
+.alertField, .alertField strong, .ms.alertField b { color: var(--bad-ink) !important; }
+.detailGrid div.alertField { background: var(--bad-bg); border-bottom-color: var(--bad); padding-left: 6px; padding-right: 6px; border-radius: 6px 6px 0 0; }
+.msTrack li.alertField { border-top-color: var(--bad) !important; background: var(--bad-bg); }
+.editRow.alertField input, .editRow.alertField textarea { border-color: var(--bad); background: var(--bad-bg); }
+.editRow.alertField > span { color: var(--bad-ink); }
