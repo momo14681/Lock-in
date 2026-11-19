@@ -1191,6 +1191,7 @@ function buildTask(sheet, rowNumber, row, today, head = null, cruStart = null) {
     j0Label: formatDate(j0Date),
     j0Cru,
     j0Dem,
+    endCru: cruStart?.end?.get(otTotKey(values.ot, values.tot)) || null,
     prepDue,
     prepDueLabel: formatDate(prepDue),
     regime: text(values.regime),
@@ -2711,7 +2712,7 @@ const CRU_NO_ECU = "Non renseigné";
 // Colonnes cherchées par leur titre (repli sur la position du modèle actuel).
 const CRU_COLUMNS = {
   edim: [/^r[ée]f[ée]rence edim/i, 0], intitule: [/^intitul/i, 1], codeProjet: [/^code projet/i, 2], ree: [/^ree$/i, 11], tot: [/^tot concern/i, 16],
-  description: [/^description t[âa]che/i, 17], statut: [/^statut$/i, 18], debut: [/^date d[ée]but(?!.*calcul)/i, 19], fin: [/^date fin/i, 21],
+  description: [/^description t[âa]che/i, 17], statut: [/^statut$/i, 18], debut: [/^date d[ée]but(?!.*calcul)/i, 19], fin: [/^date fin/i, 22],
   resultat: [/^r[ée]sultat/i, 22], ecu: [/^ecu$/i, 26], rdu: [/^rdu$/i, 28], commentType: [/^type commentaire/i, 29],
   auteur: [/^auteur/i, 30], commentDate: [/^date commentaire/i, 31],
 };
@@ -2723,18 +2724,23 @@ function otTotKey(ot, tot) {
 }
 
 // « Date début calculée TOT » (CRU, colonne N) : remplace le J0 de la DEM, sauf si vide ou après 2028.
+// « Date fin » de l'essai (CRU, colonne W) : date de réalisation pour la courbe de charge.
 const CRU_START_MAX_YEAR = 2028;
 function readCruStart(sh) {
   const out = new Map();
+  out.end = new Map();
   if (!sh) return out;
   const rows = XLSX.utils.sheet_to_json(sh, { header: 1, defval: null, raw: true });
   const head = (rows[0] || []).map((v) => String(v ?? "").trim());
   const find = (re, fallback) => { const i = head.findIndex((h) => re.test(h)); return i >= 0 ? i : re.test(head[fallback] || "") ? fallback : -1; };
-  const cStart = find(/^date d[ée]but calcul/i, 13), cTot = find(/^tot concern/i, 16);
-  if (cStart < 0 || cTot < 0) return out;
+  const cStart = find(/^date d[ée]but calcul/i, 13), cTot = find(/^tot concern/i, 16), cEnd = find(/^date fin/i, 22);
+  if (cTot < 0) return out;
   for (const r of rows.slice(1)) {
-    const [ot, n] = text(r?.[cTot]).split("-"), key = otTotKey(ot, n), d = parseExcelDate(r?.[cStart]);
-    if (key && d && d.getFullYear() <= CRU_START_MAX_YEAR && !out.has(key)) out.set(key, d);
+    const [ot, n] = text(r?.[cTot]).split("-"), key = otTotKey(ot, n);
+    if (!key) continue;
+    const d = cStart >= 0 ? parseExcelDate(r?.[cStart]) : null, e = cEnd >= 0 ? parseExcelDate(r?.[cEnd]) : null;
+    if (d && d.getFullYear() <= CRU_START_MAX_YEAR && !out.has(key)) out.set(key, d);
+    if (e && !out.end.has(key)) out.end.set(key, e);
   }
   return out;
 }
@@ -4380,7 +4386,7 @@ async function previewPNG(kind = "") {
 // Courbe de charge cumulée, selon la date de début des essais (date début calculée de la CRU
 // si renseignée, sinon J0 de la DEM).
 // Pointillés = objectif : tous les essais (réalisés ou non) cumulés par date de début, sur toute
-// la période ; trait plein = essais réalisés, jusqu'à aujourd'hui. Le trait plein doit suivre
+// la période ; trait plein = essais réalisés à leur date de fin (CRU), jusqu'à aujourd'hui. Le trait plein doit suivre
 // les pointillés : l'écart entre les deux est le retard.
 const LOAD_GRAINS = [["month", "Mois"], ["week", "Semaine"]];
 let loadGrain = "month";
@@ -4429,15 +4435,19 @@ function niceStep(v) {
 function loadModel(ts, today) {
   const { buckets, outside, inRange, rangeStart, rangeEnd } = loadBuckets(ts, today);
   const starts = inRange.map((t) => +t.j0).sort((a, b) => a - b);
-  const doneStarts = inRange.filter(isRealized).map((t) => +t.j0).sort((a, b) => a - b);
+  // Date de réalisation : « Date fin » de l'essai dans la CRU (colonne W), ramenée à aujourd'hui au
+  // plus tard ; à défaut, la date de début.
+  const done = inRange.filter(isRealized);
+  const noEnd = done.filter((t) => !t.endCru).length;
+  const doneDates = done.map((t) => Math.min(+(t.endCru || t.j0), +today)).sort((a, b) => a - b);
   // Nombre de dates strictement avant d (recherche dichotomique).
   const before = (arr, d) => { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < +d) lo = m + 1; else hi = m; } return lo; };
   const planned = (d) => before(starts, d);
-  const total = starts.length, doneNow = doneStarts.length;
+  const total = starts.length, doneNow = doneDates.length;
   const now = today < rangeStart ? rangeStart : today > rangeEnd ? rangeEnd : today;
   const dueNow = planned(addDays(now, 1)); // essais dont le début est passé (aujourd'hui compris)
-  const lateNow = dueNow - before(doneStarts, addDays(now, 1)); // début passé, pas encore réalisés
-  return { buckets, outside, rangeStart, rangeEnd, now, total, doneNow, dueNow, lateNow, planned, doneBy: (d) => before(doneStarts, d) };
+  const lateNow = dueNow - doneNow; // négatif = en avance
+  return { buckets, outside, rangeStart, rangeEnd, now, total, doneNow, dueNow, lateNow, noEnd, planned, doneBy: (d) => before(doneDates, d) };
 }
 
 function loadCurveSvg(m) {
@@ -4494,11 +4504,9 @@ function loadCurveSvg(m) {
 
 function loadCurvePanel(ts, today = data.today) {
   const m = loadModel(ts, today);
-  const status = m.lateNow
-    ? `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés sur ${fmt(m.dueNow)} à réaliser, écart de ${plural(m.lateNow, "essai")}.`
-    : `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés sur ${fmt(m.dueNow)} à réaliser, pas d’écart.`;
+  const status = `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés sur ${fmt(m.dueNow)} à réaliser, ${m.lateNow > 0 ? `écart de ${plural(m.lateNow, "essai")}` : m.lateNow < 0 ? `${plural(-m.lateNow, "essai")} d’avance` : "pas d’écart"}.`;
   return panel("Courbe de charge", loadCurveSvg(m), {
-    sub: `${status} Date de début : CRU, sinon J0 de la DEM.${m.outside ? ` ${plural(m.outside, "TOT", "TOT")} sans date ou hors période non comptée${m.outside > 1 ? "s" : ""}.` : ""}`,
+    sub: `${status} À réaliser : date de début (CRU, sinon J0). Réalisés : date fin de l’essai (CRU)${m.noEnd ? `, ou date de début pour ${plural(m.noEnd, "essai")} sans date fin` : ""}.${m.outside ? ` ${plural(m.outside, "TOT", "TOT")} sans date ou hors période non comptée${m.outside > 1 ? "s" : ""}.` : ""}`,
     actions: segment("loadGrain", LOAD_GRAINS, loadGrain, { label: "Pas de temps" }),
     cls: "loadPanel",
   });
@@ -6007,6 +6015,7 @@ function detailFields(t) {
   const filled = keys.filter((k) => String(t.raw[k] ?? "").trim()), empty = keys.filter((k) => !filled.includes(k));
   return `<div class="detailGrid">${filled.map((k) => `<div${alertAttr(t, k, k === "observations" ? "full" : "")}><span>${k === "j0" && t.j0Cru ? "J0 de la DEM (remplacé par la CRU)" : names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
       ${t.j0Cru ? `<div><span>Date début calculée TOT (CRU)</span><strong>${formatDate(t.j0Cru)}</strong></div>` : ""}
+      ${t.endCru ? `<div><span>Date fin de l’essai (CRU)</span><strong>${formatDate(t.endCru)}</strong></div>` : ""}
       <div><span>Échéance de préparation${t.j0Cru ? " (début CRU − 30 j)" : ""}</span><strong>${t.prepDueLabel}</strong></div></div>
     ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${empty.map((k) => `<span${alertAttr(t, k)}>${esc(names[k])}</span>`).join(", ")}</p>` : ""}`;
 }

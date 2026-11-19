@@ -231,6 +231,7 @@ function buildTask(sheet, rowNumber, row, today, head = null, cruStart = null) {
     j0Label: formatDate(j0Date),
     j0Cru,
     j0Dem,
+    endCru: cruStart?.end?.get(otTotKey(values.ot, values.tot)) || null,
     prepDue,
     prepDueLabel: formatDate(prepDue),
     regime: text(values.regime),

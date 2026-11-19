@@ -1,7 +1,7 @@
 // Courbe de charge cumulée, selon la date de début des essais (date début calculée de la CRU
 // si renseignée, sinon J0 de la DEM).
 // Pointillés = objectif : tous les essais (réalisés ou non) cumulés par date de début, sur toute
-// la période ; trait plein = essais réalisés, jusqu'à aujourd'hui. Le trait plein doit suivre
+// la période ; trait plein = essais réalisés à leur date de fin (CRU), jusqu'à aujourd'hui. Le trait plein doit suivre
 // les pointillés : l'écart entre les deux est le retard.
 const LOAD_GRAINS = [["month", "Mois"], ["week", "Semaine"]];
 let loadGrain = "month";
@@ -50,15 +50,19 @@ function niceStep(v) {
 function loadModel(ts, today) {
   const { buckets, outside, inRange, rangeStart, rangeEnd } = loadBuckets(ts, today);
   const starts = inRange.map((t) => +t.j0).sort((a, b) => a - b);
-  const doneStarts = inRange.filter(isRealized).map((t) => +t.j0).sort((a, b) => a - b);
+  // Date de réalisation : « Date fin » de l'essai dans la CRU (colonne W), ramenée à aujourd'hui au
+  // plus tard ; à défaut, la date de début.
+  const done = inRange.filter(isRealized);
+  const noEnd = done.filter((t) => !t.endCru).length;
+  const doneDates = done.map((t) => Math.min(+(t.endCru || t.j0), +today)).sort((a, b) => a - b);
   // Nombre de dates strictement avant d (recherche dichotomique).
   const before = (arr, d) => { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < +d) lo = m + 1; else hi = m; } return lo; };
   const planned = (d) => before(starts, d);
-  const total = starts.length, doneNow = doneStarts.length;
+  const total = starts.length, doneNow = doneDates.length;
   const now = today < rangeStart ? rangeStart : today > rangeEnd ? rangeEnd : today;
   const dueNow = planned(addDays(now, 1)); // essais dont le début est passé (aujourd'hui compris)
-  const lateNow = dueNow - before(doneStarts, addDays(now, 1)); // début passé, pas encore réalisés
-  return { buckets, outside, rangeStart, rangeEnd, now, total, doneNow, dueNow, lateNow, planned, doneBy: (d) => before(doneStarts, d) };
+  const lateNow = dueNow - doneNow; // négatif = en avance
+  return { buckets, outside, rangeStart, rangeEnd, now, total, doneNow, dueNow, lateNow, noEnd, planned, doneBy: (d) => before(doneDates, d) };
 }
 
 function loadCurveSvg(m) {
@@ -115,11 +119,9 @@ function loadCurveSvg(m) {
 
 function loadCurvePanel(ts, today = data.today) {
   const m = loadModel(ts, today);
-  const status = m.lateNow
-    ? `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés sur ${fmt(m.dueNow)} à réaliser, écart de ${plural(m.lateNow, "essai")}.`
-    : `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés sur ${fmt(m.dueNow)} à réaliser, pas d’écart.`;
+  const status = `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés sur ${fmt(m.dueNow)} à réaliser, ${m.lateNow > 0 ? `écart de ${plural(m.lateNow, "essai")}` : m.lateNow < 0 ? `${plural(-m.lateNow, "essai")} d’avance` : "pas d’écart"}.`;
   return panel("Courbe de charge", loadCurveSvg(m), {
-    sub: `${status} Date de début : CRU, sinon J0 de la DEM.${m.outside ? ` ${plural(m.outside, "TOT", "TOT")} sans date ou hors période non comptée${m.outside > 1 ? "s" : ""}.` : ""}`,
+    sub: `${status} À réaliser : date de début (CRU, sinon J0). Réalisés : date fin de l’essai (CRU)${m.noEnd ? `, ou date de début pour ${plural(m.noEnd, "essai")} sans date fin` : ""}.${m.outside ? ` ${plural(m.outside, "TOT", "TOT")} sans date ou hors période non comptée${m.outside > 1 ? "s" : ""}.` : ""}`,
     actions: segment("loadGrain", LOAD_GRAINS, loadGrain, { label: "Pas de temps" }),
     cls: "loadPanel",
   });

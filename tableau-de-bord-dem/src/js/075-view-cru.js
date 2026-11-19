@@ -9,7 +9,7 @@ const CRU_NO_ECU = "Non renseigné";
 // Colonnes cherchées par leur titre (repli sur la position du modèle actuel).
 const CRU_COLUMNS = {
   edim: [/^r[ée]f[ée]rence edim/i, 0], intitule: [/^intitul/i, 1], codeProjet: [/^code projet/i, 2], ree: [/^ree$/i, 11], tot: [/^tot concern/i, 16],
-  description: [/^description t[âa]che/i, 17], statut: [/^statut$/i, 18], debut: [/^date d[ée]but(?!.*calcul)/i, 19], fin: [/^date fin/i, 21],
+  description: [/^description t[âa]che/i, 17], statut: [/^statut$/i, 18], debut: [/^date d[ée]but(?!.*calcul)/i, 19], fin: [/^date fin/i, 22],
   resultat: [/^r[ée]sultat/i, 22], ecu: [/^ecu$/i, 26], rdu: [/^rdu$/i, 28], commentType: [/^type commentaire/i, 29],
   auteur: [/^auteur/i, 30], commentDate: [/^date commentaire/i, 31],
 };
@@ -21,18 +21,23 @@ function otTotKey(ot, tot) {
 }
 
 // « Date début calculée TOT » (CRU, colonne N) : remplace le J0 de la DEM, sauf si vide ou après 2028.
+// « Date fin » de l'essai (CRU, colonne W) : date de réalisation pour la courbe de charge.
 const CRU_START_MAX_YEAR = 2028;
 function readCruStart(sh) {
   const out = new Map();
+  out.end = new Map();
   if (!sh) return out;
   const rows = XLSX.utils.sheet_to_json(sh, { header: 1, defval: null, raw: true });
   const head = (rows[0] || []).map((v) => String(v ?? "").trim());
   const find = (re, fallback) => { const i = head.findIndex((h) => re.test(h)); return i >= 0 ? i : re.test(head[fallback] || "") ? fallback : -1; };
-  const cStart = find(/^date d[ée]but calcul/i, 13), cTot = find(/^tot concern/i, 16);
-  if (cStart < 0 || cTot < 0) return out;
+  const cStart = find(/^date d[ée]but calcul/i, 13), cTot = find(/^tot concern/i, 16), cEnd = find(/^date fin/i, 22);
+  if (cTot < 0) return out;
   for (const r of rows.slice(1)) {
-    const [ot, n] = text(r?.[cTot]).split("-"), key = otTotKey(ot, n), d = parseExcelDate(r?.[cStart]);
-    if (key && d && d.getFullYear() <= CRU_START_MAX_YEAR && !out.has(key)) out.set(key, d);
+    const [ot, n] = text(r?.[cTot]).split("-"), key = otTotKey(ot, n);
+    if (!key) continue;
+    const d = cStart >= 0 ? parseExcelDate(r?.[cStart]) : null, e = cEnd >= 0 ? parseExcelDate(r?.[cEnd]) : null;
+    if (d && d.getFullYear() <= CRU_START_MAX_YEAR && !out.has(key)) out.set(key, d);
+    if (e && !out.end.has(key)) out.end.set(key, e);
   }
   return out;
 }
