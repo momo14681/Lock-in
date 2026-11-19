@@ -4379,11 +4379,12 @@ async function previewPNG(kind = "") {
 // ---- 082-load-curve.js ----
 // Courbe de charge cumulée, selon la date de début des essais (date début calculée de la CRU
 // si renseignée, sinon J0 de la DEM).
-// Gris = essais prévus (cumul des dates de début) ; trait plein = essais réalisés, jusqu'à
-// aujourd'hui ; pointillés = progression à tenir pour rattraper le retard et rester à l'heure.
+// Pointillés = objectif : tous les essais (réalisés ou non) cumulés par date de début, sur toute
+// la période ; trait plein = essais réalisés, jusqu'à aujourd'hui. Le trait plein doit suivre
+// les pointillés : l'écart entre les deux est le retard.
 const LOAD_GRAINS = [["month", "Mois"], ["week", "Semaine"]];
 let loadGrain = "month";
-const LOAD_COLORS = { plan: "#9AA6C2", done: "#1057C8", todo: "#FE5815" };
+const LOAD_COLORS = { plan: "#FE5815", done: "#1057C8" };
 
 function mondayOf(d) {
   const x = startOfDay(d);
@@ -4442,7 +4443,7 @@ function loadModel(ts, today) {
 function loadCurveSvg(m) {
   const { buckets, rangeStart, rangeEnd, now } = m;
   const narrow = window.innerWidth < 700, W = narrow ? 480 : 900, H = narrow ? 260 : 300;
-  const top = 18, bottom = 46, left = 40, right = narrow ? 64 : 84;
+  const top = 18, bottom = 46, left = 40, right = narrow ? 76 : 104;
   const plotW = W - left - right, plotH = H - top - bottom;
   const max = 4 * niceStep(Math.max(1, m.total) / 4);
   const x = (d) => left + ((d - rangeStart) / (rangeEnd - rangeStart)) * plotW, y = (v) => top + plotH - (v / max) * plotH;
@@ -4466,42 +4467,36 @@ function loadCurveSvg(m) {
     const tx = x(now);
     parts.push(`<line x1="${tx}" x2="${tx}" y1="${top}" y2="${top + plotH}" class="lcToday"/><text x="${tx > left + plotW - 80 ? tx - 4 : tx + 4}" y="${top + 10}" class="lcTodayLabel" text-anchor="${tx > left + plotW - 80 ? "end" : "start"}">aujourd’hui</text>`);
   }
-  // Prévu : cumul des dates de début, en escalier lissé par période.
+  // Objectif : cumul de tous les essais par date de début.
   const ends = buckets.map((b) => b.end);
   const planPts = [pt(rangeStart, 0), ...ends.map((d) => pt(d, m.planned(d)))];
-  parts.push(`<polyline points="${planPts.join(" ")}" class="lcLine plan" stroke="${LOAD_COLORS.plan}"/>`);
+  parts.push(`<polyline points="${planPts.join(" ")}" class="lcLine" stroke="${LOAD_COLORS.plan}" stroke-dasharray="6 5"/>`);
   // Réalisé : trait plein jusqu'à aujourd'hui.
   const pastEnds = ends.filter((d) => d < now);
   const donePts = [pt(rangeStart, 0), ...pastEnds.map((d) => pt(d, m.doneBy(d))), pt(now, m.doneNow)];
   parts.push(`<polyline points="${donePts.join(" ")}" class="lcLine" stroke="${LOAD_COLORS.done}"/>`);
-  // À tenir : d'aujourd'hui au prévu de chaque période suivante (retard rattrapé dès la première).
-  const futureEnds = ends.filter((d) => d > now);
-  if (futureEnds.length && m.doneNow < m.total) {
-    const todoPts = [pt(now, m.doneNow), ...futureEnds.map((d) => pt(d, Math.max(m.doneNow, m.planned(d))))];
-    parts.push(`<polyline points="${todoPts.join(" ")}" class="lcLine" stroke="${LOAD_COLORS.todo}" stroke-dasharray="6 5"/>`);
-  }
   parts.push(`<circle cx="${x(now)}" cy="${y(m.doneNow)}" r="4.5" fill="${LOAD_COLORS.done}" class="lcDot"/>`);
   // Étiquettes directes en bout de courbe.
-  const endX = left + plotW + 6, labels = [[m.total, `${fmt(m.total)} prévus`, "plan"], [m.doneNow, `${fmt(m.doneNow)} faits`, "done"]];
+  const endX = left + plotW + 6, labels = [[m.total, `${fmt(m.total)} au total`, "plan"], [m.doneNow, `${fmt(m.doneNow)} faits`, "done"]];
   if (Math.abs(y(m.total) - y(m.doneNow)) < 14) labels[1][0] = null;
   parts.push(`<text x="${endX}" y="${y(m.total) + 4}" class="lcEnd">${labels[0][1]}</text>`);
   if (labels[1][0] !== null) parts.push(`<text x="${showToday ? x(now) + 8 : endX}" y="${y(m.doneNow) + (y(m.doneNow) - y(m.planned(now)) < 14 ? 16 : 4)}" class="lcEnd">${labels[1][1]}</text>`);
   // Zones de survol par période.
   buckets.forEach((b) => {
     const d = b.end, past = d <= now;
-    const tip = `${esc(b.long)} (fin)\n${fmt(m.planned(d))} prévus · ${past ? `${fmt(m.doneBy(d))} réalisés` : `${fmt(Math.max(0, m.planned(d) - m.doneNow))} encore à réaliser d’ici là`}`;
+    const tip = `${esc(b.long)} (fin)\nobjectif ${fmt(m.planned(d))} essais${past ? ` · ${fmt(m.doneBy(d))} réalisés · écart ${fmt(m.planned(d) - m.doneBy(d))}` : ` · ${fmt(Math.max(0, m.planned(d) - m.doneNow))} encore à réaliser d’ici là`}`;
     parts.push(`<rect x="${x(b.start)}" y="${top}" width="${Math.max(1, x(b.end) - x(b.start))}" height="${plotH}" class="lcHit" data-tip="${tip}" tabindex="-1"/>`);
   });
   const line = (c, dash = "") => `<svg width="28" height="10" aria-hidden="true"><line x1="0" x2="28" y1="5" y2="5" stroke="${c}" stroke-width="2.5"${dash ? ` stroke-dasharray="${dash}"` : ""}/></svg>`;
-  const key = `<div class="lcLegend"><span>${line(LOAD_COLORS.plan)}Prévus (cumul des dates de début)</span><span>${line(LOAD_COLORS.done)}Réalisés</span><span>${line(LOAD_COLORS.todo, "6 5")}À tenir pour finir à temps</span></div>`;
-  return `${key}<svg class="loadCurve" viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe de charge cumulée : essais prévus, réalisés et à tenir">${parts.join("")}</svg>`;
+  const key = `<div class="lcLegend"><span>${line(LOAD_COLORS.plan, "6 5")}À réaliser (tous les essais, cumul)</span><span>${line(LOAD_COLORS.done)}Réalisés (cumul)</span></div>`;
+  return `${key}<svg class="loadCurve" viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe de charge cumulée : essais à réaliser et essais réalisés">${parts.join("")}</svg>`;
 }
 
 function loadCurvePanel(ts, today = data.today) {
   const m = loadModel(ts, today);
   const status = m.lateNow
-    ? `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés pour ${fmt(m.dueNow)} prévus, ${plural(m.lateNow, "essai")} en retard.`
-    : `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés pour ${fmt(m.dueNow)} prévus, à l’heure.`;
+    ? `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés sur ${fmt(m.dueNow)} à réaliser, écart de ${plural(m.lateNow, "essai")}.`
+    : `Aujourd’hui : ${fmt(m.doneNow)} essais réalisés sur ${fmt(m.dueNow)} à réaliser, pas d’écart.`;
   return panel("Courbe de charge", loadCurveSvg(m), {
     sub: `${status} Date de début : CRU, sinon J0 de la DEM.${m.outside ? ` ${plural(m.outside, "TOT", "TOT")} sans date ou hors période non comptée${m.outside > 1 ? "s" : ""}.` : ""}`,
     actions: segment("loadGrain", LOAD_GRAINS, loadGrain, { label: "Pas de temps" }),
