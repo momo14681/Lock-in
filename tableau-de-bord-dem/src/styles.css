@@ -678,3 +678,17 @@ a.button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 .filterClearAll { padding: 4px 10px; font-size: 13px; background: transparent; border-color: transparent; color: #9A3412; text-decoration: underline; }
 @media print { .activeFilters { display: none !important; } }
 .tabs .moreTabs { width: auto; min-width: 0; max-width: 190px; padding-right: 26px; }
+
+/* Courbe de charge */
+.loadCurve { width: 100%; height: auto; display: block; }
+.loadCurve .lcGrid { stroke: var(--line-2); stroke-width: 1; }
+.loadCurve .lcGrid.base { stroke: var(--line); }
+.loadCurve .lcAxis { font-size: 12px; fill: var(--muted); }
+.loadCurve .lcLine { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.loadCurve .lcDot { stroke: var(--surface); stroke-width: 2; pointer-events: none; }
+.loadCurve .lcToday { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.loadCurve .lcTodayLabel { font-size: 11.5px; fill: var(--muted); }
+.loadCurve .lcHit { fill: transparent; }
+.loadCurve .lcHit:hover { fill: rgba(16, 87, 200, .06); }
+.lcLegend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+.lcLegend span { display: inline-flex; align-items: center; gap: 7px; }

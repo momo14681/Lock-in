@@ -170,6 +170,7 @@ const SETTABLE = {
   iopCheck: (v) => { iopCheck = v; },
   cepGelWindow: (v) => { cepGelWindow = v; },
   cepBpaWindow: (v) => { cepBpaWindow = v; },
+  loadGrain: (v) => { loadGrain = v; },
 };
 
 function onClick(e) {

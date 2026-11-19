@@ -200,6 +200,7 @@ function viewOverview() {
       <p class="muted">${fmt(n)} TOT · <button type="button" class="linkbutton" data-go="groups:affaires">${fmt(countUnique(ts, (t) => t.affaire))} affaires</button> · <button type="button" class="linkbutton" data-go="groups:dossiers">${fmt(dossierCount(ts))} REE</button> · ${esc(scopeLabel())}</p></div></div>
     <div class="kpis kpis-4">${kpis}</div>
     ${coordoTodo(ts)}
+    ${loadCurvePanel(ts)}
     ${panel("BPA / BPD par tranche", trancheTable(), { cls: "tranchePanel", actions: `<button type="button" data-go="tab:pilotage">Pilotage par tranche ›</button>` })}
     <div class="split wide">${panel("Charge par chargé d’essais", chargeChart(), { cls: "chargePanel" })}${signalPanel()}</div>`;
   currentExport = () => downloadMatrix(["Chargé", ...chargeSegments(visible).map((s) => s.label), "Total", "AT", "TEM"],

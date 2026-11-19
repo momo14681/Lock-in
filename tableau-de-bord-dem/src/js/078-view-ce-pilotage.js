@@ -161,6 +161,7 @@ function viewCePilotage() {
       ${panel("Gel M0 à passer", cepList("gel", m.gel, cepGelWindow, m.today), { sub: "Gel M0 = J0 − 70 j · court terme : moins de 30 j, moyen terme : 30 à 90 j" })}
       ${panel("BPA à faire", cepList("bpa", m.bpa, cepBpaWindow, m.today), { sub: "selon le J0 · court terme : moins de 30 j, moyen terme : 30 à 90 j" })}
     </div>
+    ${loadCurvePanel(m.ts, m.today)}
     ${panel("Avancement par tranche", cepSheets(m), { actions: `<button type="button" data-go="tab:mine">Détail par affaire ›</button>` })}`;
   currentExport = () => downloadMatrix(
     ["Tranche", "Affaire", "Libellé DI", "REE", "Titulaire", "J0", "TOT", "Gel M0 (date)", "TOT gelées", "Manque pour le Gel M0", "BPA fait", "BPD signé"],
