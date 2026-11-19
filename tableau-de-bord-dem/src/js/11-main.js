@@ -71,8 +71,9 @@ function render() {
 function detailFields(t) {
   const keys = Object.keys(fields).filter((k) => !MILESTONES.some(([m]) => m === k));
   const filled = keys.filter((k) => String(t.raw[k] ?? "").trim()), empty = keys.filter((k) => !filled.includes(k));
-  return `<div class="detailGrid">${filled.map((k) => `<div${alertAttr(t, k, k === "observations" ? "full" : "")}><span>${names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
-      <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>
+  return `<div class="detailGrid">${filled.map((k) => `<div${alertAttr(t, k, k === "observations" ? "full" : "")}><span>${k === "j0" && t.j0Cru ? "J0 de la DEM (remplacé par la CRU)" : names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
+      ${t.j0Cru ? `<div><span>Date début calculée TOT (CRU)</span><strong>${formatDate(t.j0Cru)}</strong></div>` : ""}
+      <div><span>Échéance de préparation${t.j0Cru ? " (début CRU − 30 j)" : ""}</span><strong>${t.prepDueLabel}</strong></div></div>
     ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${empty.map((k) => `<span${alertAttr(t, k)}>${esc(names[k])}</span>`).join(", ")}</p>` : ""}`;
 }
 

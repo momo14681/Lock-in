@@ -51,6 +51,7 @@ function audit(tasks) {
     if (t.duplicate) add(t, "TOT en double", ["ot", "tot"], `Même OT-TOT sur ${t.sameTot.length} lignes de la feuille (lignes ${t.sameTot.map((x) => x.rowNumber).join(", ")}) : comptée une seule fois. Vérifier avant toute suppression.`);
 
     for (const key of ["j0", "totPrete", "bpa", "ger", "bpd"]) {
+      if (key === "j0" && t.j0Cru) continue; // J0 de la DEM non utilisé : date de la CRU retenue.
       if (formatProblem(t, key)) {
         add(t, "Format non conforme", [key], key === "ger"
           ? "Valeur numérique ou date non admise pour GER/1N. Utiliser P, PS, TS, PSR, TSR, TAR ou R."

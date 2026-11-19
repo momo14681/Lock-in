@@ -1090,7 +1090,7 @@ function rowHasBusinessData(values) {
 // Même règle que la feuille Pilotage (RECHERCHE sur la dernière ligne où le REE est rempli).
 const REE_INHERITED = [0, 3, 16, 18];
 
-function buildTask(sheet, rowNumber, row, today, head = null) {
+function buildTask(sheet, rowNumber, row, today, head = null, cruStart = null) {
   const values = {
     affaire: compact(row[0]),
     libelle: compact(row[1]),
@@ -1127,7 +1127,9 @@ function buildTask(sheet, rowNumber, row, today, head = null) {
   // Chargé d’essais lu en colonne M (« Chargé d’essai SP »), sans distinguer prestataires et internes.
   const ownerText = text(values.responsableSharePoint);
   const responsable = !ownerText || /non renseign/i.test(ownerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ? UNASSIGNED : ownerText;
-  const j0Date = parseExcelDate(values.j0);
+  // J0 retenu : « Date début calculée TOT » de la CRU si elle existe (≤ 2028), sinon J0 de la DEM.
+  const j0Dem = parseExcelDate(values.j0), j0Cru = cruStart?.get(otTotKey(values.ot, values.tot)) || null;
+  const j0Date = j0Cru || j0Dem;
   // « Non renseigné » : J0 inconnu assumé, ni à compléter ni à corriger.
   const j0Unknown = !j0Date && /^NON RENSEIGNE/.test(status(values.j0));
   const prepDue = j0Date ? addDays(j0Date, -30) : null;
@@ -1171,6 +1173,8 @@ function buildTask(sheet, rowNumber, row, today, head = null) {
     totPrete: text(values.totPrete),
     j0: j0Date,
     j0Label: formatDate(j0Date),
+    j0Cru,
+    j0Dem,
     prepDue,
     prepDueLabel: formatDate(prepDue),
     regime: text(values.regime),
@@ -1199,7 +1203,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
   const today = startOfDay(now);
   // input : classeur déjà lu (chargement normal, lu une seule fois) ou octets du fichier.
   const workbook = input?.Sheets ? input : XLSX.read(input, {
-    type: "array", cellDates: true, cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false, dense: true, sheets: TECHNICAL_SHEETS,
+    type: "array", cellDates: true, cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false, dense: true, sheets: [...TECHNICAL_SHEETS, CRU_SHEET],
   });
 
   const missingSheets = TECHNICAL_SHEETS.filter((name) => !workbook.Sheets[name]);
@@ -1208,6 +1212,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
   }
 
   const tasks = [];
+  const cruStart = readCruStart(workbook.Sheets[CRU_SHEET]);
   for (const sheetName of TECHNICAL_SHEETS) {
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) continue;
@@ -1225,7 +1230,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
       }
     }
     for (let index = 1; index < rows.length; index += 1) {
-      const task = buildTask(sheetName, index + 1, rows[index], today, heads[index]);
+      const task = buildTask(sheetName, index + 1, rows[index], today, heads[index], cruStart);
       if (task) tasks.push(task);
     }
   }
@@ -1236,6 +1241,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
     today,
     tasks,
     availableSheets: TECHNICAL_SHEETS.filter((name) => workbook.Sheets[name]),
+    cruStartCount: cruStart.size,
     missingSheets,
   };
 }
@@ -1462,6 +1468,7 @@ function audit(tasks) {
     if (t.duplicate) add(t, "TOT en double", ["ot", "tot"], `Même OT-TOT sur ${t.sameTot.length} lignes de la feuille (lignes ${t.sameTot.map((x) => x.rowNumber).join(", ")}) : comptée une seule fois. Vérifier avant toute suppression.`);
 
     for (const key of ["j0", "totPrete", "bpa", "ger", "bpd"]) {
+      if (key === "j0" && t.j0Cru) continue; // J0 de la DEM non utilisé : date de la CRU retenue.
       if (formatProblem(t, key)) {
         add(t, "Format non conforme", [key], key === "ger"
           ? "Valeur numérique ou date non admise pour GER/1N. Utiliser P, PS, TS, PSR, TSR, TAR ou R."
@@ -2687,7 +2694,7 @@ const CRU_NO_ECU = "Non renseigné";
 // Colonnes cherchées par leur titre (repli sur la position du modèle actuel).
 const CRU_COLUMNS = {
   edim: [/^r[ée]f[ée]rence edim/i, 0], intitule: [/^intitul/i, 1], codeProjet: [/^code projet/i, 2], ree: [/^ree$/i, 11], tot: [/^tot concern/i, 16],
-  description: [/^description t[âa]che/i, 17], statut: [/^statut$/i, 18], debut: [/^date d[ée]but/i, 19], fin: [/^date fin/i, 21],
+  description: [/^description t[âa]che/i, 17], statut: [/^statut$/i, 18], debut: [/^date d[ée]but(?!.*calcul)/i, 19], fin: [/^date fin/i, 21],
   resultat: [/^r[ée]sultat/i, 22], ecu: [/^ecu$/i, 26], rdu: [/^rdu$/i, 28], commentType: [/^type commentaire/i, 29],
   auteur: [/^auteur/i, 30], commentDate: [/^date commentaire/i, 31],
 };
@@ -2696,6 +2703,23 @@ const CRU_COLUMNS = {
 function otTotKey(ot, tot) {
   const o = String(ot ?? "").replace(/\D/g, "").replace(/^0+/, ""), n = parseInt(String(tot ?? "").replace(/\D/g, ""), 10);
   return o && Number.isFinite(n) ? `${o}-${n}` : "";
+}
+
+// « Date début calculée TOT » (CRU, colonne N) : remplace le J0 de la DEM, sauf si vide ou après 2028.
+const CRU_START_MAX_YEAR = 2028;
+function readCruStart(sh) {
+  const out = new Map();
+  if (!sh) return out;
+  const rows = XLSX.utils.sheet_to_json(sh, { header: 1, defval: null, raw: true });
+  const head = (rows[0] || []).map((v) => String(v ?? "").trim());
+  const find = (re, fallback) => { const i = head.findIndex((h) => re.test(h)); return i >= 0 ? i : re.test(head[fallback] || "") ? fallback : -1; };
+  const cStart = find(/^date d[ée]but calcul/i, 13), cTot = find(/^tot concern/i, 16);
+  if (cStart < 0 || cTot < 0) return out;
+  for (const r of rows.slice(1)) {
+    const [ot, n] = text(r?.[cTot]).split("-"), key = otTotKey(ot, n), d = parseExcelDate(r?.[cStart]);
+    if (key && d && d.getFullYear() <= CRU_START_MAX_YEAR && !out.has(key)) out.set(key, d);
+  }
+  return out;
 }
 
 function readCRU(sh) {
@@ -5835,8 +5859,9 @@ function render() {
 function detailFields(t) {
   const keys = Object.keys(fields).filter((k) => !MILESTONES.some(([m]) => m === k));
   const filled = keys.filter((k) => String(t.raw[k] ?? "").trim()), empty = keys.filter((k) => !filled.includes(k));
-  return `<div class="detailGrid">${filled.map((k) => `<div${alertAttr(t, k, k === "observations" ? "full" : "")}><span>${names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
-      <div><span>Échéance de préparation</span><strong>${t.prepDueLabel}</strong></div></div>
+  return `<div class="detailGrid">${filled.map((k) => `<div${alertAttr(t, k, k === "observations" ? "full" : "")}><span>${k === "j0" && t.j0Cru ? "J0 de la DEM (remplacé par la CRU)" : names[k]}</span><strong>${esc(t.raw[k])}</strong></div>`).join("")}
+      ${t.j0Cru ? `<div><span>Date début calculée TOT (CRU)</span><strong>${formatDate(t.j0Cru)}</strong></div>` : ""}
+      <div><span>Échéance de préparation${t.j0Cru ? " (début CRU − 30 j)" : ""}</span><strong>${t.prepDueLabel}</strong></div></div>
     ${empty.length ? `<p class="muted detailEmpty">Non renseigné : ${empty.map((k) => `<span${alertAttr(t, k)}>${esc(names[k])}</span>`).join(", ")}</p>` : ""}`;
 }
 

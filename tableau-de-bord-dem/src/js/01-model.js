@@ -146,7 +146,7 @@ function rowHasBusinessData(values) {
 // Même règle que la feuille Pilotage (RECHERCHE sur la dernière ligne où le REE est rempli).
 const REE_INHERITED = [0, 3, 16, 18];
 
-function buildTask(sheet, rowNumber, row, today, head = null) {
+function buildTask(sheet, rowNumber, row, today, head = null, cruStart = null) {
   const values = {
     affaire: compact(row[0]),
     libelle: compact(row[1]),
@@ -183,7 +183,9 @@ function buildTask(sheet, rowNumber, row, today, head = null) {
   // Chargé d’essais lu en colonne M (« Chargé d’essai SP »), sans distinguer prestataires et internes.
   const ownerText = text(values.responsableSharePoint);
   const responsable = !ownerText || /non renseign/i.test(ownerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ? UNASSIGNED : ownerText;
-  const j0Date = parseExcelDate(values.j0);
+  // J0 retenu : « Date début calculée TOT » de la CRU si elle existe (≤ 2028), sinon J0 de la DEM.
+  const j0Dem = parseExcelDate(values.j0), j0Cru = cruStart?.get(otTotKey(values.ot, values.tot)) || null;
+  const j0Date = j0Cru || j0Dem;
   // « Non renseigné » : J0 inconnu assumé, ni à compléter ni à corriger.
   const j0Unknown = !j0Date && /^NON RENSEIGNE/.test(status(values.j0));
   const prepDue = j0Date ? addDays(j0Date, -30) : null;
@@ -227,6 +229,8 @@ function buildTask(sheet, rowNumber, row, today, head = null) {
     totPrete: text(values.totPrete),
     j0: j0Date,
     j0Label: formatDate(j0Date),
+    j0Cru,
+    j0Dem,
     prepDue,
     prepDueLabel: formatDate(prepDue),
     regime: text(values.regime),
@@ -255,7 +259,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
   const today = startOfDay(now);
   // input : classeur déjà lu (chargement normal, lu une seule fois) ou octets du fichier.
   const workbook = input?.Sheets ? input : XLSX.read(input, {
-    type: "array", cellDates: true, cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false, dense: true, sheets: TECHNICAL_SHEETS,
+    type: "array", cellDates: true, cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false, dense: true, sheets: [...TECHNICAL_SHEETS, CRU_SHEET],
   });
 
   const missingSheets = TECHNICAL_SHEETS.filter((name) => !workbook.Sheets[name]);
@@ -264,6 +268,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
   }
 
   const tasks = [];
+  const cruStart = readCruStart(workbook.Sheets[CRU_SHEET]);
   for (const sheetName of TECHNICAL_SHEETS) {
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) continue;
@@ -281,7 +286,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
       }
     }
     for (let index = 1; index < rows.length; index += 1) {
-      const task = buildTask(sheetName, index + 1, rows[index], today, heads[index]);
+      const task = buildTask(sheetName, index + 1, rows[index], today, heads[index], cruStart);
       if (task) tasks.push(task);
     }
   }
@@ -292,6 +297,7 @@ async function parseWorkbook(input, fileMeta = {}, now = new Date()) {
     today,
     tasks,
     availableSheets: TECHNICAL_SHEETS.filter((name) => workbook.Sheets[name]),
+    cruStartCount: cruStart.size,
     missingSheets,
   };
 }
