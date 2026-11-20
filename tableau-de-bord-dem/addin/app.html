@@ -707,6 +707,7 @@ a.button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 /* Bouton Idée / bug : fond blanc pour ressortir sur le bandeau bleu marine */
 .headerIcon#feedbackOpen { background: #fff; color: var(--navy); border-color: #fff; }
 .headerIcon#feedbackOpen:hover { background: #E5EDFA; border-color: #E5EDFA; }
+.appVersion { font-size: 11.5px; color: var(--ink-3); }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -880,6 +881,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <span class="sourceDot" id="sourceDot" aria-hidden="true"></span>
     <span id="sourceFile">Aucun fichier sélectionné</span>
     <span id="sourceLastCheck"></span>
+    <span id="appVersion" class="appVersion" hidden></span>
     <details class="menu sourceMenu">
       <summary>Fichier</summary>
       <div class="menuBody">
@@ -890,6 +892,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <button id="import" hidden>Choisir / changer le fichier</button>
         <button type="button" data-pdg-template>Modèle de page de garde…</button>
         <button id="clear" class="ghost">Fermer le classeur</button>
+        <button type="button" id="addinReload" class="ghost" hidden title="Recharge la dernière version publiée du tableau de bord">Recharger le complément</button>
       </div>
     </details>
   </footer>
@@ -5941,6 +5944,44 @@ function clearFilter(spec) {
   }
   page = 1;
   render();
+}
+
+// ---- 109-update.js ----
+// Mise à jour du complément sans le réinstaller.
+// Excel (surtout Bureau) garde la page en mémoire, parfois sans la recharger quand on ferme
+// et rouvre le volet. La page compare donc sa version à version.txt (jamais en cache) au
+// démarrage, à chaque retour du volet au premier plan et toutes les 30 minutes ; si une
+// version plus récente est publiée, elle se recharge d'elle-même.
+const APP_VERSION = "359d02bd934f";
+const ONLINE_ADDIN = APP_VERSION !== "local" && /^https?:$/.test(location.protocol);
+
+function addinBusy() {
+  return busy || !!editConfirm || editMode || [...document.querySelectorAll("dialog")].some((d) => d.open);
+}
+
+let lastUpdateCheck = 0;
+async function checkAddinUpdate() {
+  if (!ONLINE_ADDIN || addinBusy() || Date.now() - lastUpdateCheck < 60 * 1000) return;
+  lastUpdateCheck = Date.now();
+  try {
+    const r = await fetch(`version.txt?t=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) return;
+    const v = (await r.text()).trim();
+    // Déjà rechargée pour cette version mais servie en ancienne version (cache) : pas de boucle.
+    const asked = new URLSearchParams(location.search).get("v");
+    if (/^[0-9a-f]{6,40}$/.test(v) && v !== APP_VERSION && v !== asked) location.replace(`app.html?v=${encodeURIComponent(v)}`);
+  } catch (e) { /* hors ligne : on garde la version en cours */ }
+}
+
+if (ONLINE_ADDIN) {
+  $("appVersion").hidden = false;
+  $("appVersion").textContent = `version ${APP_VERSION.slice(0, 7)}`;
+  $("addinReload").hidden = false;
+  $("addinReload").onclick = () => location.replace(`index.html?t=${Date.now()}`);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkAddinUpdate(); });
+  window.addEventListener("focus", checkAddinUpdate);
+  setInterval(checkAddinUpdate, 30 * 60 * 1000);
+  checkAddinUpdate();
 }
 
 // ---- 11-main.js ----

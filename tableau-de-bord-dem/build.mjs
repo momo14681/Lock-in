@@ -54,8 +54,11 @@ const html = read("src", "template.html").replace(/\/\*@@([A-Z_]+)@@\*\/|<!--@@(
   return parts[key];
 });
 
+// Version du complément : « local » dans les fichiers HTML autonomes (pas de mise à jour en ligne).
+const VERSION_MARK = "@@APP_VERSION@@";
+if (!html.includes(VERSION_MARK)) throw new Error("Marqueur de version introuvable.");
 const out = join(root, "Tableau_de_bord_DEM.html");
-writeFileSync(out, html);
+writeFileSync(out, html.replaceAll(VERSION_MARK, "local"));
 console.log(`${out} · ${(html.length / 1024 / 1024).toFixed(2)} Mo`);
 
 // Complément Excel : même page, avec office.js chargé depuis Microsoft ; la page lit et écrit
@@ -67,13 +70,14 @@ if (!csp.test(html)) throw new Error("Politique de sécurité introuvable dans l
 // Page publique : sans l'adresse des outils internes (liens EAM / eDRT masqués).
 const tools = 'const EDF_TOOLS = "https://prod-sdin.edf.fr";';
 if (!html.includes(tools)) throw new Error("Adresse des outils EDF introuvable.");
-const addinHtml = html.replace(csp, () => `<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>`).replace(tools, 'const EDF_TOOLS = "";');
+const addinBase = html.replace(csp, () => `<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>`).replace(tools, 'const EDF_TOOLS = "";');
+const addinVersion = createHash("sha256").update(addinBase).digest("hex").slice(0, 12);
+const addinHtml = addinBase.replaceAll(VERSION_MARK, addinVersion);
 if (/prod-sdin|edf\.fr/i.test(addinHtml)) throw new Error("La page du complément contient encore une adresse interne EDF.");
 const addinUrl = (process.env.ADDIN_URL || "https://melk735.github.io/Pilotage-essais/").replace(/\/?$/, "/");
 // Mises à jour sans réinstaller : Excel garde index.html en cache. index.html n'est donc qu'un
 // petit chargeur qui lit version.txt (jamais mis en cache) et ouvre app.html?v=<version> :
 // une nouvelle version publiée change l'adresse et force le rechargement.
-const addinVersion = createHash("sha256").update(addinHtml).digest("hex").slice(0, 12);
 const loader = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store"><title>Pilotage des essais</title></head>
@@ -98,7 +102,7 @@ const edfFaces = [["Light", 300], ["Regular", 400], ["Bold", 700]]
   .filter(([name]) => existsSync(join(edfDir, `EDF2020W01-${name}.woff2`)))
   .map(([name, weight]) => `@font-face{font-family:"EDF 2020";font-style:normal;font-weight:${weight};font-display:swap;src:url(data:font/woff2;base64,${readFileSync(join(edfDir, `EDF2020W01-${name}.woff2`)).toString("base64")}) format("woff2");}`);
 if (edfFaces.length) {
-  const edfHtml = html.replace("<style>", "<style>" + edfFaces.join(""));
+  const edfHtml = html.replaceAll(VERSION_MARK, "local").replace("<style>", "<style>" + edfFaces.join(""));
   const edfOut = join(root, "Tableau_de_bord_DEM_EDF.html");
   writeFileSync(edfOut, edfHtml);
   console.log(`${edfOut} · police EDF 2020 embarquée (usage interne, non versionné)`);

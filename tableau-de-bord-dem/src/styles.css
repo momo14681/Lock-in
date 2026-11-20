@@ -697,3 +697,4 @@ a.button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 /* Bouton Idée / bug : fond blanc pour ressortir sur le bandeau bleu marine */
 .headerIcon#feedbackOpen { background: #fff; color: var(--navy); border-color: #fff; }
 .headerIcon#feedbackOpen:hover { background: #E5EDFA; border-color: #E5EDFA; }
+.appVersion { font-size: 11.5px; color: var(--ink-3); }
