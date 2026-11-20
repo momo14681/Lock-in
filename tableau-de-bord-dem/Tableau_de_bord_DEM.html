@@ -708,6 +708,8 @@ a.button[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 .headerIcon#feedbackOpen { background: #fff; color: var(--navy); border-color: #fff; }
 .headerIcon#feedbackOpen:hover { background: #E5EDFA; border-color: #E5EDFA; }
 .appVersion { font-size: 11.5px; color: var(--ink-3); }
+button.pdgButton { background: #fff; border: 1px solid var(--primary); color: var(--primary); padding: 3px 10px; font-size: .85em; white-space: nowrap; }
+button.pdgButton:hover { background: var(--primary); color: #fff; }
 </style>
 <!-- Work Sans — licence
 Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
@@ -2090,14 +2092,16 @@ function affaireRow(g) {
       <td class="num">${fracCell(g.gel, g.n)}</td><td class="num">${fracCell(g.bpaRee, g.nRee)}</td><td class="num">${fracCell(g.bpdRee, g.nRee)}</td>
       <td>${affaireStateCell(g)}</td></tr>`;
     if (!open) return row;
+    const seenRee = new Set();
     const sub = g.ts.slice().sort((a, b) => COLLATOR_FR_NUM.compare(a.ree, b.ree) || a.rowNumber - b.rowNumber).map((t) => `<tr>
       <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
       <td><span${alertAttr(t, "j0")}>${t.j0Label}</span></td>
       <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td>
-      <td>${toolLinks(t.ot, t.tot)}</td></tr>`);
-    return row + `<tr class="subRow"><td colspan="7">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens"], sub, { cls: "compact", free: true })}</td></tr>`;
+      <td>${toolLinks(t.ot, t.tot)}</td>
+      <td>${t.ree && !seenRee.has(dossierKey(t)) && seenRee.add(dossierKey(t)) ? pdgButton([t]) : ""}</td></tr>`);
+    return row + `<tr class="subRow"><td colspan="7">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens", "Page de garde"], sub, { cls: "compact", free: true })}</td></tr>`;
   }
 }
 
@@ -2353,10 +2357,11 @@ function viewGroups() {
     { label: model.headers[1], value: (x) => x.r[1], filter: true },
     { label: model.headers[2], value: (x) => x.r[2] },
     ...model.headers.slice(3).map((h, k) => ({ label: h, cls: "num", value: (x) => x.r[3 + k] })),
+    ...(tab === "dossiers" ? [{ label: "Page de garde" }] : []),
   ];
   const dt = dataTable({
     key: "groups-" + tab, columns, items,
-    row: (x) => `<tr><td><button type="button" class="linkbutton" data-group="${x.index}">${esc(x.r[0] || "Affaire manquante")}</button></td>${x.r.slice(1).map((v, i) => `<td class="${i >= 2 ? "num" : ""}">${esc(v)}</td>`).join("")}</tr>`,
+    row: (x) => `<tr><td><button type="button" class="linkbutton" data-group="${x.index}">${esc(x.r[0] || "Affaire manquante")}</button></td>${x.r.slice(1).map((v, i) => `<td class="${i >= 2 ? "num" : ""}">${esc(v)}</td>`).join("")}${tab === "dossiers" ? `<td>${pdgButton(x.g.ts)}</td>` : ""}</tr>`,
   });
   $("view").innerHTML = panel(`${fmt(dt.rows.length)} ${tab === "affaires" ? "affaires" : "REE"}`, dt.html, {});
   currentExport = () => downloadMatrix(model.headers, dt.rows.map((x) => x.r), tab === "affaires" ? "Affaires_Essais.csv" : "REE_Essais.csv");
@@ -3654,8 +3659,8 @@ function cepList(kind, items, current, today) {
       <td>${cepDue(date, today, d.sheet)}</td>
       <td>${kind === "gel"
         ? `<span class="missingKeys">${esc(d.missing.map((k) => names[k]).join(", "))}</span>`
-        : `${esc(d.entreprise || "—")}<small class="muted">${d.bpaPreparable ? "à préparer" : "fait par le titulaire"}</small>`}</td></tr>`);
-  const head = ["REE", "Tranche", kind === "gel" ? "Gel M0" : "J0", kind === "gel" ? "Manque" : "Titulaire"];
+        : `${esc(d.entreprise || "—")}<small class="muted">${d.bpaPreparable ? "à préparer" : "fait par le titulaire"}</small>`}</td>${kind === "gel" ? "" : `<td>${pdgButton(d.ts)}</td>`}</tr>`);
+  const head = ["REE", "Tranche", kind === "gel" ? "Gel M0" : "J0", kind === "gel" ? "Manque" : "Titulaire", ...(kind === "gel" ? [] : ["Page de garde"])];
   const empty = win === "short" ? "Rien à court terme." : "Rien sur cette période.";
   return segment(variable, windows, win, { label: "Échéance", counts: (w) => counts[w] })
     + table(head, rows, { cls: "compact cepList", free: true, empty });
@@ -5785,11 +5790,18 @@ async function pdgTemplateBytes() {
   return bytes;
 }
 
+// Bouton « Page de garde » d'un REE (listes) : la page de garde se remplit depuis la CRU
+// à partir du REE, de l'affaire et de la feuille, communs à toutes les TOT du REE.
+function pdgButton(ts) {
+  const t = ts.find((x) => x.ree) || ts[0];
+  return t ? `<button type="button" class="pdgButton" data-pdg="${t.index}" title="Remplit le modèle PdG_Type à partir de la feuille CRU">Page de garde</button>` : "";
+}
+
 // Message dans la fiche TOT si elle est ouverte (sinon sous l'en-tête).
 function pdgNotice(html, error = false) {
   const note = $("detail").open && $("pdgNote");
   if (note) { note.hidden = false; note.className = `notice${error ? " error" : ""}`; note.innerHTML = html; }
-  else $("message").innerHTML = `<div class="notice${error ? " error" : ""}">${html}</div>`;
+  else { $("message").innerHTML = `<div class="notice${error ? " error" : ""}">${html}</div>`; $("message").scrollIntoView({ block: "nearest", behavior: "smooth" }); }
 }
 
 // Volet Excel : relit la feuille du modèle dans la DEM (elle a pu être ajoutée depuis la lecture).

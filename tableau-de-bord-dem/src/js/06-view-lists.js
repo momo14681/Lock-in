@@ -199,10 +199,11 @@ function viewGroups() {
     { label: model.headers[1], value: (x) => x.r[1], filter: true },
     { label: model.headers[2], value: (x) => x.r[2] },
     ...model.headers.slice(3).map((h, k) => ({ label: h, cls: "num", value: (x) => x.r[3 + k] })),
+    ...(tab === "dossiers" ? [{ label: "Page de garde" }] : []),
   ];
   const dt = dataTable({
     key: "groups-" + tab, columns, items,
-    row: (x) => `<tr><td><button type="button" class="linkbutton" data-group="${x.index}">${esc(x.r[0] || "Affaire manquante")}</button></td>${x.r.slice(1).map((v, i) => `<td class="${i >= 2 ? "num" : ""}">${esc(v)}</td>`).join("")}</tr>`,
+    row: (x) => `<tr><td><button type="button" class="linkbutton" data-group="${x.index}">${esc(x.r[0] || "Affaire manquante")}</button></td>${x.r.slice(1).map((v, i) => `<td class="${i >= 2 ? "num" : ""}">${esc(v)}</td>`).join("")}${tab === "dossiers" ? `<td>${pdgButton(x.g.ts)}</td>` : ""}</tr>`,
   });
   $("view").innerHTML = panel(`${fmt(dt.rows.length)} ${tab === "affaires" ? "affaires" : "REE"}`, dt.html, {});
   currentExport = () => downloadMatrix(model.headers, dt.rows.map((x) => x.r), tab === "affaires" ? "Affaires_Essais.csv" : "REE_Essais.csv");

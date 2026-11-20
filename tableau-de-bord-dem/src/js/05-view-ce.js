@@ -110,14 +110,16 @@ function affaireRow(g) {
       <td class="num">${fracCell(g.gel, g.n)}</td><td class="num">${fracCell(g.bpaRee, g.nRee)}</td><td class="num">${fracCell(g.bpdRee, g.nRee)}</td>
       <td>${affaireStateCell(g)}</td></tr>`;
     if (!open) return row;
+    const seenRee = new Set();
     const sub = g.ts.slice().sort((a, b) => COLLATOR_FR_NUM.compare(a.ree, b.ree) || a.rowNumber - b.rowNumber).map((t) => `<tr>
       <td><button type="button" class="linkbutton" data-task="${t.index}">REE ${esc(t.ree || "absent")}</button><small>TOT ${esc(t.tot || "—")} · ${esc(t.sheet)} ligne ${t.rowNumber}</small></td>
       <td><span${alertAttr(t, "j0")}>${t.j0Label}</span></td>
       <td>${t.missingInfoKeys.length && !isRealized(t) ? `<span class="missingKeys">Manque : ${esc(missingLabel(t))}</span>` : '<span class="muted">Préparation complète</span>'}</td>
       <td class="msCell">${milestoneLine(t)}</td>
       <td>${stateBadge(t)}</td>
-      <td>${toolLinks(t.ot, t.tot)}</td></tr>`);
-    return row + `<tr class="subRow"><td colspan="7">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens"], sub, { cls: "compact", free: true })}</td></tr>`;
+      <td>${toolLinks(t.ot, t.tot)}</td>
+      <td>${t.ree && !seenRee.has(dossierKey(t)) && seenRee.add(dossierKey(t)) ? pdgButton([t]) : ""}</td></tr>`);
+    return row + `<tr class="subRow"><td colspan="7">${table(["REE / TOT", "J0", "Préparation", "Documents", "Statut", "Liens", "Page de garde"], sub, { cls: "compact", free: true })}</td></tr>`;
   }
 }
 

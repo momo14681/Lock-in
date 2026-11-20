@@ -275,11 +275,18 @@ async function pdgTemplateBytes() {
   return bytes;
 }
 
+// Bouton « Page de garde » d'un REE (listes) : la page de garde se remplit depuis la CRU
+// à partir du REE, de l'affaire et de la feuille, communs à toutes les TOT du REE.
+function pdgButton(ts) {
+  const t = ts.find((x) => x.ree) || ts[0];
+  return t ? `<button type="button" class="pdgButton" data-pdg="${t.index}" title="Remplit le modèle PdG_Type à partir de la feuille CRU">Page de garde</button>` : "";
+}
+
 // Message dans la fiche TOT si elle est ouverte (sinon sous l'en-tête).
 function pdgNotice(html, error = false) {
   const note = $("detail").open && $("pdgNote");
   if (note) { note.hidden = false; note.className = `notice${error ? " error" : ""}`; note.innerHTML = html; }
-  else $("message").innerHTML = `<div class="notice${error ? " error" : ""}">${html}</div>`;
+  else { $("message").innerHTML = `<div class="notice${error ? " error" : ""}">${html}</div>`; $("message").scrollIntoView({ block: "nearest", behavior: "smooth" }); }
 }
 
 // Volet Excel : relit la feuille du modèle dans la DEM (elle a pu être ajoutée depuis la lecture).

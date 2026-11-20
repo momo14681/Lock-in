@@ -123,8 +123,8 @@ function cepList(kind, items, current, today) {
       <td>${cepDue(date, today, d.sheet)}</td>
       <td>${kind === "gel"
         ? `<span class="missingKeys">${esc(d.missing.map((k) => names[k]).join(", "))}</span>`
-        : `${esc(d.entreprise || "—")}<small class="muted">${d.bpaPreparable ? "à préparer" : "fait par le titulaire"}</small>`}</td></tr>`);
-  const head = ["REE", "Tranche", kind === "gel" ? "Gel M0" : "J0", kind === "gel" ? "Manque" : "Titulaire"];
+        : `${esc(d.entreprise || "—")}<small class="muted">${d.bpaPreparable ? "à préparer" : "fait par le titulaire"}</small>`}</td>${kind === "gel" ? "" : `<td>${pdgButton(d.ts)}</td>`}</tr>`);
+  const head = ["REE", "Tranche", kind === "gel" ? "Gel M0" : "J0", kind === "gel" ? "Manque" : "Titulaire", ...(kind === "gel" ? [] : ["Page de garde"])];
   const empty = win === "short" ? "Rien à court terme." : "Rien sur cette période.";
   return segment(variable, windows, win, { label: "Échéance", counts: (w) => counts[w] })
     + table(head, rows, { cls: "compact cepList", free: true, empty });
