@@ -4424,12 +4424,13 @@ function loadBuckets(ts, today) {
   return { buckets, outside, inRange, rangeStart, rangeEnd };
 }
 
-// Pas de graduation entier (1, 2, 5, 10, 20…) : 4 lignes de grille, valeurs rondes.
-// Pas de graduation entier (1, 2, 5, 10, 20…) : 4 lignes de grille, valeurs rondes.
-function niceStep(v) {
-  if (v <= 1) return 1;
-  const p = 10 ** Math.floor(Math.log10(v)), n = v / p;
-  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+// Graduation lisible : pas « rond » (1, 2, 2,5, 5 × 10ⁿ, entier) donnant 4 à 6 lignes,
+// et un maximum juste au-dessus du total pour que la courbe occupe la hauteur.
+function loadScale(total) {
+  const raw = Math.max(1, total) / 5, p = 10 ** Math.floor(Math.log10(raw));
+  const step = Math.max(1, [1, 2, 2.5, 5, 10].map((k) => k * p).find((s) => s >= raw && Number.isInteger(s)) || 10 * p);
+  const ticks = Math.max(1, Math.ceil(Math.max(1, total) / step));
+  return { step, ticks, max: step * ticks };
 }
 
 function loadModel(ts, today) {
@@ -4455,12 +4456,12 @@ function loadCurveSvg(m) {
   const narrow = window.innerWidth < 700, W = narrow ? 480 : 900, H = narrow ? 260 : 300;
   const top = 18, bottom = 46, left = 40, right = narrow ? 76 : 104;
   const plotW = W - left - right, plotH = H - top - bottom;
-  const max = 4 * niceStep(Math.max(1, m.total) / 4);
+  const scale = loadScale(m.total), max = scale.max;
   const x = (d) => left + ((d - rangeStart) / (rangeEnd - rangeStart)) * plotW, y = (v) => top + plotH - (v / max) * plotH;
   const pt = (d, v) => `${x(d).toFixed(1)},${y(v).toFixed(1)}`;
   const parts = [];
-  for (let k = 0; k <= 4; k++) {
-    const v = (max / 4) * k, yy = y(v);
+  for (let k = 0; k <= scale.ticks; k++) {
+    const v = scale.step * k, yy = y(v);
     parts.push(`<line x1="${left}" x2="${left + plotW}" y1="${yy}" y2="${yy}" class="lcGrid${k ? "" : " base"}"/>`);
     parts.push(`<text x="${left - 6}" y="${yy + 4}" class="lcAxis" text-anchor="end">${fmt(v)}</text>`);
   }
