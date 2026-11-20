@@ -5,7 +5,7 @@ ouverte et y écrit les saisies des fiches TOT. Cette page ne contient aucune do
 tout est lu dans le classeur ouvert.
 
 Fichiers générés par `node build.mjs` (dossier `tableau-de-bord-dem`) :
-`index.html` (la page), `manifest.xml` (à charger dans Excel), icônes.
+`index.html` (petit chargeur), `app.html` (la page), `version.txt` (version publiée, lue à chaque ouverture pour forcer la mise à jour sans réinstaller), `manifest.xml` (à charger dans Excel), icônes.
 Version publique : sans les liens EAM / eDRT (adresses internes).
 
 ## Installer (chaque utilisateur, une fois)
